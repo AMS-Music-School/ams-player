@@ -4,88 +4,290 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>AMS Practice Player</title>
-
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="AMS Player">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="theme-color" content="#6b5a50">
-
-    <link rel="apple-touch-icon" href="icon.png">
-    <link rel="icon" href="icon.png">
-
     <script src="https://unpkg.com/wavesurfer.js@7/dist/wavesurfer.min.js"></script>
     <script src="https://unpkg.com/wavesurfer.js@7/dist/plugins/regions.min.js"></script>
     <script src="https://unpkg.com/wavesurfer.js@7/dist/plugins/timeline.min.js"></script>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <style>
-        /* 基本スタイル */
+        /* --- プロ仕様へのデザイン・アップデート --- */
+        :root {
+            --primary-color: #d4a373; /* 落ち着いたゴールド */
+            --bg-dark: #121212;       /* 深みのある黒 */
+            --panel-bg: #1e1e1e;      /* カード背景 */
+            --text-main: #e0e0e0;
+            --text-dim: #999999;
+            --border-color: #333333;
+        }
+
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        
         body { 
-            background: #fdfaf9; /* 背景を少し暖かみのある色に */
-            color: #444; 
-            font-family: "Times New Roman", "Yu Mincho", "MS Mincho", serif; 
-            padding: 10px; 
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            font-family: 'Helvetica Neue', Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", sans-serif;
+            padding: 0; 
             margin: 0; 
-            /* iOSのプルダウン更新を防止（アプリ感を出すため） */
             overscroll-behavior-y: contain;
         }
-        .container { width: 100%; max-width: 900px; margin: 0 auto; background: #ffffff; padding: 25px; border-radius: 4px; border: 1px solid #e0e0e0; box-shadow: 0 15px 45px rgba(0,0,0,0.05); }
+
+        .container { 
+            width: 100%; 
+            max-width: 600px; 
+            margin: 0 auto; 
+            background: var(--bg-dark); 
+            padding: env(safe-area-inset-top) 15px 40px 15px;
+        }
         
-        /* タイトルエリア（PWA時にステータスバーと被らないよう上部余白を調整） */
-        .title-area { text-align: center; margin-bottom: 25px; padding-top: env(safe-area-inset-top); }
-        .title-area h2 { color: #6b5a50; font-size: 1.6em; letter-spacing: 3px; margin: 0; font-weight: normal; text-transform: uppercase; }
+        .title-area { text-align: center; margin-bottom: 25px; padding-top: 20px; }
+        .title-area h2 { 
+            color: var(--primary-color); 
+            font-size: 1.1rem; 
+            letter-spacing: 6px; 
+            margin: 0; 
+            font-weight: bold; 
+            text-transform: uppercase; 
+        }
 
-        /* タブ切り替え */
-        .mode-tabs { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 15px; }
-        .tab-btn { background: #f9f7f6; border: 1px solid #dcd6d2; color: #888; padding: 10px 25px; cursor: pointer; border-radius: 20px; font-size: 0.9em; transition: 0.3s; }
-        .tab-btn.active { background: #6b5a50; color: #fff; border-color: #6b5a50; }
-
-        /* 操作ガイド */
-        .guide-box { background: #fdfaf9; border-top: 2px solid #6b5a50; padding: 20px; margin-top: 30px; font-size: 0.85em; color: #776a62; line-height: 1.7; border-radius: 0 0 4px 4px; }
-        .guide-box b { color: #6b5a50; font-size: 1.1em; border-bottom: 1px solid #dcd6d2; display: block; margin-bottom: 10px; padding-bottom: 5px; }
-        .guide-box ul { padding-left: 20px; margin: 10px 0; }
-        .guide-box li { margin-bottom: 5px; }
+        /* タブをモダンなスイッチ風に */
+        .mode-tabs { 
+            display: flex; 
+            justify-content: center; 
+            gap: 5px; 
+            margin-bottom: 25px; 
+            background: var(--panel-bg); 
+            padding: 4px; 
+            border-radius: 12px; 
+            border: 1px solid var(--border-color);
+        }
+        .tab-btn { 
+            background: transparent; 
+            border: none; 
+            color: var(--text-dim); 
+            padding: 10px; 
+            cursor: pointer; 
+            border-radius: 8px; 
+            font-size: 0.85em; 
+            flex: 1;
+            transition: all 0.3s ease; 
+        }
+        .tab-btn.active { 
+            background: var(--primary-color); 
+            color: #121212; 
+            font-weight: bold; 
+        }
 
         .content-section { display: none; }
         .content-section.active { display: block; }
 
-        /* プレイヤー要素 */
-        #ytPlayerContainer { position: relative; width: 100%; padding-top: 56.25%; background: #000; margin-bottom: 15px; }
-        #ytPlayerContainer iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
-        .waveform-label { font-size: 0.85em; color: #888; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
-        .time-display { font-family: "Courier New", Courier, monospace; color: #6b5a50; font-weight: bold; background: #f9f7f6; padding: 2px 8px; border-radius: 3px; }
+        /* プレイヤー・波形周り */
+        #waveform-wrapper { 
+            position: relative; 
+            background: #000; 
+            border: 1px solid var(--border-color); 
+            border-radius: 8px;
+            margin-bottom: 10px; 
+            overflow: hidden;
+        }
         
-        #waveform-wrapper { position: relative; background: #fcfcfc; border: 1px solid #eee; margin-bottom: 10px; }
-        .clear-btn-container { display: flex; justify-content: center; margin-bottom: 20px; }
-        .clear-btn-ja { background: #fff; border: 1px solid #dcd6d2; color: #6b5a50; padding: 6px 16px; border-radius: 20px; font-size: 0.75em; cursor: pointer; display: flex; align-items: center; gap: 4px; transition: 0.2s; }
-        .clear-btn-ja:hover { background: #6b5a50; color: #fff; border-color: #6b5a50; }
+        .waveform-label { 
+            font-size: 0.8em; 
+            color: var(--text-dim); 
+            margin-bottom: 12px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            letter-spacing: 1px;
+        }
+
+        .time-display { 
+            font-family: "Courier New", Courier, monospace; 
+            color: var(--primary-color); 
+            font-weight: bold; 
+            font-size: 1.3em;
+            background: transparent;
+            padding: 0;
+        }
+
+        /* パネル・カード */
+        .panel { 
+            background: var(--panel-bg); 
+            padding: 22px; 
+            border-radius: 16px; 
+            border: 1px solid var(--border-color); 
+            display: flex; 
+            flex-direction: column; 
+            gap: 20px; 
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .row { display: flex; justify-content: space-between; align-items: center; gap: 15px; }
+
+        /* iOS/モバイルで操作しやすい太いスライダー */
+        input[type="range"] { 
+            flex-grow: 1; 
+            accent-color: var(--primary-color); 
+            cursor: pointer; 
+            height: 6px;
+            border-radius: 3px;
+            background: #444;
+            -webkit-appearance: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 24px;
+            height: 24px;
+            background: var(--primary-color);
+            border-radius: 50%;
+            border: 2px solid #fff;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.6);
+        }
+
+        .val-display { color: var(--primary-color); font-weight: bold; min-width: 65px; text-align: right; font-size: 1.2em; }
+        
+        /* コントロールボタン */
+        .transport-controls { 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            gap: 25px; 
+            margin: 25px 0; 
+            background: transparent;
+            padding: 0;
+        }
+        .btn-ctrl { 
+            background: var(--panel-bg); 
+            color: var(--text-main); 
+            border: 1px solid var(--border-color); 
+            border-radius: 50%; 
+            width: 55px; 
+            height: 55px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+        }
+        .play-main { 
+            background: var(--primary-color); 
+            color: #121212; 
+            border: none; 
+            width: 75px; 
+            height: 75px; 
+        }
+
+        .reset-btn { 
+            background: #333; 
+            border: none; 
+            color: var(--text-dim); 
+            padding: 4px 10px; 
+            border-radius: 4px; 
+            font-size: 0.7em; 
+            cursor: pointer; 
+            margin-left: 5px;
+        }
+        
+        /* 練習設定エリア */
+        .practice-settings { 
+            background: var(--panel-bg); 
+            border: 1px solid var(--border-color); 
+            padding: 15px; 
+            margin-bottom: 20px; 
+            border-radius: 12px; 
+            display: flex; 
+            flex-wrap: wrap; 
+            gap: 12px; 
+            align-items: center; 
+            justify-content: space-around; 
+        }
+        .opt-label { font-size: 0.85em; font-weight: bold; color: var(--text-main); display: flex; align-items: center; gap: 8px; }
+        .num-input { 
+            width: 60px; 
+            background: #000; 
+            color: var(--primary-color); 
+            border: 1px solid var(--border-color); 
+            padding: 6px; 
+            border-radius: 6px; 
+            text-align: center; 
+            font-weight: bold; 
+            font-size: 1em;
+        }
+
+        /* ファイル入力 & その他 */
+        input[type="file"] { 
+            width: 100%; 
+            padding: 18px; 
+            border: 2px dashed var(--border-color); 
+            border-radius: 12px; 
+            margin-bottom: 20px; 
+            color: var(--text-dim); 
+            background: #181818;
+            font-size: 0.9em;
+        }
+
+        .clear-btn-container { margin-bottom: 10px; }
+        .clear-btn-ja { 
+            background: #333; 
+            border: none; 
+            color: var(--text-main); 
+            padding: 8px 18px; 
+            border-radius: 20px; 
+            font-size: 0.8em; 
+            cursor: pointer;
+        }
+
+        .guide-box { 
+            background: #181818; 
+            border-left: 4px solid var(--primary-color); 
+            padding: 20px; 
+            margin-top: 30px; 
+            font-size: 0.85em; 
+            color: var(--text-dim); 
+            line-height: 1.7; 
+            border-radius: 4px;
+        }
+        .guide-box b { color: var(--primary-color); font-size: 1.1em; display: block; margin-bottom: 10px; border-bottom: 1px solid var(--border-color); padding-bottom: 5px; }
 
         #countdown-overlay { 
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); 
-            font-size: 100px; color: #6b5a50; font-weight: bold; z-index: 1000; 
-            display: none; pointer-events: none; text-shadow: 0 0 10px rgba(255,255,255,0.8);
+            font-size: 120px; color: var(--primary-color); font-weight: bold; z-index: 1000; 
+            display: none; pointer-events: none; text-shadow: 0 0 30px rgba(0,0,0,0.9);
         }
 
-        .transport-controls { display: flex; justify-content: center; align-items: center; gap: 20px; margin-bottom: 25px; background: #f9f7f6; padding: 15px; border-radius: 2px; }
-        .btn-ctrl { background: #ffffff; color: #6b5a50; border: 1px solid #dcd6d2; border-radius: 50%; width: 50px; height: 50px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-        .play-main { background: #6b5a50; color: #ffffff; border: none; width: 65px; height: 65px; }
+        #ytPlayerContainer { 
+            border-radius: 12px; 
+            overflow: hidden; 
+            border: 1px solid var(--border-color);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
 
-        .panel { background: #fdfaf9; padding: 20px; border-radius: 2px; border: 1px solid #f0edea; display: flex; flex-direction: column; gap: 15px; }
-        .row { display: flex; justify-content: space-between; align-items: center; gap: 15px; }
-        input[type="range"] { flex-grow: 1; accent-color: #6b5a50; cursor: pointer; }
-        input[type="file"] { width: 100%; padding: 12px; border: 1px dashed #6b5a50; border-radius: 4px; margin-bottom: 15px; cursor: pointer; }
-        .val-display { color: #6b5a50; font-weight: bold; min-width: 60px; text-align: right; font-size: 1.2em; }
-        .reset-btn { background: transparent; border: 1px solid #dcd6d2; color: #888; padding: 3px 8px; border-radius: 2px; font-size: 0.7em; cursor: pointer; }
-        .loop-btn-main { background: #6b5a50; color: white; border: none; padding: 8px 15px; border-radius: 2px; cursor: pointer; font-size: 0.8em; min-width: 90px; }
-        .adj-btn { background: #ffffff; border: 1px solid #dcd6d2; color: #6b5a50; width: 40px; height: 32px; border-radius: 2px; cursor: pointer; font-weight: bold; }
-        
-        .practice-settings { background: #fdfaf9; border: 1px solid #dcd6d2; padding: 12px; margin-bottom: 10px; border-radius: 4px; display: flex; flex-wrap: wrap; gap: 15px; align-items: center; justify-content: center; }
-        .opt-label { font-size: 0.8em; font-weight: bold; color: #6b5a50; display: flex; align-items: center; gap: 5px; cursor: pointer; }
-        .num-input { width: 55px; padding: 3px; border: 1px solid #dcd6d2; border-radius: 4px; text-align: center; font-size: 0.9em; }
+        .loop-btn-main { 
+            background: var(--primary-color); 
+            color: #121212; 
+            border: none; 
+            padding: 10px 18px; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            font-size: 0.85em; 
+            font-weight: bold;
+            min-width: 100px; 
+        }
 
-        /* PWA用のセーフエリア対応（iPhoneの画面下のバー対策） */
-        footer { padding-bottom: env(safe-area-inset-bottom); }
+        .adj-btn { 
+            background: #333; 
+            border: 1px solid var(--border-color); 
+            color: var(--text-main); 
+            width: 44px; 
+            height: 36px; 
+            border-radius: 4px; 
+            cursor: pointer; 
+        }
+
+        #toggleLoopBtn.active {
+            background: var(--primary-color);
+            color: #121212;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
@@ -110,7 +312,10 @@
         <div class="waveform-label">
             <span id="loadStatus">READY</span>
             <span class="time-display"><span id="currentTime">00:00</span> / <span id="totalTime">00:00</span></span>
-            <span>Vol <input type="range" id="modelVol" min="0" max="1" step="0.05" value="0.8" style="width:80px;"></span>
+            <span style="display:flex; align-items:center; gap:8px;">
+                <span class="material-icons" style="font-size:16px;">volume_up</span>
+                <input type="range" id="modelVol" min="0" max="1" step="0.05" value="0.8" style="width:70px;">
+            </span>
         </div>
         
         <div id="waveform-wrapper">
@@ -119,72 +324,87 @@
             <div id="timeline"></div>
         </div>
 
-        <div class="clear-btn-container">
+        <div class="clear-btn-container" style="text-align:center;">
             <button class="clear-btn-ja" onclick="wsRegions.clearRegions()">
-                <span class="material-icons" style="font-size:16px;">layers_clear</span> 範囲解除
+                <span class="material-icons" style="font-size:16px; vertical-align:middle;">layers_clear</span> 範囲解除
             </button>
         </div>
         
         <div class="transport-controls">
             <button class="btn-ctrl" onclick="wavesurfer.skip(-5)"><span class="material-icons">replay_5</span></button>
-            <button class="btn-ctrl play-main" id="playBtn"><span class="material-icons" id="playIcon" style="font-size:35px;">play_arrow</span></button>
+            <button class="btn-ctrl play-main" id="playBtn"><span class="material-icons" id="playIcon" style="font-size:45px;">play_arrow</span></button>
             <button class="btn-ctrl" onclick="wavesurfer.skip(5)"><span class="material-icons">forward_5</span></button>
         </div>
 
         <div class="panel">
             <div class="row">
-                <div style="min-width:80px; font-weight:bold; color:#6b5a50;">Speed <button class="reset-btn" onclick="resetSetting('speed', 1.0)">Reset</button></div>
+                <div style="min-width:85px; font-weight:bold; color:var(--text-dim); font-size:0.9em;">Speed <button class="reset-btn" onclick="resetSetting('speed', 1.0)">Reset</button></div>
                 <input type="range" id="speed" min="0.5" max="1.5" step="0.01" value="1.0">
                 <span id="spTxt" class="val-display">1.00x</span>
             </div>
             <div class="row">
-                <div style="min-width:80px; font-weight:bold; color:#6b5a50;">Pitch <button class="reset-btn" onclick="resetSetting('pitch', 0)">Reset</button></div>
+                <div style="min-width:85px; font-weight:bold; color:var(--text-dim); font-size:0.9em;">Pitch <button class="reset-btn" onclick="resetSetting('pitch', 0)">Reset</button></div>
                 <input type="range" id="pitch" min="-6" max="6" step="1" value="0">
                 <span id="pitchTxt" class="val-display">±0</span>
             </div>
         </div>
+
+        <div class="guide-box">
+            <b>【Audio File Mode】操作ガイド</b>
+            <ul>
+                <li><b>ファイル選択:</b> デバイス内の音楽ファイルを選択してください。BPMと無音部分を自動解析します。</li>
+                <li><b>BPM連動:</b> BPM数値を手入力すると速度が変わります。速度を変えるとBPMが計算されます。</li>
+                <li><b>ループ設定:</b> 波形をドラッグして範囲を選択すると、その区間が繰り返し再生されます。</li>
+                <li><b>ピッチ調整:</b> スピードを変えずに半音単位（±6）で変更可能です。</li>
+            </ul>
+        </div>
     </div>
 
     <div id="yt-section" class="content-section">
-        <div class="yt-input-area" style="display:flex; gap:10px; margin-bottom:20px; background:#f9f7f6; padding:15px;">
-            <input type="text" id="ytUrl" placeholder="YouTube動画のURLを貼り付け..." style="flex-grow:1; padding:10px; border:1px solid #dcd6d2;">
-            <button class="tab-btn active" style="border-radius:2px;" onclick="loadYouTube()">LOAD</button>
+        <div class="yt-input-area" style="display:flex; gap:10px; margin-bottom:20px; background:var(--panel-bg); padding:15px; border-radius:12px; border: 1px solid var(--border-color);">
+            <input type="text" id="ytUrl" placeholder="YouTube URL..." style="flex-grow:1; padding:12px; border:1px solid var(--border-color); background:#000; color:#fff; border-radius:8px;">
+            <button class="tab-btn active" style="border-radius:8px; flex:0; min-width:80px;" onclick="loadYouTube()">LOAD</button>
         </div>
         <div id="ytPlayerContainer"><div id="player"></div></div>
         
-        <div class="panel">
-            <div class="row" style="justify-content: center; flex-wrap: wrap; gap: 10px;">
+        <div class="panel" style="margin-top:20px;">
+            <div class="row" style="justify-content: center; flex-wrap: wrap; gap: 15px;">
                 <button class="loop-btn-main" onclick="setLoopPoint('start')">SET START</button>
-                <div style="background:#fff; padding:5px; border-radius:4px; border:1px solid #eee; display:flex; align-items:center; gap:5px;">
+                <div style="background:#000; padding:8px; border-radius:8px; border:1px solid var(--border-color); display:flex; align-items:center; gap:8px;">
                     <button class="adj-btn" onclick="adjustTime('start', -1)">-1s</button>
-                    <span id="loopStartTxt" class="time-display">00:00</span>
+                    <span id="loopStartTxt" class="time-display" style="font-size:1.1em;">00:00</span>
                     <button class="adj-btn" onclick="adjustTime('start', 1)">+1s</button>
                 </div>
+            </div>
+            <div class="row" style="justify-content: center; flex-wrap: wrap; gap: 15px;">
                 <button class="loop-btn-main" onclick="setLoopPoint('end')">SET END</button>
-                <div style="background:#fff; padding:5px; border-radius:4px; border:1px solid #eee; display:flex; align-items:center; gap:5px;">
+                <div style="background:#000; padding:8px; border-radius:8px; border:1px solid var(--border-color); display:flex; align-items:center; gap:8px;">
                     <button class="adj-btn" onclick="adjustTime('end', -1)">-1s</button>
-                    <span id="loopEndTxt" class="time-display">00:00</span>
+                    <span id="loopEndTxt" class="time-display" style="font-size:1.1em;">00:00</span>
                     <button class="adj-btn" onclick="adjustTime('end', 1)">+1s</button>
                 </div>
             </div>
             <div class="row" style="justify-content: center; margin-top:10px;">
-                <button id="toggleLoopBtn" class="tab-btn" style="width:180px;" onclick="toggleLoop()">LOOP OFF</button>
+                <button id="toggleLoopBtn" class="tab-btn" style="width:200px; background:#333; border: 1px solid var(--border-color);" onclick="toggleLoop()">LOOP OFF</button>
             </div>
         </div>
-    </div>
 
-    <footer>
         <div class="guide-box">
-            <b>AMS Practice Player ガイド</b>
+            <b>【YouTube Mode】操作ガイド</b>
             <ul>
-                <li><b>ホーム画面に追加:</b> スマホの「ホーム画面に追加」を行うとフルスクリーンで起動します。</li>
-                <li><b>ループ加速:</b> ループ再生を繰り返すごとに少しずつ速くなる練習モードを搭載。</li>
+                <li><b>動画の読み込み:</b> YouTubeのURLを貼り付けて「LOAD」ボタンを押してください。</li>
+                <li><b>ループ区間の指定:</b> 動画を再生し、開始したい位置で「SET START」、終了位置で「SET END」を押します。</li>
+                <li><b>微調整:</b> 「-1s / +1s」ボタンで、ループの開始・終了位置を1秒単位で調整できます。</li>
+                <li><b>ループ実行:</b> 「LOOP OFF」ボタンを押して「LOOP ON」に切り替えると、指定区間が繰り返されます。</li>
             </ul>
         </div>
-    </footer>
+    </div>
 </div>
 
 <script>
+    /* ------------------------------------------------------------
+       JavaScript ロジック（変更なし）
+    ------------------------------------------------------------ */
     let wavesurfer, wsRegions, ytPlayer, loopInterval;
     let loopStart = 0, loopEnd = 0, isLooping = false, currentMode = 'file';
     let audioCtx, firstSoundTime = 0;
@@ -304,21 +524,21 @@
     };
     window.toggleLoop = () => { isLooping = !isLooping; const b = document.getElementById('toggleLoopBtn'); b.innerText = isLooping ? "LOOP ON" : "LOOP OFF"; b.classList.toggle('active', isLooping); };
 
-    // Wavesurfer Logic
     let applySettings;
     function startApp() {
         if (typeof WaveSurfer === 'undefined') { setTimeout(startApp, 100); return; }
+        // 波形のカラーもダークモードに最適化
         wavesurfer = WaveSurfer.create({ 
             container: '#waveform', 
-            waveColor: '#dcd6d2', 
-            progressColor: '#6b5a50', 
+            waveColor: '#333', 
+            progressColor: '#d4a373', 
             height: 150, 
             barWidth: 2, 
             normalize: true, 
-            cursorColor: '#6b5a50' 
+            cursorColor: '#fff' 
         });
         wsRegions = wavesurfer.registerPlugin(WaveSurfer.Regions.create());
-        wsRegions.enableDragSelection({ color: 'rgba(107, 90, 80, 0.15)' });
+        wsRegions.enableDragSelection({ color: 'rgba(212, 163, 115, 0.2)' });
         wavesurfer.registerPlugin(WaveSurfer.Timeline.create({ container: '#timeline' }));
         
         wsRegions.on('region-created', r => { if(wsRegions.getRegions().length > 1) wsRegions.getRegions()[0].remove(); wavesurfer.setTime(r.start); });

@@ -21,7 +21,7 @@
             --text-main: #e0e0e0;
             --text-dim: #999999;
             --border-color: #333333;
-            --sidebar-width: 280px;
+            --header-height: 60px;
         }
 
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -33,74 +33,129 @@
             padding: 0; 
             margin: 0; 
             overscroll-behavior-y: contain;
-            display: flex; /* サイドバー配置用 */
-            height: 100vh;
-            overflow: hidden;
+            padding-top: var(--header-height); /* メニューバーの高さ分確保 */
         }
 
-        /* ライブラリサイドバーのデザイン */
-        .sidebar {
-            width: var(--sidebar-width);
-            background: #181818;
-            border-right: 1px solid var(--border-color);
-            display: flex;
-            flex-direction: column;
-            z-index: 100;
-        }
-        .sidebar-header {
-            padding: 20px;
+        /* --- 新設：メニューバー --- */
+        header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: var(--header-height);
+            background: rgba(18, 18, 18, 0.95);
             border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            z-index: 2000;
+            backdrop-filter: blur(10px);
         }
-        .sidebar-header h3 { 
-            margin: 0; font-size: 0.8rem; letter-spacing: 3px; color: var(--primary-color); text-transform: uppercase;
+
+        .header-logo {
+            color: var(--primary-color);
+            font-weight: bold;
+            letter-spacing: 2px;
+            font-size: 1rem;
         }
-        .library-list {
-            flex-grow: 1;
-            overflow-y: auto;
-            padding: 10px;
-        }
-        .library-item {
-            padding: 12px;
-            margin-bottom: 8px;
-            background: var(--panel-bg);
-            border-radius: 8px;
+
+        .menu-trigger {
+            background: none;
+            border: none;
+            color: var(--text-main);
             cursor: pointer;
-            border: 1px solid transparent;
+            padding: 5px;
+        }
+
+        /* サイドメニュー（ドロワー） */
+        .side-menu {
+            position: fixed;
+            top: 0;
+            right: -300px;
+            width: 300px;
+            height: 100%;
+            background: var(--panel-bg);
+            z-index: 3000;
+            transition: right 0.3s ease;
+            box-shadow: -5px 0 15px rgba(0,0,0,0.5);
+            padding: 20px;
+        }
+
+        .side-menu.open { right: 0; }
+
+        .menu-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 2500;
+            display: none;
+        }
+
+        .menu-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            transition: 0.2s;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 15px;
+            margin-bottom: 20px;
         }
-        .library-item:hover { border-color: var(--primary-color); }
-        .library-item.active { border-color: var(--primary-color); background: rgba(212, 163, 115, 0.1); }
-        .library-item .song-info {
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            font-size: 0.8rem;
-            flex-grow: 1;
-        }
-        .delete-btn { color: #666; font-size: 18px !important; margin-left: 10px; }
-        .delete-btn:hover { color: #ff5555; }
 
-        /* メインコンテンツエリア */
-        .main-scroll-area {
-            flex-grow: 1;
-            overflow-y: auto;
-            height: 100vh;
+        .menu-section-title {
+            font-size: 0.8em;
+            color: var(--primary-color);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 15px;
+            display: block;
+        }
+
+        .menu-item {
             display: flex;
-            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            color: var(--text-main);
+            padding: 12px;
+            text-decoration: none;
+            border-radius: 8px;
+            margin-bottom: 5px;
+            cursor: pointer;
+            transition: background 0.2s;
+            font-size: 0.95em;
         }
 
+        .menu-item:hover { background: #333; }
+
+        /* ガイド用モーダル */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 90%;
+            max-width: 500px;
+            background: var(--panel-bg);
+            border: 1px solid var(--primary-color);
+            border-radius: 16px;
+            z-index: 4000;
+            padding: 25px;
+            box-shadow: 0 0 50px rgba(0,0,0,1);
+        }
+
+        /* --- 既存スタイル（忠実に保持） --- */
         .container { 
             width: 100%; 
             max-width: 1200px; 
             margin: 0 auto; 
             background: var(--bg-dark); 
-            padding: env(safe-area-inset-top) 20px 40px 20px;
+            padding: 20px 20px 40px 20px;
         }
         
-        .title-area { text-align: center; margin-bottom: 25px; padding-top: 20px; }
+        .title-area { text-align: center; margin-bottom: 25px; }
         .title-area h2 { 
             color: var(--primary-color); 
             font-size: 1.1rem; 
@@ -110,7 +165,6 @@
             text-transform: uppercase; 
         }
 
-        /* タブをモダンなスイッチ風に */
         .mode-tabs { 
             display: flex; 
             justify-content: center; 
@@ -144,7 +198,6 @@
         .content-section { display: none; }
         .content-section.active { display: block; }
 
-        /* プレイヤー・波形周り */
         #waveform-wrapper { 
             position: relative; 
             background: #000; 
@@ -173,7 +226,6 @@
             padding: 0;
         }
 
-        /* パネル・カード */
         .panel { 
             background: var(--panel-bg); 
             padding: 22px; 
@@ -188,7 +240,6 @@
 
         .row { display: flex; justify-content: space-between; align-items: center; gap: 15px; }
 
-        /* iOS/モバイルで操作しやすい太いスライダー */
         input[type="range"] { 
             flex-grow: 1; 
             accent-color: var(--primary-color); 
@@ -210,7 +261,6 @@
 
         .val-display { color: var(--primary-color); font-weight: bold; min-width: 65px; text-align: right; font-size: 1.2em; }
         
-        /* コントロールボタン */
         .transport-controls { 
             display: flex; 
             justify-content: center; 
@@ -252,7 +302,6 @@
             margin-left: 5px;
         }
         
-        /* 練習設定エリア */
         .practice-settings { 
             background: var(--panel-bg); 
             border: 1px solid var(--border-color); 
@@ -278,7 +327,6 @@
             font-size: 1em;
         }
 
-        /* ファイル入力 & その他 */
         input[type="file"] { 
             width: 100%; 
             padding: 18px; 
@@ -301,17 +349,14 @@
             cursor: pointer;
         }
 
-        .guide-box { 
-            background: #181818; 
-            border-left: 4px solid var(--primary-color); 
-            padding: 20px; 
-            margin-top: 30px; 
+        /* 操作ガイド用の共通ボックス（モーダル内でも使用） */
+        .guide-box-inner { 
             font-size: 0.85em; 
             color: var(--text-dim); 
             line-height: 1.7; 
-            border-radius: 4px;
         }
-        .guide-box b { color: var(--primary-color); font-size: 1.1em; display: block; margin-bottom: 10px; border-bottom: 1px solid var(--border-color); padding-bottom: 5px; }
+        .guide-box-inner b { color: var(--primary-color); font-size: 1.1em; display: block; margin-bottom: 10px; border-bottom: 1px solid var(--border-color); padding-bottom: 5px; }
+        .guide-box-inner ul { padding-left: 20px; margin: 0; }
 
         #countdown-overlay { 
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); 
@@ -319,11 +364,10 @@
             display: none; pointer-events: none; text-shadow: 0 0 30px rgba(0,0,0,0.9);
         }
 
-        /* YouTubeプレイヤーをレスポンシブに修正 */
         #ytPlayerContainer { 
             position: relative;
             width: 100%;
-            max-width: 900px; 
+            max-width: 900px;
             margin: 0 auto;
             aspect-ratio: 16 / 9; 
             border-radius: 12px; 
@@ -332,7 +376,6 @@
             box-shadow: 0 10px 30px rgba(0,0,0,0.5);
             background: #000;
         }
-        /* IFrameをコンテナ一杯に広げる */
         #ytPlayerContainer iframe {
             position: absolute;
             top: 0;
@@ -368,29 +411,63 @@
             color: #121212;
             font-weight: bold;
         }
-
-        /* モバイル対応：サイドバーを上部に配置 */
-        @media (max-width: 768px) {
-            body { flex-direction: column; overflow: auto; height: auto; }
-            .sidebar { width: 100%; height: 200px; border-right: none; border-bottom: 1px solid var(--border-color); }
-            .main-scroll-area { height: auto; overflow: visible; }
-        }
     </style>
 </head>
 <body>
 
-<div class="sidebar">
-    <div class="sidebar-header">
-        <h3>Library</h3>
+<header>
+    <div class="header-logo">AMS PLAYER</div>
+    <button class="menu-trigger" onclick="toggleMenu(true)">
+        <span class="material-icons">menu</span>
+    </button>
+</header>
+
+<div class="menu-overlay" id="menuOverlay" onclick="toggleMenu(false)"></div>
+<div class="side-menu" id="sideMenu">
+    <div class="menu-header">
+        <span style="font-weight:bold; color:var(--primary-color);">MENU</span>
+        <button class="menu-trigger" onclick="toggleMenu(false)">
+            <span class="material-icons">close</span>
+        </button>
     </div>
-    <div class="library-list" id="libraryList">
-        </div>
-    <div style="padding: 10px; border-top: 1px solid var(--border-color); font-size: 9px; color: var(--text-dim); text-align: center;">
-        Data is stored in your browser.
+    
+    <span class="menu-section-title">Help & Guide</span>
+    <div class="menu-item" onclick="showGuide('file')">
+        <span class="material-icons">description</span>
+        Audio Fileモード ガイド
+    </div>
+    <div class="menu-item" onclick="showGuide('yt')">
+        <span class="material-icons">smart_display</span>
+        YouTubeモード ガイド
     </div>
 </div>
 
-<div class="main-scroll-area">
+<div id="guideModalFile" class="modal">
+    <div class="guide-box-inner">
+        <b>【Audio File Mode】操作ガイド</b>
+        <ul>
+            <li><b>ファイル選択:</b> デバイス内の音楽ファイルを選択してください。BPMと無音部分を自動解析します。</li>
+            <li><b>BPM連動:</b> BPM数値を手入力すると速度が変わります。速度を変えるとBPMが計算されます。</li>
+            <li><b>ループ設定:</b> 波形をドラッグして範囲を選択すると、その区間が繰り返し再生されます。</li>
+            <li><b>ピッチ調整:</b> スピードを変えずに半音単位（±6）で変更可能です。</li>
+        </ul>
+    </div>
+    <button class="clear-btn-ja" style="width:100%; margin-top:20px;" onclick="closeModals()">閉じる</button>
+</div>
+
+<div id="guideModalYT" class="modal">
+    <div class="guide-box-inner">
+        <b>【YouTube Mode】操作ガイド</b>
+        <ul>
+            <li><b>動画の読み込み:</b> YouTubeのURLを貼り付けて「LOAD」ボタンを押してください。</li>
+            <li><b>ループ区間の指定:</b> 動画を再生し、開始したい位置で「SET START」、終了位置で「SET END」を押します。</li>
+            <li><b>微調整:</b> 「-1s / +1s」ボタンで、ループの開始・終了位置を1秒単位で調整できます。</li>
+            <li><b>ループ実行:</b> 「LOOP OFF」ボタンを押して「LOOP ON」に切り替えると、指定区間が繰り返されます。</li>
+        </ul>
+    </div>
+    <button class="clear-btn-ja" style="width:100%; margin-top:20px;" onclick="closeModals()">閉じる</button>
+</div>
+
 <div class="container">
     <div class="title-area"><h2>AMS Practice Player</h2></div>
 
@@ -447,17 +524,6 @@
                 <span id="pitchTxt" class="val-display">±0</span>
             </div>
         </div>
-
-        <div class="guide-box">
-            <b>【Audio File Mode】操作ガイド</b>
-            <ul>
-                <li><b>ファイル選択:</b> デバイス内の音楽ファイルを選択してください。自動的にライブラリへ保存されます。</li>
-                <li><b>楽曲ライブラリ:</b> 読み込んだ曲は画面端の「Library」リストに蓄積されます。次回アクセス時もリストをクリックするだけで再生可能です。</li>
-                <li><b>BPM連動:</b> BPM数値を手入力すると速度が変わります。速度を変えるとBPMが計算されます。</li>
-                <li><b>ループ設定:</b> 波形をドラッグして範囲を選択すると、その区間が繰り返し再生されます。</li>
-                <li><b>ピッチ調整:</b> スピードを変えずに半音単位（±6）で変更可能です。</li>
-            </ul>
-        </div>
     </div>
 
     <div id="yt-section" class="content-section">
@@ -488,102 +554,34 @@
                 <button id="toggleLoopBtn" class="tab-btn" style="width:200px; background:#333; border: 1px solid var(--border-color);" onclick="toggleLoop()">LOOP OFF</button>
             </div>
         </div>
-
-        <div class="guide-box">
-            <b>【YouTube Mode】操作ガイド</b>
-            <ul>
-                <li><b>動画の読み込み:</b> YouTubeのURLを貼り付けて「LOAD」ボタンを押してください。</li>
-                <li><b>ループ区間の指定:</b> 動画を再生し、開始したい位置で「SET START」、終了位置で「SET END」を押します。</li>
-                <li><b>微調整:</b> 「-1s / +1s」ボタンで、ループの開始・終了位置を1秒単位で調整できます。</li>
-                <li><b>ループ実行:</b> 「LOOP OFF」ボタンを押して「LOOP ON」に切り替えると、指定区間が繰り返されます。</li>
-            </ul>
-        </div>
     </div>
-</div>
 </div>
 
 <script>
     /* ------------------------------------------------------------
-        楽曲ライブラリ (IndexedDB) ロジック
+        UI 操作用スクリプト
     ------------------------------------------------------------ */
-    const DB_NAME = "AMSPracticePlayerDB";
-    const STORE_NAME = "library";
-    let db;
-
-    // DB初期化
-    const dbReq = indexedDB.open(DB_NAME, 1);
-    dbReq.onupgradeneeded = e => {
-        e.target.result.createObjectStore(STORE_NAME, { keyPath: "id", autoIncrement: true });
-    };
-    dbReq.onsuccess = e => {
-        db = e.target.result;
-        refreshLibraryList();
-    };
-
-    function saveToLibrary(file) {
-        const reader = new FileReader();
-        reader.onload = e => {
-            const transaction = db.transaction([STORE_NAME], "readwrite");
-            const store = transaction.objectStore(STORE_NAME);
-            const songData = {
-                fileName: file.name,
-                data: e.target.result, // DataURL
-                timestamp: Date.now()
-            };
-            store.add(songData);
-            transaction.oncomplete = () => refreshLibraryList();
-        };
-        reader.readAsDataURL(file);
+    function toggleMenu(isOpen) {
+        document.getElementById('sideMenu').classList.toggle('open', isOpen);
+        document.getElementById('menuOverlay').style.display = isOpen ? 'block' : 'none';
     }
 
-    function refreshLibraryList() {
-        const listEl = document.getElementById('libraryList');
-        listEl.innerHTML = "";
-        const transaction = db.transaction([STORE_NAME], "readonly");
-        const store = transaction.objectStore(STORE_NAME);
-        store.openCursor().onsuccess = e => {
-            const cursor = e.target.result;
-            if (cursor) {
-                const song = cursor.value;
-                const item = document.createElement('div');
-                item.className = 'library-item';
-                item.innerHTML = `
-                    <div class="song-info" onclick="loadFromLibrary(${song.id}, this)">${song.fileName}</div>
-                    <span class="material-icons delete-btn" onclick="deleteFromLibrary(${song.id})">delete</span>
-                `;
-                listEl.appendChild(item);
-                cursor.continue();
-            }
-        };
+    function showGuide(type) {
+        toggleMenu(false);
+        closeModals();
+        if (type === 'file') document.getElementById('guideModalFile').style.display = 'block';
+        if (type === 'yt') document.getElementById('guideModalYT').style.display = 'block';
+        document.getElementById('menuOverlay').style.display = 'block';
     }
 
-    async function loadFromLibrary(id, element) {
-        const transaction = db.transaction([STORE_NAME], "readonly");
-        const store = transaction.objectStore(STORE_NAME);
-        store.get(id).onsuccess = async e => {
-            const song = e.target.result;
-            switchMode('file');
-            
-            // UI表示切り替え
-            document.querySelectorAll('.library-item').forEach(el => el.classList.remove('active'));
-            element.parentElement.classList.add('active');
-
-            // DataURLからBlobに変換して解析
-            const blob = await (await fetch(song.data)).blob();
-            analyzeAudio(blob);
-            wavesurfer.load(song.data);
-        };
-    }
-
-    function deleteFromLibrary(id) {
-        if (!confirm("ライブラリからこの楽曲を削除しますか？")) return;
-        const transaction = db.transaction([STORE_NAME], "readwrite");
-        transaction.objectStore(STORE_NAME).delete(id);
-        transaction.oncomplete = () => refreshLibraryList();
+    function closeModals() {
+        document.getElementById('guideModalFile').style.display = 'none';
+        document.getElementById('guideModalYT').style.display = 'none';
+        document.getElementById('menuOverlay').style.display = 'none';
     }
 
     /* ------------------------------------------------------------
-        メインプレイヤーロジック (既存ロジック維持)
+        メインロジック（提供コードを忠実に再現）
     ------------------------------------------------------------ */
     let wavesurfer, wsRegions, ytPlayer, loopInterval;
     let loopStart = 0, loopEnd = 0, isLooping = false, currentMode = 'file';
@@ -721,15 +719,7 @@
         wavesurfer.registerPlugin(WaveSurfer.Timeline.create({ container: '#timeline' }));
         
         wsRegions.on('region-created', r => { if(wsRegions.getRegions().length > 1) wsRegions.getRegions()[0].remove(); wavesurfer.setTime(r.start); });
-        
-        document.getElementById('audioFile').onchange = e => { 
-            const file = e.target.files[0];
-            if(file) { 
-                saveToLibrary(file); // ライブラリ保存呼び出し
-                analyzeAudio(file); 
-                wavesurfer.load(URL.createObjectURL(file)); 
-            } 
-        };
+        document.getElementById('audioFile').onchange = e => { if(e.target.files[0]) { analyzeAudio(e.target.files[0]); wavesurfer.load(URL.createObjectURL(e.target.files[0])); } };
         
         wavesurfer.on('ready', () => { 
             document.getElementById('totalTime').innerText = fmt(wavesurfer.getDuration()); 

@@ -13,11 +13,11 @@
     <script src="https://unpkg.com/wavesurfer.js@7/dist/plugins/timeline.min.js"></script>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <style>
-        /* --- デザイン定義 --- */
+        /* --- プロ仕様へのデザイン・アップデート --- */
         :root {
-            --primary-color: #d4a373;
-            --bg-dark: #121212;
-            --panel-bg: #1e1e1e;
+            --primary-color: #d4a373; /* 落ち着いたゴールド */
+            --bg-dark: #121212;        /* 深みのある黒 */
+            --panel-bg: #1e1e1e;       /* カード背景 */
             --text-main: #e0e0e0;
             --text-dim: #999999;
             --border-color: #333333;
@@ -33,128 +33,464 @@
             padding: 0; 
             margin: 0; 
             overscroll-behavior-y: contain;
-            padding-top: var(--header-height);
+            padding-top: var(--header-height); /* メニューバーの高さ分確保 */
         }
 
-        /* --- メニューバー & サイドメニュー --- */
+        /* --- メニューバー --- */
         header {
-            position: fixed; top: 0; left: 0; width: 100%; height: var(--header-height);
-            background: rgba(18, 18, 18, 0.95); border-bottom: 1px solid var(--border-color);
-            display: flex; align-items: center; justify-content: space-between;
-            padding: 0 20px; z-index: 2000; backdrop-filter: blur(10px);
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: var(--header-height);
+            background: rgba(18, 18, 18, 0.95);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            z-index: 2000;
+            backdrop-filter: blur(10px);
         }
 
-        .header-logo { color: var(--primary-color); font-weight: bold; letter-spacing: 2px; font-size: 1rem; }
-        .menu-trigger { background: none; border: none; color: var(--text-main); cursor: pointer; padding: 5px; }
+        .header-logo {
+            color: var(--primary-color);
+            font-weight: bold;
+            letter-spacing: 2px;
+            font-size: 1rem;
+        }
 
+        .menu-trigger {
+            background: none;
+            border: none;
+            color: var(--text-main);
+            cursor: pointer;
+            padding: 5px;
+        }
+
+        /* サイドメニュー（ドロワー） */
         .side-menu {
-            position: fixed; top: 0; right: -300px; width: 300px; height: 100%;
-            background: var(--panel-bg); z-index: 3000; transition: right 0.3s ease;
-            box-shadow: -5px 0 15px rgba(0,0,0,0.5); padding: 20px; overflow-y: auto;
+            position: fixed;
+            top: 0;
+            right: -300px;
+            width: 300px;
+            height: 100%;
+            background: var(--panel-bg);
+            z-index: 3000;
+            transition: right 0.3s ease;
+            box-shadow: -5px 0 15px rgba(0,0,0,0.5);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
         }
+
         .side-menu.open { right: 0; }
 
         .menu-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.7); z-index: 2500; display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 2500;
+            display: none;
         }
 
         .menu-header {
-            display: flex; justify-content: space-between; align-items: center;
-            border-bottom: 1px solid var(--border-color); padding-bottom: 15px; margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 15px;
+            margin-bottom: 20px;
         }
 
         .menu-section-title {
-            font-size: 0.8em; color: var(--primary-color); text-transform: uppercase;
-            letter-spacing: 1px; margin-bottom: 15px; display: block;
+            font-size: 0.8em;
+            color: var(--primary-color);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 15px;
+            display: block;
         }
 
         .menu-item {
-            display: flex; align-items: center; gap: 12px; color: var(--text-main);
-            padding: 12px; border-radius: 8px; margin-bottom: 5px; cursor: pointer;
-            transition: background 0.2s; font-size: 0.95em;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: var(--text-main);
+            padding: 12px;
+            text-decoration: none;
+            border-radius: 8px;
+            margin-bottom: 5px;
+            cursor: pointer;
+            transition: background 0.2s;
+            font-size: 0.95em;
         }
+
         .menu-item:hover { background: #333; }
 
-        /* --- メインレイアウト --- */
-        .container { width: 100%; max-width: 1200px; margin: 0 auto; padding: 20px; }
+        /* 履歴リスト用スタイル */
+        #historyList {
+            overflow-y: auto;
+            flex-grow: 1;
+            margin-top: 10px;
+        }
+        .history-item {
+            font-size: 0.85em;
+            color: var(--text-dim);
+            padding: 10px;
+            border-bottom: 1px solid #2a2a2a;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .history-item:hover { color: var(--primary-color); }
+
+        /* ガイド用モーダル */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 90%;
+            max-width: 500px;
+            background: var(--panel-bg);
+            border: 1px solid var(--primary-color);
+            border-radius: 16px;
+            z-index: 4000;
+            padding: 25px;
+            box-shadow: 0 0 50px rgba(0,0,0,1);
+        }
+
+        /* --- 既存スタイル（忠実に保持） --- */
+        .container { 
+            width: 100%; 
+            max-width: 1200px; 
+            margin: 0 auto; 
+            background: var(--bg-dark); 
+            padding: 20px 20px 40px 20px;
+        }
+        
         .title-area { text-align: center; margin-bottom: 25px; }
-        .title-area h2 { color: var(--primary-color); font-size: 1.1rem; letter-spacing: 6px; margin: 0; text-transform: uppercase; }
+        .title-area h2 { 
+            color: var(--primary-color); 
+            font-size: 1.1rem; 
+            letter-spacing: 6px; 
+            margin: 0; 
+            font-weight: bold; 
+            text-transform: uppercase; 
+        }
 
         .mode-tabs { 
-            display: flex; justify-content: center; gap: 5px; margin-bottom: 25px; 
-            background: var(--panel-bg); padding: 4px; border-radius: 12px; 
-            border: 1px solid var(--border-color); max-width: 600px; margin-left: auto; margin-right: auto;
+            display: flex; 
+            justify-content: center; 
+            gap: 5px; 
+            margin-bottom: 25px; 
+            background: var(--panel-bg); 
+            padding: 4px; 
+            border-radius: 12px; 
+            border: 1px solid var(--border-color);
+            max-width: 600px; 
+            margin-left: auto;
+            margin-right: auto;
         }
         .tab-btn { 
-            background: transparent; border: none; color: var(--text-dim); 
-            padding: 10px; cursor: pointer; border-radius: 8px; font-size: 0.85em; flex: 1;
+            background: transparent; 
+            border: none; 
+            color: var(--text-dim); 
+            padding: 10px; 
+            cursor: pointer; 
+            border-radius: 8px; 
+            font-size: 0.85em; 
+            flex: 1;
+            transition: all 0.3s ease; 
         }
-        .tab-btn.active { background: var(--primary-color); color: #121212; font-weight: bold; }
+        .tab-btn.active { 
+            background: var(--primary-color); 
+            color: #121212; 
+            font-weight: bold; 
+        }
 
         .content-section { display: none; }
         .content-section.active { display: block; }
 
-        /* --- プレイヤー要素 --- */
-        #waveform-wrapper { position: relative; background: #000; border: 1px solid var(--border-color); border-radius: 8px; margin-bottom: 10px; overflow: hidden; }
-        .waveform-label { font-size: 0.8em; color: var(--text-dim); margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
-        .time-display { font-family: monospace; color: var(--primary-color); font-weight: bold; font-size: 1.3em; }
+        #waveform-wrapper { 
+            position: relative; 
+            background: #000; 
+            border: 1px solid var(--border-color); 
+            border-radius: 8px;
+            margin-bottom: 10px; 
+            overflow: hidden;
+        }
+        
+        .waveform-label { 
+            font-size: 0.8em; 
+            color: var(--text-dim); 
+            margin-bottom: 12px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            letter-spacing: 1px;
+        }
 
-        .panel { background: var(--panel-bg); padding: 22px; border-radius: 16px; border: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 20px; margin-bottom: 20px; }
+        .time-display { 
+            font-family: "Courier New", Courier, monospace; 
+            color: var(--primary-color); 
+            font-weight: bold; 
+            font-size: 1.3em;
+            background: transparent;
+            padding: 0;
+        }
+
+        .panel { 
+            background: var(--panel-bg); 
+            padding: 22px; 
+            border-radius: 16px; 
+            border: 1px solid var(--border-color); 
+            display: flex; 
+            flex-direction: column; 
+            gap: 20px; 
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
         .row { display: flex; justify-content: space-between; align-items: center; gap: 15px; }
 
-        input[type="range"] { flex-grow: 1; accent-color: var(--primary-color); }
+        input[type="range"] { 
+            flex-grow: 1; 
+            accent-color: var(--primary-color); 
+            cursor: pointer; 
+            height: 6px;
+            border-radius: 3px;
+            background: #444;
+            -webkit-appearance: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 24px;
+            height: 24px;
+            background: var(--primary-color);
+            border-radius: 50%;
+            border: 2px solid #fff;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.6);
+        }
+
         .val-display { color: var(--primary-color); font-weight: bold; min-width: 65px; text-align: right; font-size: 1.2em; }
         
-        .transport-controls { display: flex; justify-content: center; align-items: center; gap: 25px; margin: 25px 0; }
-        .btn-ctrl { background: var(--panel-bg); color: var(--text-main); border: 1px solid var(--border-color); border-radius: 50%; width: 55px; height: 55px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
-        .play-main { background: var(--primary-color); color: #121212; border: none; width: 75px; height: 75px; }
+        .transport-controls { 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            gap: 25px; 
+            margin: 25px 0; 
+            background: transparent;
+            padding: 0;
+        }
+        .btn-ctrl { 
+            background: var(--panel-bg); 
+            color: var(--text-main); 
+            border: 1px solid var(--border-color); 
+            border-radius: 50%; 
+            width: 55px; 
+            height: 55px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+        }
+        .play-main { 
+            background: var(--primary-color); 
+            color: #121212; 
+            border: none; 
+            width: 75px; 
+            height: 75px; 
+        }
 
-        .practice-settings { background: var(--panel-bg); border: 1px solid var(--border-color); padding: 15px; margin-bottom: 20px; border-radius: 12px; display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-around; }
-        .num-input { width: 60px; background: #000; color: var(--primary-color); border: 1px solid var(--border-color); padding: 6px; border-radius: 6px; text-align: center; font-weight: bold; }
-
-        input[type="file"] { width: 100%; padding: 18px; border: 2px dashed var(--border-color); border-radius: 12px; margin-bottom: 20px; color: var(--text-dim); background: #181818; }
-
-        .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 90%; max-width: 500px; background: var(--panel-bg); border: 1px solid var(--primary-color); border-radius: 16px; z-index: 4000; padding: 25px; box-shadow: 0 0 50px rgba(0,0,0,1); }
+        .reset-btn { 
+            background: #333; 
+            border: none; 
+            color: var(--text-dim); 
+            padding: 4px 10px; 
+            border-radius: 4px; 
+            font-size: 0.7em; 
+            cursor: pointer; 
+            margin-left: 5px;
+        }
         
-        #ytPlayerContainer { position: relative; width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 12px; overflow: hidden; }
-        #ytPlayerContainer iframe { position: absolute; top: 0; left: 0; width: 100% !important; height: 100% !important; }
+        .practice-settings { 
+            background: var(--panel-bg); 
+            border: 1px solid var(--border-color); 
+            padding: 15px; 
+            margin-bottom: 20px; 
+            border-radius: 12px; 
+            display: flex; 
+            flex-wrap: wrap; 
+            gap: 12px; 
+            align-items: center; 
+            justify-content: space-around; 
+        }
+        .opt-label { font-size: 0.85em; font-weight: bold; color: var(--text-main); display: flex; align-items: center; gap: 8px; }
+        .num-input { 
+            width: 60px; 
+            background: #000; 
+            color: var(--primary-color); 
+            border: 1px solid var(--border-color); 
+            padding: 6px; 
+            border-radius: 6px; 
+            text-align: center; 
+            font-weight: bold; 
+            font-size: 1em;
+        }
 
-        #countdown-overlay { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 120px; color: var(--primary-color); font-weight: bold; z-index: 1000; display: none; text-shadow: 0 0 30px rgba(0,0,0,0.9); }
+        input[type="file"] { 
+            width: 100%; 
+            padding: 18px; 
+            border: 2px dashed var(--border-color); 
+            border-radius: 12px; 
+            margin-bottom: 20px; 
+            color: var(--text-dim); 
+            background: #181818;
+            font-size: 0.9em;
+        }
+
+        .clear-btn-container { margin-bottom: 10px; }
+        .clear-btn-ja { 
+            background: #333; 
+            border: none; 
+            color: var(--text-main); 
+            padding: 8px 18px; 
+            border-radius: 20px; 
+            font-size: 0.8em; 
+            cursor: pointer;
+        }
+
+        .guide-box-inner { 
+            font-size: 0.85em; 
+            color: var(--text-dim); 
+            line-height: 1.7; 
+        }
+        .guide-box-inner b { color: var(--primary-color); font-size: 1.1em; display: block; margin-bottom: 10px; border-bottom: 1px solid var(--border-color); padding-bottom: 5px; }
+        .guide-box-inner ul { padding-left: 20px; margin: 0; }
+
+        #countdown-overlay { 
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); 
+            font-size: 120px; color: var(--primary-color); font-weight: bold; z-index: 1000; 
+            display: none; pointer-events: none; text-shadow: 0 0 30px rgba(0,0,0,0.9);
+        }
+
+        #ytPlayerContainer { 
+            position: relative;
+            width: 100%;
+            max-width: 900px;
+            margin: 0 auto;
+            aspect-ratio: 16 / 9; 
+            border-radius: 12px; 
+            overflow: hidden; 
+            border: 1px solid var(--border-color);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            background: #000;
+        }
+        #ytPlayerContainer iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100% !important;
+            height: 100% !important;
+        }
+
+        .loop-btn-main { 
+            background: var(--primary-color); 
+            color: #121212; 
+            border: none; 
+            padding: 10px 18px; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            font-size: 0.85em; 
+            font-weight: bold;
+            min-width: 100px; 
+        }
+
+        .adj-btn { 
+            background: #333; 
+            border: 1px solid var(--border-color); 
+            color: var(--text-main); 
+            width: 44px; 
+            height: 36px; 
+            border-radius: 4px; 
+            cursor: pointer; 
+        }
+
+        #toggleLoopBtn.active {
+            background: var(--primary-color);
+            color: #121212;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
 
 <header>
     <div class="header-logo">AMS PLAYER</div>
-    <button class="menu-trigger" onclick="toggleMenu(true)"><span class="material-icons">menu</span></button>
+    <button class="menu-trigger" onclick="toggleMenu(true)">
+        <span class="material-icons">menu</span>
+    </button>
 </header>
 
 <div class="menu-overlay" id="menuOverlay" onclick="toggleMenu(false)"></div>
 <div class="side-menu" id="sideMenu">
     <div class="menu-header">
         <span style="font-weight:bold; color:var(--primary-color);">MENU</span>
-        <button class="menu-trigger" onclick="toggleMenu(false)"><span class="material-icons">close</span></button>
+        <button class="menu-trigger" onclick="toggleMenu(false)">
+            <span class="material-icons">close</span>
+        </button>
     </div>
     
-    <span class="menu-section-title">Practice History</span>
-    <div id="historyList" style="margin-bottom: 25px;">
-        <div class="menu-item" style="font-size: 0.8em; color: var(--text-dim);">履歴がありません</div>
+    <span class="menu-section-title">Help & Guide</span>
+    <div class="menu-item" onclick="showGuide('file')">
+        <span class="material-icons">description</span>
+        Audio Fileモード ガイド
+    </div>
+    <div class="menu-item" onclick="showGuide('yt')">
+        <span class="material-icons">smart_display</span>
+        YouTubeモード ガイド
     </div>
 
-    <span class="menu-section-title">Help & Guide</span>
-    <div class="menu-item" onclick="showGuide('file')"><span class="material-icons">description</span> Audio Fileモード ガイド</div>
-    <div class="menu-item" onclick="showGuide('yt')"><span class="material-icons">smart_display</span> YouTubeモード ガイド</div>
+    <span class="menu-section-title" style="margin-top:20px;">Recent History</span>
+    <div id="historyList">
+        </div>
+    <div class="menu-item" onclick="clearHistory()" style="font-size: 0.75em; opacity: 0.6; justify-content: center;">
+        履歴をクリア
+    </div>
 </div>
 
 <div id="guideModalFile" class="modal">
-    <div class="guide-box-inner"><b>【Audio File Mode】</b><ul><li>ファイル選択でBPM自動解析。</li><li>波形ドラッグでループ。</li><li>ピッチ調整は速度を変えずに変更可能。</li></ul></div>
-    <button onclick="closeModals()" style="width:100%; margin-top:20px; padding:10px;">閉じる</button>
+    <div class="guide-box-inner">
+        <b>【Audio File Mode】操作ガイド</b>
+        <ul>
+            <li><b>ファイル選択:</b> デバイス内の音楽ファイルを選択してください。BPMと無音部分を自動解析します。</li>
+            <li><b>BPM連動:</b> BPM数値を手入力すると速度が変わります。速度を変えるとBPMが計算されます。</li>
+            <li><b>ループ設定:</b> 波形をドラッグして範囲を選択すると、その区間が繰り返し再生されます。</li>
+            <li><b>ピッチ調整:</b> スピードを変えずに半音単位（±6）で変更可能です。</li>
+        </ul>
+    </div>
+    <button class="clear-btn-ja" style="width:100%; margin-top:20px;" onclick="closeModals()">閉じる</button>
 </div>
 
 <div id="guideModalYT" class="modal">
-    <div class="guide-box-inner"><b>【YouTube Mode】</b><ul><li>URLを貼ってLOAD。</li><li>SET START/ENDでループ区間指定。</li><li>LOOP ONで繰り返し。</li></ul></div>
-    <button onclick="closeModals()" style="width:100%; margin-top:20px; padding:10px;">閉じる</button>
+    <div class="guide-box-inner">
+        <b>【YouTube Mode】操作ガイド</b>
+        <ul>
+            <li><b>動画の読み込み:</b> YouTubeのURLを貼り付けて「LOAD」ボタンを押してください。</li>
+            <li><b>ループ区間の指定:</b> 動画を再生し、開始したい位置で「SET START」、終了位置で「SET END」を押します。</li>
+            <li><b>微調整:</b> 「-1s / +1s」ボタンで、ループの開始・終了位置を1秒単位で調整できます。</li>
+            <li><b>ループ実行:</b> 「LOOP OFF」ボタンを押して「LOOP ON」に切り替えると、指定区間が繰り返されます。</li>
+        </ul>
+    </div>
+    <button class="clear-btn-ja" style="width:100%; margin-top:20px;" onclick="closeModals()">閉じる</button>
 </div>
 
 <div class="container">
@@ -166,115 +502,169 @@
     </div>
 
     <div id="file-section" class="content-section active">
-        <input type="file" id="audioFile" accept="audio/*">
+        <input type="file" id="audioFile" accept="audio/*, .mp3, .wav, .m4a, .aac, .mp4">
+
         <div class="practice-settings">
-            <label><input type="checkbox" id="enableCountdown" checked> カウント</label>
-            <label>BPM: <input type="number" id="bpmInput" class="num-input" value="120"></label>
-            <label><input type="checkbox" id="autoSpeedUp"> 自動加速(+5%)</label>
+            <label class="opt-label"><input type="checkbox" id="enableCountdown" checked> カウント(1-4)</label>
+            <label class="opt-label">BPM: <input type="number" id="bpmInput" class="num-input" value="120" min="40" max="300"></label>
+            <label class="opt-label"><input type="checkbox" id="autoSpeedUp"> ループ毎に5%加速</label>
         </div>
+
         <div class="waveform-label">
             <span id="loadStatus">READY</span>
             <span class="time-display"><span id="currentTime">00:00</span> / <span id="totalTime">00:00</span></span>
-            <input type="range" id="modelVol" min="0" max="1" step="0.05" value="0.8" style="width:70px;">
+            <span style="display:flex; align-items:center; gap:8px;">
+                <span class="material-icons" style="font-size:16px;">volume_up</span>
+                <input type="range" id="modelVol" min="0" max="1" step="0.05" value="0.8" style="width:70px;">
+            </span>
         </div>
+        
         <div id="waveform-wrapper">
             <div id="countdown-overlay"></div>
             <div id="waveform"></div>
             <div id="timeline"></div>
         </div>
-        <div style="text-align:center;"><button onclick="wsRegions.clearRegions()">範囲解除</button></div>
+
+        <div class="clear-btn-container" style="text-align:center;">
+            <button class="clear-btn-ja" onclick="wsRegions.clearRegions()">
+                <span class="material-icons" style="font-size:16px; vertical-align:middle;">layers_clear</span> 範囲解除
+            </button>
+        </div>
+        
         <div class="transport-controls">
             <button class="btn-ctrl" onclick="wavesurfer.skip(-5)"><span class="material-icons">replay_5</span></button>
             <button class="btn-ctrl play-main" id="playBtn"><span class="material-icons" id="playIcon" style="font-size:45px;">play_arrow</span></button>
             <button class="btn-ctrl" onclick="wavesurfer.skip(5)"><span class="material-icons">forward_5</span></button>
         </div>
+
         <div class="panel">
-            <div class="row">Speed <input type="range" id="speed" min="0.5" max="1.5" step="0.01" value="1.0"><span id="spTxt" class="val-display">1.00x</span></div>
-            <div class="row">Pitch <input type="range" id="pitch" min="-6" max="6" step="1" value="0"><span id="pitchTxt" class="val-display">±0</span></div>
+            <div class="row">
+                <div style="min-width:85px; font-weight:bold; color:var(--text-dim); font-size:0.9em;">Speed <button class="reset-btn" onclick="resetSetting('speed', 1.0)">Reset</button></div>
+                <input type="range" id="speed" min="0.5" max="1.5" step="0.01" value="1.0">
+                <span id="spTxt" class="val-display">1.00x</span>
+            </div>
+            <div class="row">
+                <div style="min-width:85px; font-weight:bold; color:var(--text-dim); font-size:0.9em;">Pitch <button class="reset-btn" onclick="resetSetting('pitch', 0)">Reset</button></div>
+                <input type="range" id="pitch" min="-6" max="6" step="1" value="0">
+                <span id="pitchTxt" class="val-display">±0</span>
+            </div>
         </div>
     </div>
 
     <div id="yt-section" class="content-section">
-        <div style="display:flex; gap:10px; margin-bottom:20px;">
-            <input type="text" id="ytUrl" placeholder="YouTube URL..." style="flex:1; padding:10px;">
-            <button onclick="loadYouTube()" style="padding:10px;">LOAD</button>
+        <div class="yt-input-area" style="display:flex; gap:10px; margin-bottom:20px; background:var(--panel-bg); padding:15px; border-radius:12px; border: 1px solid var(--border-color); max-width:600px; margin-left:auto; margin-right:auto;">
+            <input type="text" id="ytUrl" placeholder="YouTube URL..." style="flex-grow:1; padding:12px; border:1px solid var(--border-color); background:#000; color:#fff; border-radius:8px;">
+            <button class="tab-btn active" style="border-radius:8px; flex:0; min-width:80px;" onclick="loadYouTube()">LOAD</button>
         </div>
         <div id="ytPlayerContainer"><div id="player"></div></div>
+        
         <div class="panel" style="margin-top:20px;">
-            <button onclick="setLoopPoint('start')">SET START</button><span id="loopStartTxt">00:00</span>
-            <button onclick="setLoopPoint('end')">SET END</button><span id="loopEndTxt">00:00</span>
-            <button id="toggleLoopBtn" onclick="toggleLoop()">LOOP OFF</button>
+            <div class="row" style="justify-content: center; flex-wrap: wrap; gap: 15px;">
+                <button class="loop-btn-main" onclick="setLoopPoint('start')">SET START</button>
+                <div style="background:#000; padding:8px; border-radius:8px; border:1px solid var(--border-color); display:flex; align-items:center; gap:8px;">
+                    <button class="adj-btn" onclick="adjustTime('start', -1)">-1s</button>
+                    <span id="loopStartTxt" class="time-display" style="font-size:1.1em;">00:00</span>
+                    <button class="adj-btn" onclick="adjustTime('start', 1)">+1s</button>
+                </div>
+            </div>
+            <div class="row" style="justify-content: center; flex-wrap: wrap; gap: 15px;">
+                <button class="loop-btn-main" onclick="setLoopPoint('end')">SET END</button>
+                <div style="background:#000; padding:8px; border-radius:8px; border:1px solid var(--border-color); display:flex; align-items:center; gap:8px;">
+                    <button class="adj-btn" onclick="adjustTime('end', -1)">-1s</button>
+                    <span id="loopEndTxt" class="time-display" style="font-size:1.1em;">00:00</span>
+                    <button class="adj-btn" onclick="adjustTime('end', 1)">+1s</button>
+                </div>
+            </div>
+            <div class="row" style="justify-content: center; margin-top:10px;">
+                <button id="toggleLoopBtn" class="tab-btn" style="width:200px; background:#333; border: 1px solid var(--border-color);" onclick="toggleLoop()">LOOP OFF</button>
+            </div>
         </div>
     </div>
 </div>
 
 <script>
     /* ------------------------------------------------------------
-        履歴 & UIロジック
+        UI 操作用スクリプト
     ------------------------------------------------------------ */
-    let practiceHistory = JSON.parse(localStorage.getItem('ams_history') || '[]');
-
     function toggleMenu(isOpen) {
         document.getElementById('sideMenu').classList.toggle('open', isOpen);
         document.getElementById('menuOverlay').style.display = isOpen ? 'block' : 'none';
-        if (isOpen) renderHistory();
-    }
-
-    function renderHistory() {
-        const listDiv = document.getElementById('historyList');
-        if (practiceHistory.length === 0) {
-            listDiv.innerHTML = '<div class="menu-item" style="font-size: 0.8em; color: var(--text-dim);">履歴がありません</div>';
-            return;
-        }
-        listDiv.innerHTML = practiceHistory.map((item, index) => `
-            <div class="menu-item" onclick="loadFromHistory(${index})">
-                <span class="material-icons" style="font-size:18px;">${item.type === 'yt' ? 'play_circle' : 'audiotrack'}</span>
-                <div style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-                    ${item.title}<br><small style="color:var(--text-dim); font-size:0.7em;">${item.date}</small>
-                </div>
-            </div>
-        `).join('');
-    }
-
-    function addToHistory(title, type, value) {
-        practiceHistory = practiceHistory.filter(item => item.value !== value);
-        practiceHistory.unshift({ title, type, value, date: new Date().toLocaleDateString() });
-        if (practiceHistory.length > 10) practiceHistory.pop();
-        localStorage.setItem('ams_history', JSON.stringify(practiceHistory));
-    }
-
-    function loadFromHistory(index) {
-        const item = practiceHistory[index];
-        toggleMenu(false);
-        if (item.type === 'yt') {
-            switchMode('yt');
-            document.getElementById('ytUrl').value = item.value;
-            loadYouTube();
-        } else {
-            switchMode('file');
-            alert("セキュリティ上、ファイルは再度選択してください：\n" + item.title);
-        }
+        if(isOpen) updateHistoryUI(); // メニューを開いた時に履歴を更新
     }
 
     function showGuide(type) {
+        toggleMenu(false);
         closeModals();
-        document.getElementById(type === 'file' ? 'guideModalFile' : 'guideModalYT').style.display = 'block';
+        if (type === 'file') document.getElementById('guideModalFile').style.display = 'block';
+        if (type === 'yt') document.getElementById('guideModalYT').style.display = 'block';
         document.getElementById('menuOverlay').style.display = 'block';
     }
 
     function closeModals() {
-        document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
+        document.getElementById('guideModalFile').style.display = 'none';
+        document.getElementById('guideModalYT').style.display = 'none';
         document.getElementById('menuOverlay').style.display = 'none';
     }
 
     /* ------------------------------------------------------------
-        メインプレイヤーロジック
+        履歴管理ロジック (追加分)
+    ------------------------------------------------------------ */
+    function saveToHistory(name, type) {
+        let history = JSON.parse(localStorage.getItem('ams_player_history') || '[]');
+        // 重複削除して先頭に追加
+        history = history.filter(item => item.name !== name);
+        history.unshift({ name: name, type: type, date: new Date().getTime() });
+        // 最大10件
+        if (history.length > 10) history.pop();
+        localStorage.setItem('ams_player_history', JSON.stringify(history));
+    }
+
+    function updateHistoryUI() {
+        const list = document.getElementById('historyList');
+        const history = JSON.parse(localStorage.getItem('ams_player_history') || '[]');
+        list.innerHTML = '';
+        
+        if (history.length === 0) {
+            list.innerHTML = '<div class="history-item">No history yet</div>';
+            return;
+        }
+
+        history.forEach(item => {
+            const div = document.createElement('div');
+            div.className = 'menu-item history-item';
+            const icon = item.type === 'yt' ? 'smart_display' : 'audiotrack';
+            div.innerHTML = `<span class="material-icons" style="font-size:18px;">${icon}</span> ${item.name}`;
+            div.onclick = () => {
+                if(item.type === 'yt') {
+                    switchMode('yt');
+                    document.getElementById('ytUrl').value = item.name;
+                    loadYouTube();
+                } else {
+                    // セキュリティ上、パスから直接ファイルは読み込めないため、
+                    // ファイル選択を促す挙動にする
+                    switchMode('file');
+                    alert('ブラウザのセキュリティ制限により、履歴からファイルを直接読み込むことはできません。再度ファイルを選択してください。');
+                }
+                toggleMenu(false);
+            };
+            list.appendChild(div);
+        });
+    }
+
+    function clearHistory() {
+        if(confirm('履歴をクリアしますか？')) {
+            localStorage.removeItem('ams_player_history');
+            updateHistoryUI();
+        }
+    }
+
+    /* ------------------------------------------------------------
+        メインロジック
     ------------------------------------------------------------ */
     let wavesurfer, wsRegions, ytPlayer, loopInterval;
     let loopStart = 0, loopEnd = 0, isLooping = false, currentMode = 'file';
-    let audioCtx, firstSoundTime = 0, originalBpm = 120;
-
-    const fmt = (s) => `${Math.floor(s/60).toString().padStart(2,'0')}:${Math.floor(s%60).toString().padStart(2,'0')}`;
+    let audioCtx, firstSoundTime = 0;
+    let originalBpm = 120;
 
     function switchMode(mode) {
         currentMode = mode;
@@ -283,24 +673,19 @@
         document.getElementById('tab-file').classList.toggle('active', mode === 'file');
         document.getElementById('tab-yt').classList.toggle('active', mode === 'yt');
         if(mode === 'yt' && wavesurfer) wavesurfer.pause();
-        if(mode === 'file' && ytPlayer?.pauseVideo) ytPlayer.pauseVideo();
+        if(mode === 'file' && ytPlayer && ytPlayer.pauseVideo) ytPlayer.pauseVideo();
     }
 
-    // --- Audio 解析 ---
     async function analyzeAudio(file) {
-        addToHistory(file.name, 'file', file.name);
         document.getElementById('loadStatus').innerText = "ANALYZING...";
+        saveToHistory(file.name, 'file'); // 履歴に保存
         const tempCtx = new (window.AudioContext || window.webkitAudioContext)();
         const arrayBuffer = await file.arrayBuffer();
         const audioBuffer = await tempCtx.decodeAudioData(arrayBuffer);
-        
-        // 先頭無音カット
         const data = audioBuffer.getChannelData(0);
         let skip = 0;
         for (let i = 0; i < data.length; i++) { if (Math.abs(data[i]) > 0.015) { skip = i / audioBuffer.sampleRate; break; } }
         firstSoundTime = skip;
-
-        // BPM検出（簡易版）
         const bpm = detectBPM(audioBuffer);
         if (bpm > 0) {
             originalBpm = Math.round(bpm);
@@ -312,19 +697,72 @@
     }
 
     function detectBPM(buffer) {
-        // 簡易アルゴリズム
-        return 120; 
+        const data = buffer.getChannelData(0);
+        const sampleRate = buffer.sampleRate;
+        const step = 100; const energy = [];
+        for (let i = 0; i < data.length; i += step) {
+            let sum = 0;
+            for(let j=0; j<step && (i+j)<data.length; j++) sum += data[i+j] * data[i+j];
+            energy.push(Math.sqrt(sum/step));
+        }
+        const minBpm = 60, maxBpm = 200;
+        const minInterval = Math.floor((60 / maxBpm) * (sampleRate / step));
+        const maxInterval = Math.floor((60 / minBpm) * (sampleRate / step));
+        let bestBpm = 0, maxCorrelation = 0;
+        for (let interval = minInterval; interval <= maxInterval; interval++) {
+            let correlation = 0;
+            const limit = Math.min(energy.length - interval, Math.floor(60 * sampleRate / step));
+            for (let i = 0; i < limit; i++) correlation += energy[i] * energy[i + interval];
+            if (correlation > maxCorrelation) { maxCorrelation = correlation; bestBpm = 60 / (interval * step / sampleRate); }
+        }
+        if (bestBpm < 50 || bestBpm > 250) return 0;
+        if (bestBpm > 180) bestBpm /= 2; if (bestBpm < 70) bestBpm *= 2;
+        return bestBpm;
     }
 
-    // --- YouTube ---
+    function playBeep(isLast) {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.frequency.setValueAtTime(isLast ? 880 : 440, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+    }
+
+    async function runCountdown() {
+        if (!document.getElementById('enableCountdown').checked) return true;
+        const bpm = parseInt(document.getElementById('bpmInput').value) || 120;
+        const interval = 60000 / bpm;
+        const overlay = document.getElementById('countdown-overlay');
+        overlay.style.display = 'block';
+        for (let i = 1; i <= 4; i++) {
+            overlay.innerText = i;
+            playBeep(i === 4);
+            await new Promise(r => setTimeout(r, interval));
+        }
+        overlay.style.display = 'none';
+        return true;
+    }
+
+    function applySpeedUp() {
+        if (!document.getElementById('autoSpeedUp').checked) return;
+        const s = document.getElementById('speed');
+        const newVal = Math.min(1.5, parseFloat(s.value) + 0.05);
+        s.value = newVal.toFixed(2);
+        applySettings();
+    }
+
     const tag = document.createElement('script'); tag.src = "https://www.youtube.com/iframe_api";
     document.head.appendChild(tag);
     function loadYouTube() {
         const url = document.getElementById('ytUrl').value;
         const videoId = url.includes('v=') ? url.split('v=')[1].split('&')[0] : url.includes('be/') ? url.split('be/')[1].split('?')[0] : null;
         if (videoId) {
-            addToHistory("YouTube Video", 'yt', url);
-            if (ytPlayer?.loadVideoById) ytPlayer.loadVideoById(videoId);
+            saveToHistory(url, 'yt'); // 履歴に保存
+            if (ytPlayer && ytPlayer.loadVideoById) ytPlayer.loadVideoById(videoId);
             else ytPlayer = new YT.Player('player', { videoId: videoId, events: { 'onStateChange': onPlayerStateChange } });
         }
     }
@@ -332,95 +770,125 @@
         if (e.data == YT.PlayerState.PLAYING) loopInterval = setInterval(() => { if (isLooping && ytPlayer.getCurrentTime() >= loopEnd) ytPlayer.seekTo(loopStart); }, 200);
         else clearInterval(loopInterval);
     }
+    const fmt = (s) => `${Math.floor(s/60).toString().padStart(2,'0')}:${Math.floor(s%60).toString().padStart(2,'0')}`;
     window.setLoopPoint = (t) => {
         const now = ytPlayer.getCurrentTime();
-        if (t === 'start') { loopStart = now; document.getElementById('loopStartTxt').innerText = fmt(now); }
-        else { loopEnd = now; document.getElementById('loopEndTxt').innerText = fmt(now); }
+        if (t === 'start') { loopStart = Math.floor(now); document.getElementById('loopStartTxt').innerText = fmt(loopStart); }
+        else { loopEnd = Math.ceil(now); document.getElementById('loopEndTxt').innerText = fmt(loopEnd); }
     };
-    window.toggleLoop = () => { isLooping = !isLooping; document.getElementById('toggleLoopBtn').innerText = isLooping ? "LOOP ON" : "LOOP OFF"; };
+    window.adjustTime = (t, a) => {
+        if (t === 'start') { loopStart = Math.max(0, loopStart + a); document.getElementById('loopStartTxt').innerText = fmt(loopStart); ytPlayer.seekTo(loopStart); }
+        else { loopEnd = Math.max(loopStart + 1, loopEnd + a); document.getElementById('loopEndTxt').innerText = fmt(loopEnd); }
+    };
+    window.toggleLoop = () => { isLooping = !isLooping; const b = document.getElementById('toggleLoopBtn'); b.innerText = isLooping ? "LOOP ON" : "LOOP OFF"; b.classList.toggle('active', isLooping); };
 
-    // --- 設定反映（ピッチ独立制御） ---
-    function applySettings(skipBpmUpdate = false) {
-        if (!wavesurfer) return;
-        const s = parseFloat(document.getElementById('speed').value);
-        const p = parseInt(document.getElementById('pitch').value);
-        const media = wavesurfer.getMediaElement();
-        
-        if (media) {
-            media.preservesPitch = (p === 0);
-            media.webkitPreservesPitch = (p === 0);
-            
-            if (p === 0) {
-                wavesurfer.setPlaybackRate(s);
-            } else {
-                media.preservesPitch = false;
-                media.webkitPreservesPitch = false;
-                const pitchFactor = Math.pow(2, p / 12);
-                wavesurfer.setPlaybackRate(s * pitchFactor);
-            }
-        }
-        
-        document.getElementById('spTxt').innerText = s.toFixed(2) + "x";
-        document.getElementById('pitchTxt').innerText = (p > 0 ? "+" : "") + p;
-        if (!skipBpmUpdate) document.getElementById('bpmInput').value = Math.round(originalBpm * s);
-    }
-
-    function resetSetting(type, val) { document.getElementById(type).value = val; applySettings(); }
-
-    // --- 初期化 ---
-    window.onload = () => {
+    let applySettings;
+    function startApp() {
+        if (typeof WaveSurfer === 'undefined') { setTimeout(startApp, 100); return; }
         wavesurfer = WaveSurfer.create({ 
-            container: '#waveform', waveColor: '#333', progressColor: '#d4a373', height: 150, barWidth: 2, normalize: true 
+            container: '#waveform', 
+            waveColor: '#333', 
+            progressColor: '#d4a373', 
+            height: 150, 
+            barWidth: 2, 
+            normalize: true, 
+            cursorColor: '#fff' 
         });
         wsRegions = wavesurfer.registerPlugin(WaveSurfer.Regions.create());
         wsRegions.enableDragSelection({ color: 'rgba(212, 163, 115, 0.2)' });
         wavesurfer.registerPlugin(WaveSurfer.Timeline.create({ container: '#timeline' }));
-
-        wsRegions.on('region-created', r => { if(wsRegions.getRegions().length > 1) wsRegions.getRegions()[0].remove(); wavesurfer.setTime(r.start); });
         
-        wavesurfer.on('timeupdate', (t) => {
-            document.getElementById('currentTime').innerText = fmt(t);
-            const region = wsRegions.getRegions()[0];
-            if (region && t >= region.end) {
-                wavesurfer.setTime(region.start);
-                if(document.getElementById('autoSpeedUp').checked) {
-                    const s = document.getElementById('speed');
-                    s.value = Math.min(1.5, parseFloat(s.value) + 0.05).toFixed(2);
-                    applySettings();
-                }
-            }
+        wsRegions.on('region-created', r => { if(wsRegions.getRegions().length > 1) wsRegions.getRegions()[0].remove(); wavesurfer.setTime(r.start); });
+        document.getElementById('audioFile').onchange = e => { if(e.target.files[0]) { analyzeAudio(e.target.files[0]); wavesurfer.load(URL.createObjectURL(e.target.files[0])); } };
+        
+        wavesurfer.on('ready', () => { 
+            document.getElementById('totalTime').innerText = fmt(wavesurfer.getDuration()); 
+            applySettings(); 
         });
 
-        document.getElementById('audioFile').onchange = e => { if(e.target.files[0]) { analyzeAudio(e.target.files[0]); wavesurfer.load(URL.createObjectURL(e.target.files[0])); } };
-        wavesurfer.on('ready', () => { document.getElementById('totalTime').innerText = fmt(wavesurfer.getDuration()); applySettings(); });
+        // 再生時間の更新
+        wavesurfer.on('timeupdate', (currentTime) => {
+            document.getElementById('currentTime').innerText = fmt(currentTime);
+        });
         
-        document.getElementById('speed').oninput = () => applySettings(false);
-        document.getElementById('pitch').oninput = () => applySettings(false);
+        document.getElementById('modelVol').oninput = e => wavesurfer.setVolume(e.target.value);
+
         document.getElementById('bpmInput').oninput = (e) => {
-            let s = parseFloat(e.target.value) / originalBpm;
-            document.getElementById('speed').value = Math.max(0.5, Math.min(1.5, s)).toFixed(2);
+            let targetBpm = parseFloat(e.target.value);
+            if (!targetBpm || targetBpm <= 0) return;
+            let calculatedSpeed = targetBpm / originalBpm;
+            calculatedSpeed = Math.max(0.5, Math.min(1.5, calculatedSpeed));
+            document.getElementById('speed').value = calculatedSpeed.toFixed(2);
             applySettings(true);
         };
 
+        applySettings = (skipBpmUpdate = false) => {
+            const s = parseFloat(document.getElementById('speed').value);
+            const p = parseInt(document.getElementById('pitch').value);
+            const media = wavesurfer.getMediaElement();
+            
+            if (media) {
+                media.preservesPitch = true;
+                media.webkitPreservesPitch = true;
+                media.mozPreservesPitch = true;
+                const pitchFactor = Math.pow(2, p / 12);
+                wavesurfer.setPlaybackRate(s);
+                
+                if (media.detune !== undefined) {
+                    media.detune = p * 100;
+                } else {
+                    if (p !== 0) {
+                        media.preservesPitch = false;
+                        wavesurfer.setPlaybackRate(s * pitchFactor);
+                    } else {
+                        media.preservesPitch = true;
+                        wavesurfer.setPlaybackRate(s);
+                    }
+                }
+            }
+            
+            document.getElementById('spTxt').innerText = s.toFixed(2) + "x"; 
+            document.getElementById('pitchTxt').innerText = (p > 0 ? "+" : "") + p;
+
+            if (!skipBpmUpdate) {
+                document.getElementById('bpmInput').value = Math.round(originalBpm * s);
+            }
+        };
+
+        document.getElementById('speed').oninput = () => applySettings(false);
+        document.getElementById('pitch').oninput = () => applySettings(false);
+
         document.getElementById('playBtn').onclick = async () => {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
             if (wavesurfer.isPlaying()) wavesurfer.pause();
             else {
+                const current = wavesurfer.getCurrentTime();
+                const region = wsRegions.getRegions()[0];
                 if (document.getElementById('enableCountdown').checked) {
-                    document.getElementById('countdown-overlay').style.display = 'block';
-                    for(let i=1; i<=4; i++) { 
-                        document.getElementById('countdown-overlay').innerText = i;
-                        await new Promise(r => setTimeout(r, 500)); 
-                    }
-                    document.getElementById('countdown-overlay').style.display = 'none';
+                    if (region && current < region.start) wavesurfer.setTime(region.start);
+                    else if (!region && current < firstSoundTime) wavesurfer.setTime(firstSoundTime);
                 }
+                await runCountdown();
                 wavesurfer.play();
             }
         };
+
         wavesurfer.on('play', () => document.getElementById('playIcon').innerText = 'pause');
         wavesurfer.on('pause', () => document.getElementById('playIcon').innerText = 'play_arrow');
         
-        renderHistory();
+        // 初期UI更新
+        updateHistoryUI();
+    }
+
+    window.resetSetting = (type, val) => {
+        document.getElementById(type).value = val;
+        applySettings();
     };
+
+    // 起動
+    startApp();
 </script>
+
 </body>
 </html>

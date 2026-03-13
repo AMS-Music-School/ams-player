@@ -2,18 +2,38 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>AMS Practice Player</title>
+
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="AMS Player">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#6b5a50">
+
+    <link rel="apple-touch-icon" href="icon.png">
+    <link rel="icon" href="icon.png">
+
     <script src="https://unpkg.com/wavesurfer.js@7/dist/wavesurfer.min.js"></script>
     <script src="https://unpkg.com/wavesurfer.js@7/dist/plugins/regions.min.js"></script>
     <script src="https://unpkg.com/wavesurfer.js@7/dist/plugins/timeline.min.js"></script>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <style>
         /* 基本スタイル */
-        * { box-sizing: border-box; }
-        body { background: transparent; color: #444; font-family: "Times New Roman", "Yu Mincho", "MS Mincho", serif; padding: 10px; margin: 0; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { 
+            background: #fdfaf9; /* 背景を少し暖かみのある色に */
+            color: #444; 
+            font-family: "Times New Roman", "Yu Mincho", "MS Mincho", serif; 
+            padding: 10px; 
+            margin: 0; 
+            /* iOSのプルダウン更新を防止（アプリ感を出すため） */
+            overscroll-behavior-y: contain;
+        }
         .container { width: 100%; max-width: 900px; margin: 0 auto; background: #ffffff; padding: 25px; border-radius: 4px; border: 1px solid #e0e0e0; box-shadow: 0 15px 45px rgba(0,0,0,0.05); }
-        .title-area { text-align: center; margin-bottom: 25px; }
+        
+        /* タイトルエリア（PWA時にステータスバーと被らないよう上部余白を調整） */
+        .title-area { text-align: center; margin-bottom: 25px; padding-top: env(safe-area-inset-top); }
         .title-area h2 { color: #6b5a50; font-size: 1.6em; letter-spacing: 3px; margin: 0; font-weight: normal; text-transform: uppercase; }
 
         /* タブ切り替え */
@@ -63,6 +83,9 @@
         .practice-settings { background: #fdfaf9; border: 1px solid #dcd6d2; padding: 12px; margin-bottom: 10px; border-radius: 4px; display: flex; flex-wrap: wrap; gap: 15px; align-items: center; justify-content: center; }
         .opt-label { font-size: 0.8em; font-weight: bold; color: #6b5a50; display: flex; align-items: center; gap: 5px; cursor: pointer; }
         .num-input { width: 55px; padding: 3px; border: 1px solid #dcd6d2; border-radius: 4px; text-align: center; font-size: 0.9em; }
+
+        /* PWA用のセーフエリア対応（iPhoneの画面下のバー対策） */
+        footer { padding-bottom: env(safe-area-inset-bottom); }
     </style>
 </head>
 <body>
@@ -120,16 +143,6 @@
                 <span id="pitchTxt" class="val-display">±0</span>
             </div>
         </div>
-
-        <div class="guide-box">
-            <b>【Audio File Mode】操作ガイド</b>
-            <ul>
-                <li><b>ファイル選択:</b> デバイス内の音楽ファイルを選択してください。BPMと無音部分を自動解析します。</li>
-                <li><b>BPM連動:</b> BPM数値を手入力すると速度が変わります。速度を変えるとBPMが計算されます。</li>
-                <li><b>ループ設定:</b> 波形をドラッグして範囲を選択すると、その区間が繰り返し再生されます。</li>
-                <li><b>ピッチ調整:</b> スピードを変えずに半音単位（±6）で変更可能です。</li>
-            </ul>
-        </div>
     </div>
 
     <div id="yt-section" class="content-section">
@@ -158,24 +171,24 @@
                 <button id="toggleLoopBtn" class="tab-btn" style="width:180px;" onclick="toggleLoop()">LOOP OFF</button>
             </div>
         </div>
+    </div>
 
+    <footer>
         <div class="guide-box">
-            <b>【YouTube Mode】操作ガイド</b>
+            <b>AMS Practice Player ガイド</b>
             <ul>
-                <li><b>動画の読み込み:</b> YouTubeのURLを貼り付けて「LOAD」ボタンを押してください。</li>
-                <li><b>ループ区間の指定:</b> 動画を再生し、開始したい位置で「SET START」、終了位置で「SET END」を押します。</li>
-                <li><b>微調整:</b> 「-1s / +1s」ボタンで、ループの開始・終了位置を1秒単位で調整できます。</li>
-                <li><b>ループ実行:</b> 「LOOP OFF」ボタンを押して「LOOP ON」に切り替えると、指定区間が繰り返されます。</li>
+                <li><b>ホーム画面に追加:</b> スマホの「ホーム画面に追加」を行うとフルスクリーンで起動します。</li>
+                <li><b>ループ加速:</b> ループ再生を繰り返すごとに少しずつ速くなる練習モードを搭載。</li>
             </ul>
         </div>
-    </div>
+    </footer>
 </div>
 
 <script>
     let wavesurfer, wsRegions, ytPlayer, loopInterval;
     let loopStart = 0, loopEnd = 0, isLooping = false, currentMode = 'file';
     let audioCtx, firstSoundTime = 0;
-    let originalBpm = 120; // 元のBPMを保持
+    let originalBpm = 120;
 
     function switchMode(mode) {
         currentMode = mode;
@@ -291,11 +304,19 @@
     };
     window.toggleLoop = () => { isLooping = !isLooping; const b = document.getElementById('toggleLoopBtn'); b.innerText = isLooping ? "LOOP ON" : "LOOP OFF"; b.classList.toggle('active', isLooping); };
 
-    // Wavesurfer 処理
+    // Wavesurfer Logic
     let applySettings;
     function startApp() {
         if (typeof WaveSurfer === 'undefined') { setTimeout(startApp, 100); return; }
-        wavesurfer = WaveSurfer.create({ container: '#waveform', waveColor: '#dcd6d2', progressColor: '#6b5a50', height: 150, barWidth: 2, normalize: true, cursorColor: '#6b5a50' });
+        wavesurfer = WaveSurfer.create({ 
+            container: '#waveform', 
+            waveColor: '#dcd6d2', 
+            progressColor: '#6b5a50', 
+            height: 150, 
+            barWidth: 2, 
+            normalize: true, 
+            cursorColor: '#6b5a50' 
+        });
         wsRegions = wavesurfer.registerPlugin(WaveSurfer.Regions.create());
         wsRegions.enableDragSelection({ color: 'rgba(107, 90, 80, 0.15)' });
         wavesurfer.registerPlugin(WaveSurfer.Timeline.create({ container: '#timeline' }));
@@ -310,26 +331,18 @@
         
         document.getElementById('modelVol').oninput = e => wavesurfer.setVolume(e.target.value);
 
-        // 【修正】BPMを手入力した際にSpeedを連動させる
         document.getElementById('bpmInput').oninput = (e) => {
             let targetBpm = parseFloat(e.target.value);
             if (!targetBpm || targetBpm <= 0) return;
-            
-            // 入力されたBPMからSpeed倍率を逆算 (Speed = ターゲットBPM / 元のBPM)
             let calculatedSpeed = targetBpm / originalBpm;
-            
-            // スライダーの最小/最大値(0.5 ~ 1.5)に収める
             calculatedSpeed = Math.max(0.5, Math.min(1.5, calculatedSpeed));
-            
-            // スライダーの値を更新して再生に反映
             document.getElementById('speed').value = calculatedSpeed.toFixed(2);
-            applySettings(true); // BPM更新をスキップして適用
+            applySettings(true);
         };
 
-        // ピッチとスピードの適用ロジック
         applySettings = (skipBpmUpdate = false) => {
-            const s = parseFloat(document.getElementById('speed').value); // 0.5 ~ 1.5
-            const p = parseInt(document.getElementById('pitch').value);  // -6 ~ 6 (半音)
+            const s = parseFloat(document.getElementById('speed').value);
+            const p = parseInt(document.getElementById('pitch').value);
             const media = wavesurfer.getMediaElement();
             
             if (media) {
@@ -352,11 +365,9 @@
                 }
             }
             
-            // UI表示の更新
             document.getElementById('spTxt').innerText = s.toFixed(2) + "x"; 
             document.getElementById('pitchTxt').innerText = (p > 0 ? "+" : "") + p;
 
-            // Speedスライダー操作時のみBPMを書き換える（BPM入力中ならスキップ）
             if (!skipBpmUpdate) {
                 document.getElementById('bpmInput').value = Math.round(originalBpm * s);
             }

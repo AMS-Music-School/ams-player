@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AMS Practice Player</title>
+    <script src="https://unpkg.com/wavesurfer.js@7/dist/wavesurfer.min.js"></script>
+    <script src="https://unpkg.com/wavesurfer.js@7/dist/plugins/regions.min.js"></script>
+    <script src="https://unpkg.com/wavesurfer.js@7/dist/plugins/timeline.min.js"></script>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style>
+        /* 基本スタイル */
+        * { box-sizing: border-box; }
+        body { background: transparent; color: #444; font-family: "Times New Roman", "Yu Mincho", "MS Mincho", serif; padding: 10px; margin: 0; }
+        .container { width: 100%; max-width: 900px; margin: 0 auto; background: #ffffff; padding: 25px; border-radius: 4px; border: 1px solid #e0e0e0; box-shadow: 0 15px 45px rgba(0,0,0,0.05); }
+        .title-area { text-align: center; margin-bottom: 25px; }
+        .title-area h2 { color: #6b5a50; font-size: 1.6em; letter-spacing: 3px; margin: 0; font-weight: normal; text-transform: uppercase; }
+
+        /* タブ切り替え */
+        .mode-tabs { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 15px; }
+        .tab-btn { background: #f9f7f6; border: 1px solid #dcd6d2; color: #888; padding: 10px 25px; cursor: pointer; border-radius: 20px; font-size: 0.9em; transition: 0.3s; }
+        .tab-btn.active { background: #6b5a50; color: #fff; border-color: #6b5a50; }
+
+        /* 操作ガイド */
+        .guide-box { background: #fdfaf9; border-top: 2px solid #6b5a50; padding: 20px; margin-top: 30px; font-size: 0.85em; color: #776a62; line-height: 1.7; border-radius: 0 0 4px 4px; }
+        .guide-box b { color: #6b5a50; font-size: 1.1em; border-bottom: 1px solid #dcd6d2; display: block; margin-bottom: 10px; padding-bottom: 5px; }
+        .guide-box ul { padding-left: 20px; margin: 10px 0; }
+        .guide-box li { margin-bottom: 5px; }
+
+        .content-section { display: none; }
+        .content-section.active { display: block; }
+
+        /* プレイヤー要素 */
+        #ytPlayerContainer { position: relative; width: 100%; padding-top: 56.25%; background: #000; margin-bottom: 15px; }
+        #ytPlayerContainer iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+        .waveform-label { font-size: 0.85em; color: #888; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+        .time-display { font-family: "Courier New", Courier, monospace; color: #6b5a50; font-weight: bold; background: #f9f7f6; padding: 2px 8px; border-radius: 3px; }
+        
+        #waveform-wrapper { position: relative; background: #fcfcfc; border: 1px solid #eee; margin-bottom: 10px; }
+        .clear-btn-container { display: flex; justify-content: center; margin-bottom: 20px; }
+        .clear-btn-ja { background: #fff; border: 1px solid #dcd6d2; color: #6b5a50; padding: 6px 16px; border-radius: 20px; font-size: 0.75em; cursor: pointer; display: flex; align-items: center; gap: 4px; transition: 0.2s; }
+        .clear-btn-ja:hover { background: #6b5a50; color: #fff; border-color: #6b5a50; }
+
+        #countdown-overlay { 
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); 
+            font-size: 100px; color: #6b5a50; font-weight: bold; z-index: 1000; 
+            display: none; pointer-events: none; text-shadow: 0 0 10px rgba(255,255,255,0.8);
+        }
+
+        .transport-controls { display: flex; justify-content: center; align-items: center; gap: 20px; margin-bottom: 25px; background: #f9f7f6; padding: 15px; border-radius: 2px; }
+        .btn-ctrl { background: #ffffff; color: #6b5a50; border: 1px solid #dcd6d2; border-radius: 50%; width: 50px; height: 50px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .play-main { background: #6b5a50; color: #ffffff; border: none; width: 65px; height: 65px; }
+
+        .panel { background: #fdfaf9; padding: 20px; border-radius: 2px; border: 1px solid #f0edea; display: flex; flex-direction: column; gap: 15px; }
+        .row { display: flex; justify-content: space-between; align-items: center; gap: 15px; }
+        input[type="range"] { flex-grow: 1; accent-color: #6b5a50; cursor: pointer; }
+        input[type="file"] { width: 100%; padding: 12px; border: 1px dashed #6b5a50; border-radius: 4px; margin-bottom: 15px; cursor: pointer; }
+        .val-display { color: #6b5a50; font-weight: bold; min-width: 60px; text-align: right; font-size: 1.2em; }
+        .reset-btn { background: transparent; border: 1px solid #dcd6d2; color: #888; padding: 3px 8px; border-radius: 2px; font-size: 0.7em; cursor: pointer; }
+        .loop-btn-main { background: #6b5a50; color: white; border: none; padding: 8px 15px; border-radius: 2px; cursor: pointer; font-size: 0.8em; min-width: 90px; }
+        .adj-btn { background: #ffffff; border: 1px solid #dcd6d2; color: #6b5a50; width: 40px; height: 32px; border-radius: 2px; cursor: pointer; font-weight: bold; }
+        
+        .practice-settings { background: #fdfaf9; border: 1px solid #dcd6d2; padding: 12px; margin-bottom: 10px; border-radius: 4px; display: flex; flex-wrap: wrap; gap: 15px; align-items: center; justify-content: center; }
+        .opt-label { font-size: 0.8em; font-weight: bold; color: #6b5a50; display: flex; align-items: center; gap: 5px; cursor: pointer; }
+        .num-input { width: 55px; padding: 3px; border: 1px solid #dcd6d2; border-radius: 4px; text-align: center; font-size: 0.9em; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="title-area"><h2>AMS Practice Player</h2></div>
+
+    <div class="mode-tabs">
+        <button class="tab-btn active" id="tab-file" onclick="switchMode('file')">Audio File Mode</button>
+        <button class="tab-btn" id="tab-yt" onclick="switchMode('yt')">YouTube Mode</button>
+    </div>
+
+    <div id="file-section" class="content-section active">
+        <input type="file" id="audioFile" accept="audio/*, .mp3, .wav, .m4a, .aac, .mp4">
+
+        <div class="practice-settings">
+            <label class="opt-label"><input type="checkbox" id="enableCountdown" checked> カウント(1-4)</label>
+            <label class="opt-label">BPM: <input type="number" id="bpmInput" class="num-input" value="120" min="40" max="300"></label>
+            <label class="opt-label"><input type="checkbox" id="autoSpeedUp"> ループ毎に5%加速</label>
+        </div>
+
+        <div class="waveform-label">
+            <span id="loadStatus">READY</span>
+            <span class="time-display"><span id="currentTime">00:00</span> / <span id="totalTime">00:00</span></span>
+            <span>Vol <input type="range" id="modelVol" min="0" max="1" step="0.05" value="0.8" style="width:80px;"></span>
+        </div>
+        
+        <div id="waveform-wrapper">
+            <div id="countdown-overlay"></div>
+            <div id="waveform"></div>
+            <div id="timeline"></div>
+        </div>
+
+        <div class="clear-btn-container">
+            <button class="clear-btn-ja" onclick="wsRegions.clearRegions()">
+                <span class="material-icons" style="font-size:16px;">layers_clear</span> 範囲解除
+            </button>
+        </div>
+        
+        <div class="transport-controls">
+            <button class="btn-ctrl" onclick="wavesurfer.skip(-5)"><span class="material-icons">replay_5</span></button>
+            <button class="btn-ctrl play-main" id="playBtn"><span class="material-icons" id="playIcon" style="font-size:35px;">play_arrow</span></button>
+            <button class="btn-ctrl" onclick="wavesurfer.skip(5)"><span class="material-icons">forward_5</span></button>
+        </div>
+
+        <div class="panel">
+            <div class="row">
+                <div style="min-width:80px; font-weight:bold; color:#6b5a50;">Speed <button class="reset-btn" onclick="resetSetting('speed', 1.0)">Reset</button></div>
+                <input type="range" id="speed" min="0.5" max="1.5" step="0.01" value="1.0">
+                <span id="spTxt" class="val-display">1.00x</span>
+            </div>
+            <div class="row">
+                <div style="min-width:80px; font-weight:bold; color:#6b5a50;">Pitch <button class="reset-btn" onclick="resetSetting('pitch', 0)">Reset</button></div>
+                <input type="range" id="pitch" min="-6" max="6" step="1" value="0">
+                <span id="pitchTxt" class="val-display">±0</span>
+            </div>
+        </div>
+
+        <div class="guide-box">
+            <b>【Audio File Mode】操作ガイド</b>
+            <ul>
+                <li><b>ファイル選択:</b> デバイス内の音楽ファイルを選択してください。BPMと無音部分を自動解析します。</li>
+                <li><b>BPM連動:</b> BPM数値を手入力すると速度が変わります。速度を変えるとBPMが計算されます。</li>
+                <li><b>ループ設定:</b> 波形をドラッグして範囲を選択すると、その区間が繰り返し再生されます。</li>
+                <li><b>ピッチ調整:</b> スピードを変えずに半音単位（±6）で変更可能です。</li>
+            </ul>
+        </div>
+    </div>
+
+    <div id="yt-section" class="content-section">
+        <div class="yt-input-area" style="display:flex; gap:10px; margin-bottom:20px; background:#f9f7f6; padding:15px;">
+            <input type="text" id="ytUrl" placeholder="YouTube動画のURLを貼り付け..." style="flex-grow:1; padding:10px; border:1px solid #dcd6d2;">
+            <button class="tab-btn active" style="border-radius:2px;" onclick="loadYouTube()">LOAD</button>
+        </div>
+        <div id="ytPlayerContainer"><div id="player"></div></div>
+        
+        <div class="panel">
+            <div class="row" style="justify-content: center; flex-wrap: wrap; gap: 10px;">
+                <button class="loop-btn-main" onclick="setLoopPoint('start')">SET START</button>
+                <div style="background:#fff; padding:5px; border-radius:4px; border:1px solid #eee; display:flex; align-items:center; gap:5px;">
+                    <button class="adj-btn" onclick="adjustTime('start', -1)">-1s</button>
+                    <span id="loopStartTxt" class="time-display">00:00</span>
+                    <button class="adj-btn" onclick="adjustTime('start', 1)">+1s</button>
+                </div>
+                <button class="loop-btn-main" onclick="setLoopPoint('end')">SET END</button>
+                <div style="background:#fff; padding:5px; border-radius:4px; border:1px solid #eee; display:flex; align-items:center; gap:5px;">
+                    <button class="adj-btn" onclick="adjustTime('end', -1)">-1s</button>
+                    <span id="loopEndTxt" class="time-display">00:00</span>
+                    <button class="adj-btn" onclick="adjustTime('end', 1)">+1s</button>
+                </div>
+            </div>
+            <div class="row" style="justify-content: center; margin-top:10px;">
+                <button id="toggleLoopBtn" class="tab-btn" style="width:180px;" onclick="toggleLoop()">LOOP OFF</button>
+            </div>
+        </div>
+
+        <div class="guide-box">
+            <b>【YouTube Mode】操作ガイド</b>
+            <ul>
+                <li><b>動画の読み込み:</b> YouTubeのURLを貼り付けて「LOAD」ボタンを押してください。</li>
+                <li><b>ループ区間の指定:</b> 動画を再生し、開始したい位置で「SET START」、終了位置で「SET END」を押します。</li>
+                <li><b>微調整:</b> 「-1s / +1s」ボタンで、ループの開始・終了位置を1秒単位で調整できます。</li>
+                <li><b>ループ実行:</b> 「LOOP OFF」ボタンを押して「LOOP ON」に切り替えると、指定区間が繰り返されます。</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<script>
+    let wavesurfer, wsRegions, ytPlayer, loopInterval;
+    let loopStart = 0, loopEnd = 0, isLooping = false, currentMode = 'file';
+    let audioCtx, firstSoundTime = 0;
+    let originalBpm = 120; // 元のBPMを保持
+
+    function switchMode(mode) {
+        currentMode = mode;
+        document.getElementById('file-section').classList.toggle('active', mode === 'file');
+        document.getElementById('yt-section').classList.toggle('active', mode === 'yt');
+        document.getElementById('tab-file').classList.toggle('active', mode === 'file');
+        document.getElementById('tab-yt').classList.toggle('active', mode === 'yt');
+        if(mode === 'yt' && wavesurfer) wavesurfer.pause();
+        if(mode === 'file' && ytPlayer && ytPlayer.pauseVideo) ytPlayer.pauseVideo();
+    }
+
+    async function analyzeAudio(file) {
+        document.getElementById('loadStatus').innerText = "ANALYZING...";
+        const tempCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const arrayBuffer = await file.arrayBuffer();
+        const audioBuffer = await tempCtx.decodeAudioData(arrayBuffer);
+        const data = audioBuffer.getChannelData(0);
+        let skip = 0;
+        for (let i = 0; i < data.length; i++) { if (Math.abs(data[i]) > 0.015) { skip = i / audioBuffer.sampleRate; break; } }
+        firstSoundTime = skip;
+        const bpm = detectBPM(audioBuffer);
+        if (bpm > 0) {
+            originalBpm = Math.round(bpm);
+            document.getElementById('bpmInput').value = originalBpm;
+        }
+        if(wavesurfer) wavesurfer.setTime(firstSoundTime);
+        document.getElementById('loadStatus').innerText = "COMPLETE";
+        tempCtx.close();
+    }
+
+    function detectBPM(buffer) {
+        const data = buffer.getChannelData(0);
+        const sampleRate = buffer.sampleRate;
+        const step = 100; const energy = [];
+        for (let i = 0; i < data.length; i += step) {
+            let sum = 0;
+            for(let j=0; j<step && (i+j)<data.length; j++) sum += data[i+j] * data[i+j];
+            energy.push(Math.sqrt(sum/step));
+        }
+        const minBpm = 60, maxBpm = 200;
+        const minInterval = Math.floor((60 / maxBpm) * (sampleRate / step));
+        const maxInterval = Math.floor((60 / minBpm) * (sampleRate / step));
+        let bestBpm = 0, maxCorrelation = 0;
+        for (let interval = minInterval; interval <= maxInterval; interval++) {
+            let correlation = 0;
+            const limit = Math.min(energy.length - interval, Math.floor(60 * sampleRate / step));
+            for (let i = 0; i < limit; i++) correlation += energy[i] * energy[i + interval];
+            if (correlation > maxCorrelation) { maxCorrelation = correlation; bestBpm = 60 / (interval * step / sampleRate); }
+        }
+        if (bestBpm < 50 || bestBpm > 250) return 0;
+        if (bestBpm > 180) bestBpm /= 2; if (bestBpm < 70) bestBpm *= 2;
+        return bestBpm;
+    }
+
+    function playBeep(isLast) {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.frequency.setValueAtTime(isLast ? 880 : 440, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+    }
+
+    async function runCountdown() {
+        if (!document.getElementById('enableCountdown').checked) return true;
+        const bpm = parseInt(document.getElementById('bpmInput').value) || 120;
+        const interval = 60000 / bpm;
+        const overlay = document.getElementById('countdown-overlay');
+        overlay.style.display = 'block';
+        for (let i = 1; i <= 4; i++) {
+            overlay.innerText = i;
+            playBeep(i === 4);
+            await new Promise(r => setTimeout(r, interval));
+        }
+        overlay.style.display = 'none';
+        return true;
+    }
+
+    function applySpeedUp() {
+        if (!document.getElementById('autoSpeedUp').checked) return;
+        const s = document.getElementById('speed');
+        const newVal = Math.min(1.5, parseFloat(s.value) + 0.05);
+        s.value = newVal.toFixed(2);
+        applySettings();
+    }
+
+    const tag = document.createElement('script'); tag.src = "https://www.youtube.com/iframe_api";
+    document.head.appendChild(tag);
+    function loadYouTube() {
+        const url = document.getElementById('ytUrl').value;
+        const videoId = url.includes('v=') ? url.split('v=')[1].split('&')[0] : url.includes('be/') ? url.split('be/')[1].split('?')[0] : null;
+        if (videoId) {
+            if (ytPlayer && ytPlayer.loadVideoById) ytPlayer.loadVideoById(videoId);
+            else ytPlayer = new YT.Player('player', { height: '360', width: '640', videoId: videoId, events: { 'onStateChange': onPlayerStateChange } });
+        }
+    }
+    function onPlayerStateChange(e) {
+        if (e.data == YT.PlayerState.PLAYING) loopInterval = setInterval(() => { if (isLooping && ytPlayer.getCurrentTime() >= loopEnd) ytPlayer.seekTo(loopStart); }, 200);
+        else clearInterval(loopInterval);
+    }
+    const fmt = (s) => `${Math.floor(s/60).toString().padStart(2,'0')}:${Math.floor(s%60).toString().padStart(2,'0')}`;
+    window.setLoopPoint = (t) => {
+        const now = ytPlayer.getCurrentTime();
+        if (t === 'start') { loopStart = Math.floor(now); document.getElementById('loopStartTxt').innerText = fmt(loopStart); }
+        else { loopEnd = Math.ceil(now); document.getElementById('loopEndTxt').innerText = fmt(loopEnd); }
+    };
+    window.adjustTime = (t, a) => {
+        if (t === 'start') { loopStart = Math.max(0, loopStart + a); document.getElementById('loopStartTxt').innerText = fmt(loopStart); ytPlayer.seekTo(loopStart); }
+        else { loopEnd = Math.max(loopStart + 1, loopEnd + a); document.getElementById('loopEndTxt').innerText = fmt(loopEnd); }
+    };
+    window.toggleLoop = () => { isLooping = !isLooping; const b = document.getElementById('toggleLoopBtn'); b.innerText = isLooping ? "LOOP ON" : "LOOP OFF"; b.classList.toggle('active', isLooping); };
+
+    // Wavesurfer 処理
+    let applySettings;
+    function startApp() {
+        if (typeof WaveSurfer === 'undefined') { setTimeout(startApp, 100); return; }
+        wavesurfer = WaveSurfer.create({ container: '#waveform', waveColor: '#dcd6d2', progressColor: '#6b5a50', height: 150, barWidth: 2, normalize: true, cursorColor: '#6b5a50' });
+        wsRegions = wavesurfer.registerPlugin(WaveSurfer.Regions.create());
+        wsRegions.enableDragSelection({ color: 'rgba(107, 90, 80, 0.15)' });
+        wavesurfer.registerPlugin(WaveSurfer.Timeline.create({ container: '#timeline' }));
+        
+        wsRegions.on('region-created', r => { if(wsRegions.getRegions().length > 1) wsRegions.getRegions()[0].remove(); wavesurfer.setTime(r.start); });
+        document.getElementById('audioFile').onchange = e => { if(e.target.files[0]) { analyzeAudio(e.target.files[0]); wavesurfer.load(URL.createObjectURL(e.target.files[0])); } };
+        
+        wavesurfer.on('ready', () => { 
+            document.getElementById('totalTime').innerText = fmt(wavesurfer.getDuration()); 
+            applySettings(); 
+        });
+        
+        document.getElementById('modelVol').oninput = e => wavesurfer.setVolume(e.target.value);
+
+        // 【修正】BPMを手入力した際にSpeedを連動させる
+        document.getElementById('bpmInput').oninput = (e) => {
+            let targetBpm = parseFloat(e.target.value);
+            if (!targetBpm || targetBpm <= 0) return;
+            
+            // 入力されたBPMからSpeed倍率を逆算 (Speed = ターゲットBPM / 元のBPM)
+            let calculatedSpeed = targetBpm / originalBpm;
+            
+            // スライダーの最小/最大値(0.5 ~ 1.5)に収める
+            calculatedSpeed = Math.max(0.5, Math.min(1.5, calculatedSpeed));
+            
+            // スライダーの値を更新して再生に反映
+            document.getElementById('speed').value = calculatedSpeed.toFixed(2);
+            applySettings(true); // BPM更新をスキップして適用
+        };
+
+        // ピッチとスピードの適用ロジック
+        applySettings = (skipBpmUpdate = false) => {
+            const s = parseFloat(document.getElementById('speed').value); // 0.5 ~ 1.5
+            const p = parseInt(document.getElementById('pitch').value);  // -6 ~ 6 (半音)
+            const media = wavesurfer.getMediaElement();
+            
+            if (media) {
+                media.preservesPitch = true;
+                media.webkitPreservesPitch = true;
+                media.mozPreservesPitch = true;
+                const pitchFactor = Math.pow(2, p / 12);
+                wavesurfer.setPlaybackRate(s);
+                
+                if (media.detune !== undefined) {
+                    media.detune = p * 100;
+                } else {
+                    if (p !== 0) {
+                        media.preservesPitch = false;
+                        wavesurfer.setPlaybackRate(s * pitchFactor);
+                    } else {
+                        media.preservesPitch = true;
+                        wavesurfer.setPlaybackRate(s);
+                    }
+                }
+            }
+            
+            // UI表示の更新
+            document.getElementById('spTxt').innerText = s.toFixed(2) + "x"; 
+            document.getElementById('pitchTxt').innerText = (p > 0 ? "+" : "") + p;
+
+            // Speedスライダー操作時のみBPMを書き換える（BPM入力中ならスキップ）
+            if (!skipBpmUpdate) {
+                document.getElementById('bpmInput').value = Math.round(originalBpm * s);
+            }
+        };
+
+        document.getElementById('speed').oninput = () => applySettings(false);
+        document.getElementById('pitch').oninput = () => applySettings(false);
+
+        document.getElementById('playBtn').onclick = async () => {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            if (wavesurfer.isPlaying()) wavesurfer.pause();
+            else {
+                const current = wavesurfer.getCurrentTime();
+                const region = wsRegions.getRegions()[0];
+                if (document.getElementById('enableCountdown').checked) {
+                    if (region && current < region.start) wavesurfer.setTime(region.start);
+                    else if (!region && current < firstSoundTime) wavesurfer.setTime(firstSoundTime);
+                }
+                await runCountdown();
+                wavesurfer.play();
+            }
+        };
+
+        wavesurfer.on('play', () => document.getElementById('playIcon').innerText = 'pause');
+        wavesurfer.on('pause', () => document.getElementById('playIcon').innerText = 'play_arrow');
+        
+        let lastJump = 0;
+        wavesurfer.on('timeupdate', t => {
+            document.getElementById('currentTime').innerText = fmt(t);
+            const r = wsRegions.getRegions()[0];
+            if(r && t >= r.end && Date.now() - lastJump > 200) { wavesurfer.setTime(r.start); applySpeedUp(); lastJump = Date.now(); }
+        });
+
+        window.resetSetting = (id, val) => { document.getElementById(id).value = val; applySettings(); };
+    }
+
+    window.addEventListener('keydown', (e) => { if (e.code === 'Space' && currentMode === 'file') { e.preventDefault(); document.getElementById('playBtn').click(); } });
+    startApp();
+</script>
+</body>
+</html>

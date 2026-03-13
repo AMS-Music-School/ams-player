@@ -406,10 +406,20 @@
             cursor: pointer; 
         }
 
+        /* --- ループボタン配色修正 --- */
+        #toggleLoopBtn {
+            background: #2a2a2a; /* オフ時は暗めの背景 */
+            color: var(--text-dim);
+            border: 1px solid var(--border-color);
+            transition: all 0.3s ease;
+        }
+
         #toggleLoopBtn.active {
-            background: var(--primary-color);
-            color: #121212;
+            background: var(--primary-color); /* オン時はゴールド */
+            color: #121212; /* 文字は黒でコントラストを出す */
+            border: 1px solid var(--primary-color);
             font-weight: bold;
+            box-shadow: 0 0 10px rgba(212, 163, 115, 0.4);
         }
     </style>
 </head>
@@ -551,7 +561,7 @@
                 </div>
             </div>
             <div class="row" style="justify-content: center; margin-top:10px;">
-                <button id="toggleLoopBtn" class="tab-btn" style="width:200px; background:#333; border: 1px solid var(--border-color);" onclick="toggleLoop()">LOOP OFF</button>
+                <button id="toggleLoopBtn" class="tab-btn" style="width:200px;" onclick="toggleLoop()">LOOP OFF</button>
             </div>
         </div>
     </div>

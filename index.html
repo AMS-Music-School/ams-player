@@ -16,7 +16,6 @@
     <script src="https://unpkg.com/wavesurfer.js@7/dist/plugins/timeline.min.js"></script>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <style>
-        /* --- デザイン・スタイルは変更なし --- */
         :root {
             --primary-color: #d4a373;
             --bg-dark: #121212;
@@ -204,6 +203,7 @@
             border-radius: 8px;
             margin-bottom: 10px; 
             overflow: hidden;
+            touch-action: none; /* ピンチズーム操作の干渉を防ぐ */
         }
         
         .waveform-label { 
@@ -214,6 +214,8 @@
             justify-content: space-between; 
             align-items: center; 
             letter-spacing: 1px;
+            flex-wrap: wrap;
+            gap: 10px;
         }
 
         .time-display { 
@@ -456,7 +458,7 @@
             <li><b>ファイル選択:</b> デバイス内の音楽ファイルを選択してください。BPMと無音部分を自動解析します。</li>
             <li><b>BPM連動:</b> BPM数値を手入力すると速度が変わります。速度を変えるとBPMが計算されます。</li>
             <li><b>ループ設定:</b> 波形をドラッグして範囲を選択すると、その区間が繰り返し再生されます。</li>
-            <li><b>ピッチ調整:</b> スピードを変えずに半音単位（±6）で変更可能です。</li>
+            <li><b>ズーム:</b> PCはホイール、モバイルはピンチ操作で波形を拡大縮小できます。</li>
         </ul>
     </div>
     <button class="clear-btn-ja" style="width:100%; margin-top:20px;" onclick="closeModals()">閉じる</button>
@@ -494,6 +496,11 @@
 
         <div class="waveform-label">
             <span id="loadStatus">READY</span>
+            <div style="display:flex; align-items:center; gap:8px;">
+                <span class="material-icons" style="font-size:18px;">zoom_in</span>
+                <input type="range" id="zoomSlider" min="10" max="500" value="50" style="width:100px;">
+                <button class="reset-btn" id="resetZoomBtn">Reset</button>
+            </div>
             <span class="time-display"><span id="currentTime">00:00</span> / <span id="totalTime">00:00</span></span>
             <span style="display:flex; align-items:center; gap:8px;">
                 <span class="material-icons" style="font-size:16px;">volume_up</span>
@@ -565,9 +572,6 @@
 </div>
 
 <script>
-    /* ------------------------------------------------------------
-        UI 操作用スクリプト（変更なし）
-    ------------------------------------------------------------ */
     function toggleMenu(isOpen) {
         document.getElementById('sideMenu').classList.toggle('open', isOpen);
         document.getElementById('menuOverlay').style.display = isOpen ? 'block' : 'none';
@@ -587,14 +591,11 @@
         document.getElementById('menuOverlay').style.display = 'none';
     }
 
-    /* ------------------------------------------------------------
-        メインロジック（安定化修正）
-    ------------------------------------------------------------ */
     let wavesurfer, wsRegions, ytPlayer, loopInterval;
     let loopStart = 0, loopEnd = 0, isLooping = false, currentMode = 'file';
     let audioCtx, firstSoundTime = 0;
     let originalBpm = 120;
-    let currentObjectURL = null; // メモリ解放用
+    let currentObjectURL = null;
 
     function switchMode(mode) {
         currentMode = mode;
@@ -606,49 +607,34 @@
         if(mode === 'file' && ytPlayer && ytPlayer.pauseVideo) ytPlayer.pauseVideo();
     }
 
-    // BPM解析ロジック（安定性を維持しつつ修正）
     async function analyzeAudio(file) {
         document.getElementById('loadStatus').innerText = "ANALYZING...";
         const tempCtx = new (window.AudioContext || window.webkitAudioContext)();
-        
         try {
             const arrayBuffer = await file.arrayBuffer();
             const audioBuffer = await tempCtx.decodeAudioData(arrayBuffer);
             const data = audioBuffer.getChannelData(0);
-            
-            // 無音検知
             let skip = 0;
             for (let i = 0; i < data.length; i++) { 
-                if (Math.abs(data[i]) > 0.015) { 
-                    skip = i / audioBuffer.sampleRate; 
-                    break; 
-                } 
+                if (Math.abs(data[i]) > 0.015) { skip = i / audioBuffer.sampleRate; break; } 
             }
             firstSoundTime = skip;
-
-            // BPM検知
             const bpm = detectBPM(audioBuffer);
             if (bpm > 0) {
                 originalBpm = Math.round(bpm);
                 document.getElementById('bpmInput').value = originalBpm;
             }
-            
             document.getElementById('loadStatus').innerText = "COMPLETE";
-            // WaveSurfer側にも時間を反映
             if(wavesurfer && wavesurfer.isReady) wavesurfer.setTime(firstSoundTime);
-
         } catch (e) {
-            console.error("Analysis error:", e);
             document.getElementById('loadStatus').innerText = "READY";
-        } finally {
-            tempCtx.close();
-        }
+        } finally { tempCtx.close(); }
     }
 
     function detectBPM(buffer) {
         const data = buffer.getChannelData(0);
         const sampleRate = buffer.sampleRate;
-        const step = 200; // ステップ数を少し増やして負荷軽減
+        const step = 200;
         const energy = [];
         for (let i = 0; i < data.length; i += step) {
             let sum = 0;
@@ -659,10 +645,7 @@
         const minInterval = Math.floor((60 / maxBpm) * (sampleRate / step));
         const maxInterval = Math.floor((60 / minBpm) * (sampleRate / step));
         let bestBpm = 0, maxCorrelation = 0;
-        
-        // 処理の重さを考慮しサンプル範囲を限定
         const maxSamples = Math.min(energy.length, 10000); 
-        
         for (let interval = minInterval; interval <= maxInterval; interval++) {
             let correlation = 0;
             const limit = Math.min(energy.length - interval, maxSamples);
@@ -674,7 +657,6 @@
         return bestBpm;
     }
 
-    // カウントダウン・再生ロジック
     function playBeep(isLast) {
         if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         if (audioCtx.state === 'suspended') audioCtx.resume();
@@ -710,7 +692,6 @@
         applySettings();
     }
 
-    // YouTube API
     const tag = document.createElement('script'); tag.src = "https://www.youtube.com/iframe_api";
     document.head.appendChild(tag);
     function loadYouTube() {
@@ -737,7 +718,6 @@
     };
     window.toggleLoop = () => { isLooping = !isLooping; const b = document.getElementById('toggleLoopBtn'); b.innerText = isLooping ? "LOOP ON" : "LOOP OFF"; b.classList.toggle('active', isLooping); };
 
-    // WaveSurfer 初期化と設定
     let applySettings;
     function startApp() {
         if (typeof WaveSurfer === 'undefined') { setTimeout(startApp, 100); return; }
@@ -749,9 +729,9 @@
             barWidth: 2, 
             normalize: true, 
             cursorColor: '#fff',
-            // パフォーマンス向上のため設定追加
             minPxPerSec: 50,
-            hideScrollbar: false
+            hideScrollbar: false,
+            autoCenter: true
         });
         
         wsRegions = wavesurfer.registerPlugin(WaveSurfer.Regions.create());
@@ -763,15 +743,54 @@
             wavesurfer.setTime(r.start); 
         });
 
-        // ファイル読み込みイベント（ここをスムーズに修正）
+        /* --- ズーム機能の追加 --- */
+        const zoomSlider = document.getElementById('zoomSlider');
+        zoomSlider.oninput = (e) => wavesurfer.zoom(Number(e.target.value));
+        document.getElementById('resetZoomBtn').onclick = () => {
+            zoomSlider.value = 50;
+            wavesurfer.zoom(50);
+        };
+
+        // PC: ホイールズーム
+        const wfEl = document.getElementById('waveform');
+        wfEl.addEventListener('wheel', (e) => {
+            if (Math.abs(e.deltaY) > 0) {
+                e.preventDefault();
+                let currentZoom = Number(zoomSlider.value);
+                let newZoom = e.deltaY > 0 ? currentZoom - 10 : currentZoom + 10;
+                newZoom = Math.max(10, Math.min(500, newZoom));
+                zoomSlider.value = newZoom;
+                wavesurfer.zoom(newZoom);
+            }
+        }, { passive: false });
+
+        // モバイル: ピンチズーム
+        let lastTouchDiff = -1;
+        wfEl.addEventListener('touchmove', (e) => {
+            if (e.touches.length === 2) {
+                e.preventDefault();
+                let curDiff = Math.hypot(
+                    e.touches[0].pageX - e.touches[1].pageX,
+                    e.touches[0].pageY - e.touches[1].pageY
+                );
+                if (lastTouchDiff > 0) {
+                    let currentZoom = Number(zoomSlider.value);
+                    let delta = curDiff - lastTouchDiff;
+                    let newZoom = currentZoom + (delta * 0.5);
+                    newZoom = Math.max(10, Math.min(500, newZoom));
+                    zoomSlider.value = newZoom;
+                    wavesurfer.zoom(newZoom);
+                }
+                lastTouchDiff = curDiff;
+            }
+        }, { passive: false });
+        wfEl.addEventListener('touchend', () => { lastTouchDiff = -1; });
+
         document.getElementById('audioFile').onchange = e => { 
             const file = e.target.files[0];
             if(file) { 
-                // 前回のURLを解放してメモリを節約
                 if(currentObjectURL) URL.revokeObjectURL(currentObjectURL);
                 currentObjectURL = URL.createObjectURL(file);
-                
-                // 解析と描画を同時並行で開始
                 analyzeAudio(file); 
                 wavesurfer.load(currentObjectURL);
             } 
@@ -780,7 +799,6 @@
         wavesurfer.on('ready', () => { 
             document.getElementById('totalTime').innerText = fmt(wavesurfer.getDuration()); 
             applySettings(); 
-            // 解析が終わっていたら先頭へ移動
             if(firstSoundTime > 0) wavesurfer.setTime(firstSoundTime);
         });
         
@@ -799,32 +817,24 @@
             const s = parseFloat(document.getElementById('speed').value);
             const p = parseInt(document.getElementById('pitch').value);
             const media = wavesurfer.getMediaElement();
-            
             if (media) {
                 media.preservesPitch = true;
-                const pitchFactor = Math.pow(2, p / 12);
-                
                 if (media.detune !== undefined) {
                     media.detune = p * 100;
                     wavesurfer.setPlaybackRate(s);
                 } else {
-                    // detune非対応ブラウザ用
                     if (p !== 0) {
                         media.preservesPitch = false;
-                        wavesurfer.setPlaybackRate(s * pitchFactor);
+                        wavesurfer.setPlaybackRate(s * Math.pow(2, p / 12));
                     } else {
                         media.preservesPitch = true;
                         wavesurfer.setPlaybackRate(s);
                     }
                 }
             }
-            
             document.getElementById('spTxt').innerText = s.toFixed(2) + "x"; 
             document.getElementById('pitchTxt').innerText = (p > 0 ? "+" : "") + p;
-
-            if (!skipBpmUpdate) {
-                document.getElementById('bpmInput').value = Math.round(originalBpm * s);
-            }
+            if (!skipBpmUpdate) document.getElementById('bpmInput').value = Math.round(originalBpm * s);
         };
 
         document.getElementById('speed').oninput = () => applySettings(false);
@@ -833,22 +843,14 @@
         document.getElementById('playBtn').onclick = async () => {
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             if (audioCtx.state === 'suspended') audioCtx.resume();
-            
-            if (wavesurfer.isPlaying()) {
-                wavesurfer.pause();
-            } else {
+            if (wavesurfer.isPlaying()) wavesurfer.pause();
+            else {
                 const current = wavesurfer.getCurrentTime();
                 const region = wsRegions.getRegions()[0];
-                
-                // カウントダウンが必要な場合の開始位置調整
                 if (document.getElementById('enableCountdown').checked) {
-                    if (region && (current < region.start || current >= region.end)) {
-                        wavesurfer.setTime(region.start);
-                    } else if (!region && current < firstSoundTime) {
-                        wavesurfer.setTime(firstSoundTime);
-                    }
+                    if (region && (current < region.start || current >= region.end)) wavesurfer.setTime(region.start);
+                    else if (!region && current < firstSoundTime) wavesurfer.setTime(firstSoundTime);
                 }
-                
                 await runCountdown();
                 wavesurfer.play();
             }
@@ -861,7 +863,6 @@
         wavesurfer.on('timeupdate', t => {
             document.getElementById('currentTime').innerText = fmt(t);
             const r = wsRegions.getRegions()[0];
-            // ループ処理
             if(r && t >= r.end && Date.now() - lastJump > 200) { 
                 wavesurfer.setTime(r.start); 
                 applySpeedUp(); 
@@ -869,10 +870,7 @@
             }
         });
 
-        window.resetSetting = (id, val) => { 
-            document.getElementById(id).value = val; 
-            applySettings(); 
-        };
+        window.resetSetting = (id, val) => { document.getElementById(id).value = val; applySettings(); };
     }
 
     window.addEventListener('keydown', (e) => { 

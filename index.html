@@ -203,7 +203,7 @@
             border-radius: 8px;
             margin-bottom: 10px; 
             overflow: hidden;
-            touch-action: none; /* ピンチズーム操作の干渉を防ぐ */
+            touch-action: none;
         }
         
         .waveform-label { 
@@ -736,33 +736,47 @@
         
         wsRegions = wavesurfer.registerPlugin(WaveSurfer.Regions.create());
         wsRegions.enableDragSelection({ color: 'rgba(212, 163, 115, 0.2)' });
-        wavesurfer.registerPlugin(WaveSurfer.Timeline.create({ container: '#timeline' }));
+        
+        // タイムラインプラグインの初期化
+        const timeline = wavesurfer.registerPlugin(WaveSurfer.Timeline.create({ 
+            container: '#timeline' 
+        }));
         
         wsRegions.on('region-created', r => { 
             if(wsRegions.getRegions().length > 1) wsRegions.getRegions()[0].remove(); 
             wavesurfer.setTime(r.start); 
         });
 
-        /* --- ズームとタイムラインの同期修正 --- */
+        /* --- タイムライン同期のための修正箇所 --- */
         const zoomSlider = document.getElementById('zoomSlider');
         
-        const syncTimeline = () => {
-            const scrollWidth = wavesurfer.getWrapper().scrollWidth;
-            const tl = document.getElementById('timeline');
-            if (tl && tl.firstChild) {
-                tl.firstChild.style.width = scrollWidth + 'px';
-            }
+        // タイムラインの要素を強制的に波形と同じ幅に更新する関数
+        const forceUpdateTimeline = () => {
+            requestAnimationFrame(() => {
+                const scrollWidth = wavesurfer.getWrapper().scrollWidth;
+                const tlContainer = document.getElementById('timeline');
+                // WaveSurferプラグインが生成するShadow DOM内のcanvas/divの幅を強制上書き
+                const inner = tlContainer.querySelector('div');
+                if (inner) {
+                    inner.style.width = scrollWidth + 'px';
+                }
+            });
         };
 
         const performZoom = (level) => {
             const val = Math.max(10, Math.min(500, level));
             zoomSlider.value = val;
             wavesurfer.zoom(val);
-            syncTimeline(); // タイムライン幅を強制同期
+            // ズーム直後にタイムラインを強制更新
+            forceUpdateTimeline();
         };
 
         zoomSlider.oninput = (e) => performZoom(Number(e.target.value));
         document.getElementById('resetZoomBtn').onclick = () => performZoom(50);
+
+        // 波形のスクロールイベントやリサイズ時にも更新をかける
+        wavesurfer.on('redraw', forceUpdateTimeline);
+        wavesurfer.on('zoom', forceUpdateTimeline);
 
         // PC: ホイールズーム
         const wfEl = document.getElementById('waveform');
@@ -808,7 +822,8 @@
             document.getElementById('totalTime').innerText = fmt(wavesurfer.getDuration()); 
             applySettings(); 
             if(firstSoundTime > 0) wavesurfer.setTime(firstSoundTime);
-            syncTimeline(); // 読み込み完了時に幅を同期
+            // 初回描画のズームを適用
+            performZoom(Number(zoomSlider.value));
         });
         
         document.getElementById('modelVol').oninput = e => wavesurfer.setVolume(e.target.value);

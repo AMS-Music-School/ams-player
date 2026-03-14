@@ -203,7 +203,7 @@
             border-radius: 8px;
             margin-bottom: 10px; 
             overflow: hidden;
-            touch-action: none; /* ピンチズーム操作の干渉を防ぐ */
+            touch-action: none;
         }
         
         .waveform-label { 
@@ -455,8 +455,8 @@
     <div class="guide-box-inner">
         <b>【Audio File Mode】操作ガイド</b>
         <ul>
-            <li><b>ファイル選択:</b> デバイス内の音楽ファイルを選択してください。BPMと無音部分を自動解析します。</li>
-            <li><b>BPM連動:</b> BPM数値を手入力すると速度が変わります。速度を変えるとBPMが計算されます。</li>
+            <li><b>ファイル選択:</b> 音楽ファイルを選択してください。BPMと無音部分を自動解析します。</li>
+            <li><b>BPM連動:</b> BPM数値を手入力すると速度が変わります。</li>
             <li><b>ループ設定:</b> 波形をドラッグして範囲を選択すると、その区間が繰り返し再生されます。</li>
             <li><b>ズーム:</b> PCはホイール、モバイルはピンチ操作で波形を拡大縮小できます。</li>
         </ul>
@@ -469,9 +469,8 @@
         <b>【YouTube Mode】操作ガイド</b>
         <ul>
             <li><b>動画の読み込み:</b> YouTubeのURLを貼り付けて「LOAD」ボタンを押してください。</li>
-            <li><b>ループ区間の指定:</b> 動画を再生し、開始したい位置で「SET START」、終了位置で「SET END」を押します。</li>
-            <li><b>微調整:</b> 「-1s / +1s」ボタンで、ループの開始・終了位置を1秒単位で調整できます。</li>
-            <li><b>ループ実行:</b> 「LOOP OFF」ボタンを押して「LOOP ON」に切り替えると、指定区間が繰り返されます。</li>
+            <li><b>ループ区間の指定:</b> 「SET START/END」で範囲を指定します。</li>
+            <li><b>ループ実行:</b> 「LOOP OFF」ボタンを押して「LOOP ON」に切り替えます。</li>
         </ul>
     </div>
     <button class="clear-btn-ja" style="width:100%; margin-top:20px;" onclick="closeModals()">閉じる</button>
@@ -743,28 +742,35 @@
             wavesurfer.setTime(r.start); 
         });
 
-        /* --- ズーム機能の追加 --- */
+        /* --- ズーム・タイムライン同期機能の修正 --- */
         const zoomSlider = document.getElementById('zoomSlider');
-        zoomSlider.oninput = (e) => wavesurfer.zoom(Number(e.target.value));
-        document.getElementById('resetZoomBtn').onclick = () => {
-            zoomSlider.value = 50;
-            wavesurfer.zoom(50);
+        
+        const executeZoom = (level) => {
+            const zoomLevel = Math.max(10, Math.min(500, level));
+            zoomSlider.value = zoomLevel;
+            wavesurfer.zoom(zoomLevel);
+            
+            // タイムラインを目盛りの幅に合わせて強制同期
+            const scrollWidth = wavesurfer.getWrapper().scrollWidth;
+            const tl = document.getElementById('timeline');
+            if (tl && tl.firstChild) {
+                tl.firstChild.style.width = scrollWidth + 'px';
+            }
         };
 
-        // PC: ホイールズーム
+        zoomSlider.oninput = (e) => executeZoom(Number(e.target.value));
+        document.getElementById('resetZoomBtn').onclick = () => executeZoom(50);
+
         const wfEl = document.getElementById('waveform');
         wfEl.addEventListener('wheel', (e) => {
             if (Math.abs(e.deltaY) > 0) {
                 e.preventDefault();
                 let currentZoom = Number(zoomSlider.value);
                 let newZoom = e.deltaY > 0 ? currentZoom - 10 : currentZoom + 10;
-                newZoom = Math.max(10, Math.min(500, newZoom));
-                zoomSlider.value = newZoom;
-                wavesurfer.zoom(newZoom);
+                executeZoom(newZoom);
             }
         }, { passive: false });
 
-        // モバイル: ピンチズーム
         let lastTouchDiff = -1;
         wfEl.addEventListener('touchmove', (e) => {
             if (e.touches.length === 2) {
@@ -776,10 +782,7 @@
                 if (lastTouchDiff > 0) {
                     let currentZoom = Number(zoomSlider.value);
                     let delta = curDiff - lastTouchDiff;
-                    let newZoom = currentZoom + (delta * 0.5);
-                    newZoom = Math.max(10, Math.min(500, newZoom));
-                    zoomSlider.value = newZoom;
-                    wavesurfer.zoom(newZoom);
+                    executeZoom(currentZoom + (delta * 0.5));
                 }
                 lastTouchDiff = curDiff;
             }

@@ -8,8 +8,8 @@
     <meta name="apple-mobile-web-app-title" content="AMS Player">
     <meta name="apple-mobile-web-app-capable" content="yes">
     
-    <link rel="icon" href="icon.png?v=1.0.1" type="image/png">
-    <link rel="apple-touch-icon" href="icon.png?v=1.0.1">
+    <link rel="icon" href="icon.png?v=1.0.2" type="image/png">
+    <link rel="apple-touch-icon" href="icon.png?v=1.0.2">
 
     <script src="https://unpkg.com/wavesurfer.js@7/dist/wavesurfer.min.js"></script>
     <script src="https://unpkg.com/wavesurfer.js@7/dist/plugins/regions.min.js"></script>
@@ -421,7 +421,6 @@
             box-shadow: 0 0 10px rgba(212, 163, 115, 0.4);
         }
         
-        /* タイムライン表示領域を削除 */
         #timeline { display: none !important; }
     </style>
 </head>
@@ -489,10 +488,10 @@
     </div>
 
     <div id="file-section" class="content-section active">
-        <input type="file" id="audioFile" accept="audio/*, .mp3, .wav, .m4a, .aac, .mp4">
+        <input type="file" id="audioFile" accept="audio/*, .mp3, .wav, .m4a, .aac, .mp4, .ogg, .flac, .webma">
 
         <div class="practice-settings">
-            <label class="opt-label"><input type="checkbox" id="enableCountdown" checked> カウント(1-4)</label>
+            <label class="opt-label"><input type="checkbox" id="enableCountdown" checked> カウント</label>
             <label class="opt-label">BPM: <input type="number" id="bpmInput" class="num-input" value="120" min="40" max="300"></label>
             <label class="opt-label"><input type="checkbox" id="autoSpeedUp"> ループ毎に5%加速</label>
         </div>
@@ -575,10 +574,7 @@
 </div>
 
 <script>
-    /* Webアプリ更新時の反映を確実にするため、
-       スクリプトの先頭でキャッシュ無効化のヒントを持たせる 
-    */
-    console.log("App Version: 1.0.1 (Timeline Disabled)");
+    console.log("App Version: 1.0.2 (Timeline Disabled, UI Adjusted)");
 
     function toggleMenu(isOpen) {
         document.getElementById('sideMenu').classList.toggle('open', isOpen);
@@ -745,8 +741,6 @@
         wsRegions = wavesurfer.registerPlugin(WaveSurfer.Regions.create());
         wsRegions.enableDragSelection({ color: 'rgba(212, 163, 115, 0.2)' });
         
-        // タイムラインプラグインの登録コードを削除
-        
         wsRegions.on('region-created', r => { 
             if(wsRegions.getRegions().length > 1) wsRegions.getRegions()[0].remove(); 
             wavesurfer.setTime(r.start); 
@@ -763,7 +757,6 @@
         zoomSlider.oninput = (e) => performZoom(Number(e.target.value));
         document.getElementById('resetZoomBtn').onclick = () => performZoom(50);
 
-        // PC: ホイールズーム
         const wfEl = document.getElementById('waveform');
         wfEl.addEventListener('wheel', (e) => {
             if (Math.abs(e.deltaY) > 0) {
@@ -774,7 +767,6 @@
             }
         }, { passive: false });
 
-        // モバイル: ピンチズーム
         let lastTouchDiff = -1;
         wfEl.addEventListener('touchmove', (e) => {
             if (e.touches.length === 2) {

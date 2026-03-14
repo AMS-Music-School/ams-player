@@ -274,6 +274,12 @@
             justify-content: center; 
             cursor: pointer;
             box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+            transition: all 0.2s;
+        }
+        .btn-ctrl.active {
+            color: var(--primary-color);
+            border-color: var(--primary-color);
+            box-shadow: 0 0 10px rgba(212, 163, 115, 0.3);
         }
         .play-main { 
             background: var(--primary-color); 
@@ -281,19 +287,6 @@
             border: none; 
             width: 75px; 
             height: 75px; 
-        }
-
-        /* カウントロゴ用スタイル */
-        .btn-toggle-count {
-            background: var(--panel-bg);
-            color: var(--text-dim);
-            border: 1px solid var(--border-color);
-            transition: all 0.3s ease;
-        }
-        .btn-toggle-count.active {
-            color: var(--primary-color);
-            border-color: var(--primary-color);
-            box-shadow: 0 0 10px rgba(212, 163, 115, 0.3);
         }
 
         .reset-btn { 
@@ -307,20 +300,6 @@
             margin-left: 5px;
         }
         
-        .practice-settings { 
-            background: var(--panel-bg); 
-            border: 1px solid var(--border-color); 
-            padding: 15px; 
-            margin-bottom: 20px; 
-            border-radius: 12px; 
-            display: flex; 
-            flex-wrap: wrap; 
-            gap: 12px; 
-            align-items: center; 
-            justify-content: center; 
-        }
-        .opt-label { font-size: 0.85em; font-weight: bold; color: var(--text-main); display: flex; align-items: center; gap: 8px; }
-
         input[type="file"] { 
             width: 100%; 
             padding: 18px; 
@@ -361,13 +340,6 @@
             box-shadow: 0 10px 30px rgba(0,0,0,0.5); background: #000;
         }
         #ytPlayerContainer iframe { position: absolute; top: 0; left: 0; width: 100% !important; height: 100% !important; }
-
-        #toggleLoopBtn.active {
-            background: var(--primary-color); color: #121212; border: 1px solid var(--primary-color);
-            font-weight: bold; box-shadow: 0 0 10px rgba(212, 163, 115, 0.4);
-        }
-        
-        #timeline { display: none !important; }
     </style>
 </head>
 <body>
@@ -396,8 +368,8 @@
         <b>【Audio File Mode】ガイド</b>
         <ul>
             <li><b>BPM:</b> スピードを変更すると自動計算されます。</li>
-            <li><b>カウント:</b> 再生ボタン左のアイコンでON/OFF。</li>
-            <li><b>ループ:</b> 波形をドラッグして選択。</li>
+            <li><b>カウントロゴ:</b> 再生左。タップでカウントON/OFF。</li>
+            <li><b>加速ロゴ:</b> 再生右。タップでループ毎に自動加速。</li>
         </ul>
     </div>
     <button class="clear-btn-ja" style="width:100%; margin-top:20px;" onclick="closeModals()">閉じる</button>
@@ -413,10 +385,6 @@
 
     <div id="file-section" class="content-section active">
         <input type="file" id="audioFile" accept="audio/*">
-
-        <div class="practice-settings">
-            <label class="opt-label"><input type="checkbox" id="autoSpeedUp"> ループ毎に5%加速</label>
-        </div>
 
         <div class="waveform-label">
             <span id="loadStatus">READY</span>
@@ -442,12 +410,15 @@
         </div>
         
         <div class="transport-controls">
-            <button class="btn-ctrl btn-toggle-count active" id="countToggleBtn" onclick="toggleCount()">
+            <button class="btn-ctrl active" id="countToggleBtn" onclick="toggleFeature('count')">
                 <span class="material-icons">timer</span>
             </button>
             <button class="btn-ctrl" onclick="wavesurfer.skip(-5)"><span class="material-icons">replay_5</span></button>
             <button class="btn-ctrl play-main" id="playBtn"><span class="material-icons" id="playIcon" style="font-size:45px;">play_arrow</span></button>
             <button class="btn-ctrl" onclick="wavesurfer.skip(5)"><span class="material-icons">forward_5</span></button>
+            <button class="btn-ctrl" id="speedUpToggleBtn" onclick="toggleFeature('speedup')">
+                <span class="material-icons">speed</span>
+            </button>
         </div>
 
         <div class="panel">
@@ -465,17 +436,15 @@
     </div>
 
     <div id="yt-section" class="content-section">
-        <div class="yt-input-area" style="display:flex; gap:10px; margin-bottom:20px; background:var(--panel-bg); padding:15px; border-radius:12px; border: 1px solid var(--border-color); max-width:600px; margin-left:auto; margin-right:auto;">
-            <input type="text" id="ytUrl" placeholder="YouTube URL..." style="flex-grow:1; padding:12px; border:1px solid var(--border-color); background:#000; color:#fff; border-radius:8px;">
-            <button class="tab-btn active" style="border-radius:8px; flex:0; min-width:80px;" onclick="loadYouTube()">LOAD</button>
+        <div class="yt-input-area" style="text-align:center; margin-bottom:20px;">
+            <input type="text" id="ytUrl" placeholder="YouTube URL..." style="width:70%; padding:12px; border-radius:8px; border:1px solid #333; background:#000; color:#fff;">
+            <button class="tab-btn active" style="padding:12px 20px;" onclick="loadYouTube()">LOAD</button>
         </div>
         <div id="ytPlayerContainer"><div id="player"></div></div>
     </div>
 </div>
 
 <script>
-    console.log("App Version: 1.0.4 (UI Refined)");
-
     function toggleMenu(isOpen) {
         document.getElementById('sideMenu').classList.toggle('open', isOpen);
         document.getElementById('menuOverlay').style.display = isOpen ? 'block' : 'none';
@@ -492,19 +461,21 @@
         document.getElementById('menuOverlay').style.display = 'none';
     }
 
-    let wavesurfer, wsRegions, ytPlayer, loopInterval;
-    let isCountEnabled = true;
-    let audioCtx, firstSoundTime = 0, originalBpm = 120;
-    let currentMode = 'file', currentObjectURL = null;
+    let wavesurfer, wsRegions, isCountEnabled = true, isSpeedUpEnabled = false;
+    let audioCtx, firstSoundTime = 0, originalBpm = 120, currentObjectURL = null;
 
-    // カウント切り替え関数
-    function toggleCount() {
-        isCountEnabled = !isCountEnabled;
-        document.getElementById('countToggleBtn').classList.toggle('active', isCountEnabled);
+    // 機能トグル（カウント・加速）
+    function toggleFeature(type) {
+        if (type === 'count') {
+            isCountEnabled = !isCountEnabled;
+            document.getElementById('countToggleBtn').classList.toggle('active', isCountEnabled);
+        } else if (type === 'speedup') {
+            isSpeedUpEnabled = !isSpeedUpEnabled;
+            document.getElementById('speedUpToggleBtn').classList.toggle('active', isSpeedUpEnabled);
+        }
     }
 
     function switchMode(mode) {
-        currentMode = mode;
         document.getElementById('file-section').classList.toggle('active', mode === 'file');
         document.getElementById('yt-section').classList.toggle('active', mode === 'yt');
     }
@@ -519,27 +490,24 @@
             let skip = 0;
             for (let i = 0; i < data.length; i++) { if (Math.abs(data[i]) > 0.015) { skip = i / audioBuffer.sampleRate; break; } }
             firstSoundTime = skip;
-            const bpm = detectBPM(audioBuffer);
-            if (bpm > 0) { originalBpm = Math.round(bpm); }
+            originalBpm = Math.round(detectBPM(audioBuffer) || 120);
             document.getElementById('loadStatus').innerText = "COMPLETE";
             applySettings();
         } catch (e) { document.getElementById('loadStatus').innerText = "READY"; } finally { tempCtx.close(); }
     }
 
     function detectBPM(buffer) {
-        const data = buffer.getChannelData(0), sampleRate = buffer.sampleRate, step = 200, energy = [];
+        const data = buffer.getChannelData(0), step = 200, energy = [];
         for (let i = 0; i < data.length; i += step) {
             let sum = 0; for(let j=0; j<step && (i+j)<data.length; j++) sum += data[i+j] * data[i+j];
             energy.push(Math.sqrt(sum/step));
         }
-        const minBpm = 60, maxBpm = 200, minInterval = Math.floor((60 / maxBpm) * (sampleRate / step)), maxInterval = Math.floor((60 / minBpm) * (sampleRate / step));
-        let bestBpm = 0, maxCorrelation = 0;
-        for (let interval = minInterval; interval <= maxInterval; interval++) {
-            let correlation = 0; for (let i = 0; i < Math.min(energy.length - interval, 10000); i++) correlation += energy[i] * energy[i + interval];
-            if (correlation > maxCorrelation) { maxCorrelation = correlation; bestBpm = 60 / (interval * step / sampleRate); }
+        let bestBpm = 120, maxCorrelation = 0;
+        for (let interval = 40; interval <= 150; interval++) {
+            let correlation = 0; for (let i = 0; i < Math.min(energy.length - interval, 5000); i++) correlation += energy[i] * energy[i + interval];
+            if (correlation > maxCorrelation) { maxCorrelation = correlation; bestBpm = 60 / (interval * step / buffer.sampleRate); }
         }
-        if (bestBpm > 180) bestBpm /= 2; if (bestBpm < 70) bestBpm *= 2;
-        return bestBpm;
+        return bestBpm > 180 ? bestBpm / 2 : (bestBpm < 70 ? bestBpm * 2 : bestBpm);
     }
 
     function playBeep(isLast) {
@@ -553,7 +521,7 @@
     }
 
     async function runCountdown() {
-        if (!isCountEnabled) return true;
+        if (!isCountEnabled) return;
         const bpm = Math.round(originalBpm * parseFloat(document.getElementById('speed').value));
         const interval = 60000 / bpm, overlay = document.getElementById('countdown-overlay');
         overlay.style.display = 'block';
@@ -562,30 +530,21 @@
             await new Promise(r => setTimeout(r, interval));
         }
         overlay.style.display = 'none';
-        return true;
     }
 
     const fmt = (s) => `${Math.floor(s/60).toString().padStart(2,'0')}:${Math.floor(s%60).toString().padStart(2,'0')}`;
 
-    let applySettings;
     function startApp() {
         wavesurfer = WaveSurfer.create({ 
-            container: '#waveform', waveColor: '#333', progressColor: '#d4a373', height: 150, barWidth: 2, 
-            normalize: true, cursorColor: '#fff', minPxPerSec: 0, autoCenter: true
+            container: '#waveform', waveColor: '#333', progressColor: '#d4a373', height: 150, barWidth: 2, normalize: true, autoCenter: true
         });
         wsRegions = wavesurfer.registerPlugin(WaveSurfer.Regions.create());
         wsRegions.enableDragSelection({ color: 'rgba(212, 163, 115, 0.2)' });
-        
         wsRegions.on('region-created', r => { if(wsRegions.getRegions().length > 1) wsRegions.getRegions()[0].remove(); wavesurfer.setTime(r.start); });
 
         const zoomSlider = document.getElementById('zoomSlider');
-        const performZoom = (level) => {
-            const val = Math.max(0, Math.min(500, level));
-            zoomSlider.value = val;
-            wavesurfer.zoom(val == 0 ? 0 : val);
-        };
-        zoomSlider.oninput = (e) => performZoom(Number(e.target.value));
-        document.getElementById('resetZoomBtn').onclick = () => performZoom(0);
+        zoomSlider.oninput = (e) => wavesurfer.zoom(Number(e.target.value));
+        document.getElementById('resetZoomBtn').onclick = () => { zoomSlider.value = 0; wavesurfer.zoom(0); };
 
         document.getElementById('audioFile').onchange = e => { 
             const file = e.target.files[0];
@@ -600,14 +559,24 @@
             document.getElementById('totalTime').innerText = fmt(wavesurfer.getDuration()); 
             applySettings(); 
             if(firstSoundTime > 0) wavesurfer.setTime(firstSoundTime);
-            performZoom(Number(zoomSlider.value));
         });
 
-        applySettings = () => {
+        // PitchとSpeedの設定適用ロジック（復元版）
+        window.applySettings = () => {
             const s = parseFloat(document.getElementById('speed').value);
             const p = parseInt(document.getElementById('pitch').value);
-            wavesurfer.setPlaybackRate(s);
-            // BPMを表示箇所に反映
+            const media = wavesurfer.getMediaElement();
+            if (media) {
+                media.preservesPitch = true;
+                if (media.detune !== undefined) {
+                    media.detune = p * 100;
+                    wavesurfer.setPlaybackRate(s);
+                } else {
+                    // Detune非対応ブラウザ用
+                    media.preservesPitch = false;
+                    wavesurfer.setPlaybackRate(s * Math.pow(2, p / 12));
+                }
+            }
             document.getElementById('bpmDisplay').innerText = "BPM " + Math.round(originalBpm * s);
             document.getElementById('pitchTxt').innerText = (p > 0 ? "+" : "") + p;
         };
@@ -639,9 +608,10 @@
             const r = wsRegions.getRegions()[0];
             if(r && t >= r.end && Date.now() - lastJump > 200) { 
                 wavesurfer.setTime(r.start); lastJump = Date.now(); 
-                if(document.getElementById('autoSpeedUp').checked) {
+                if(isSpeedUpEnabled) {
                     let s = document.getElementById('speed');
-                    s.value = Math.min(1.5, parseFloat(s.value) + 0.05).toFixed(2); applySettings();
+                    s.value = Math.min(1.5, parseFloat(s.value) + 0.05).toFixed(2); 
+                    applySettings();
                 }
             }
         });

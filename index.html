@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AMS Practice Player v1.1.5 - AI Advice</title>
+    <title>AMS Practice Player v1.2.0 - Studio Edition</title>
     
     <meta name="apple-mobile-web-app-title" content="AMS Player">
     <meta name="apple-mobile-web-app-capable" content="yes">
     
-    <link rel="icon" href="icon.png?v=1.1.5" type="image/png">
-    <link rel="apple-touch-icon" href="icon.png?v=1.1.5">
+    <link rel="icon" href="icon.png?v=1.2.0" type="image/png">
+    <link rel="apple-touch-icon" href="icon.png?v=1.2.0">
 
     <script src="https://unpkg.com/wavesurfer.js@7/dist/wavesurfer.min.js"></script>
     <script src="https://unpkg.com/wavesurfer.js@7/dist/plugins/regions.min.js"></script>
@@ -26,6 +26,7 @@
             --header-height: 60px;
             --recording-red: #ff4444;
             --ai-purple: #a855f7;
+            --solo-yellow: #ffcc00;
         }
 
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -56,7 +57,7 @@
             min-height: 120px;
         }
         
-        #rec-waveform-wrapper { min-height: 60px; margin-top: 8px; display: none; border: 1px solid var(--recording-red); }
+        #rec-waveform-wrapper { min-height: 80px; margin-top: 8px; display: none; border: 1px solid var(--recording-red); }
 
         .waveform-label { 
             font-size: 0.75rem; color: var(--text-dim); margin-bottom: 8px; 
@@ -71,21 +72,16 @@
             margin-bottom: 15px;
         }
 
-        .panel-rec {
-            padding: 10px 15px;
-            gap: 8px;
-            border-color: rgba(255, 68, 68, 0.4);
-        }
+        .panel-rec { padding: 10px 15px; gap: 8px; border-color: rgba(255, 68, 68, 0.4); }
 
         .row { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
 
         input[type="range"] { flex-grow: 1; accent-color: var(--primary-color); height: 6px; min-width: 50px; }
+        .vol-slider { accent-color: var(--text-main) !important; }
 
         .val-display { color: var(--primary-color); font-weight: bold; min-width: 70px; text-align: right; font-size: 0.95rem; }
         
-        .transport-controls { 
-            display: flex; justify-content: center; align-items: center; gap: 10px; margin: 15px 0; 
-        }
+        .transport-controls { display: flex; justify-content: center; align-items: center; gap: 10px; margin: 15px 0; }
         .btn-ctrl { 
             background: var(--panel-bg); color: var(--text-dim); border: 1px solid var(--border-color); 
             border-radius: 50%; width: 48px; height: 48px; display: flex; align-items: center; 
@@ -97,6 +93,12 @@
         .rec-btn { color: var(--recording-red); border-color: #442222; width: 40px; height: 40px; }
         .rec-btn.recording { background: var(--recording-red); color: white; animation: blink 1s infinite; }
         @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+
+        .solo-btn { 
+            width: 32px; height: 32px; border-radius: 4px; font-weight: bold; font-size: 0.8rem;
+            background: #333; color: var(--text-dim); border: 1px solid var(--border-color);
+        }
+        .solo-btn.active { background: var(--solo-yellow); color: #000; border-color: var(--solo-yellow); }
 
         .custom-file-upload {
             display: block; width: 100%; padding: 12px; border: 2px dashed var(--border-color); 
@@ -193,7 +195,6 @@
         .loop-badge .badge-num { color: var(--primary-color); font-weight: bold; font-size: 1.2rem; line-height: 1; }
         .loop-badge .badge-del { color: #ff5555; font-size: 16px; display: flex; align-items: center; padding: 2px; border-radius: 50%; }
 
-        /* AIアドバイス表示エリア */
         .ai-result-card {
             background: #1a1a2e; border: 1px solid var(--ai-purple); border-radius: 12px;
             padding: 15px; margin-top: 10px; display: none; animation: fadeIn 0.5s;
@@ -230,33 +231,18 @@
             <span class="material-icons">close</span>
         </button>
     </div>
-
     <span class="menu-section-title" id="langTitle">Language Settings</span>
     <select id="langSelect" class="lang-select" onchange="changeLanguage()">
         <option value="ja">日本語</option>
         <option value="en">English</option>
     </select>
-
     <span class="menu-section-title" id="helpTitle">Help & Guide</span>
-    <div class="menu-item" onclick="showGuide('file')">
-        <span class="material-icons">description</span>
-        <span id="guideFileTitle">Audio Fileモード ガイド</span>
-    </div>
-    <div class="menu-item" onclick="showGuide('yt')">
-        <span class="material-icons">smart_display</span>
-        <span id="guideYTTitle">YouTubeモード ガイド</span>
-    </div>
+    <div class="menu-item" onclick="showGuide('file')"><span class="material-icons">description</span><span id="guideFileTitle">Audio Fileモード ガイド</span></div>
+    <div class="menu-item" onclick="showGuide('yt')"><span class="material-icons">smart_display</span><span id="guideYTTitle">YouTubeモード ガイド</span></div>
 </div>
 
-<div id="guideModalFile" class="modal">
-    <div class="guide-box-inner" id="guideFileContent"></div>
-    <button class="clear-btn-ja" id="closeBtn1" style="width:100%; margin-top:20px;" onclick="closeModals()">閉じる</button>
-</div>
-
-<div id="guideModalYT" class="modal">
-    <div class="guide-box-inner" id="guideYTContent"></div>
-    <button class="clear-btn-ja" id="closeBtn2" style="width:100%; margin-top:20px;" onclick="closeModals()">閉じる</button>
-</div>
+<div id="guideModalFile" class="modal"><div class="guide-box-inner" id="guideFileContent"></div><button class="clear-btn-ja" id="closeBtn1" style="width:100%; margin-top:20px;" onclick="closeModals()">閉じる</button></div>
+<div id="guideModalYT" class="modal"><div class="guide-box-inner" id="guideYTContent"></div><button class="clear-btn-ja" id="closeBtn2" style="width:100%; margin-top:20px;" onclick="closeModals()">閉じる</button></div>
 
 <div class="container">
     <div class="title-area"><h2>AMS Practice Player</h2></div>
@@ -285,47 +271,51 @@
             <div id="waveform"></div>
         </div>
 
-        <div class="clear-btn-container">
-            <button class="clear-btn-ja" onclick="wsRegions.clearRegions()" id="clearRangeBtn">
-                <span class="material-icons" style="font-size:16px;">layers_clear</span> 範囲解除
-            </button>
-            <button class="clear-btn-ja" onclick="saveLoop('file')" id="saveLoopBtn" style="border: 1px solid var(--primary-color);">
-                <span class="material-icons" style="font-size:16px;">bookmark_add</span> ループ保存
-            </button>
+        <div class="panel" style="margin-top:-5px; padding: 10px 15px;">
+            <div class="row">
+                <span class="material-icons" style="font-size:18px; color:var(--text-dim);">volume_up</span>
+                <input type="range" id="mainVolume" class="vol-slider" min="0" max="1" step="0.05" value="0.8">
+                <span id="mainVolTxt" style="font-size:0.75rem; min-width:35px; text-align:right;">80%</span>
+            </div>
         </div>
 
+        <div class="clear-btn-container">
+            <button class="clear-btn-ja" onclick="wsRegions.clearRegions()" id="clearRangeBtn"><span class="material-icons" style="font-size:16px;">layers_clear</span> 範囲解除</button>
+            <button class="clear-btn-ja" onclick="saveLoop('file')" id="saveLoopBtn" style="border: 1px solid var(--primary-color);"><span class="material-icons" style="font-size:16px;">bookmark_add</span> ループ保存</button>
+        </div>
         <div id="loopListFile" class="loop-list-container"></div>
         
         <div class="transport-controls">
-            <button class="btn-ctrl active" id="countToggleBtn" onclick="toggleFeature('count')">
-                <span class="material-icons">timer</span>
-            </button>
+            <button class="btn-ctrl active" id="countToggleBtn" onclick="toggleFeature('count')"><span class="material-icons">timer</span></button>
             <button class="btn-ctrl" onclick="wavesurfer.skip(-5)"><span class="material-icons">replay_5</span></button>
             <button class="btn-ctrl play-main" id="playBtn"><span class="material-icons" id="playIcon" style="font-size:35px;">play_arrow</span></button>
             <button class="btn-ctrl" onclick="wavesurfer.skip(5)"><span class="material-icons">forward_5</span></button>
-            <button class="btn-ctrl" id="speedUpToggleBtn" onclick="toggleFeature('speedup')">
-                <span class="material-icons">speed</span>
-            </button>
+            <button class="btn-ctrl" id="speedUpToggleBtn" onclick="toggleFeature('speedup')"><span class="material-icons">speed</span></button>
         </div>
 
         <div class="panel panel-rec">
             <div class="row">
                 <span style="font-size:0.65rem; color:var(--recording-red); font-weight:bold; letter-spacing:0.5px;">SELF-RECORDING CHECK</span>
-                <button class="btn-ctrl rec-btn" id="recBtn" onclick="toggleRecording()">
-                    <span class="material-icons" id="recIcon" style="font-size:20px;">mic</span>
-                </button>
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <button id="soloBtn" class="solo-btn" onclick="toggleSolo()">S</button>
+                    <button class="btn-ctrl rec-btn" id="recBtn" onclick="toggleRecording()"><span class="material-icons" id="recIcon" style="font-size:20px;">mic</span></button>
+                </div>
             </div>
+            
             <div id="rec-waveform-wrapper"><div id="rec-waveform"></div></div>
+            
+            <div id="recVolControl" style="display:none; flex-direction:column; gap:8px;">
+                <div class="row">
+                    <span class="material-icons" style="font-size:18px; color:var(--recording-red);">hearing</span>
+                    <input type="range" id="recVolume" class="vol-slider" min="0" max="1.5" step="0.05" value="1.0">
+                    <span id="recVolTxt" style="font-size:0.75rem; min-width:35px; text-align:right;">100%</span>
+                </div>
+            </div>
+
             <div class="row" id="recControls" style="display:none; justify-content:center; gap:8px; margin-top:4px;">
-                <button class="clear-btn-ja rec-action-btn" onclick="playRecording()" id="playRecBtn">
-                    <span class="material-icons" style="font-size:14px;">play_circle</span> 録音再生
-                </button>
-                <button class="clear-btn-ja rec-action-btn ai-btn" onclick="runAIAdvice()" id="aiAdviceBtn">
-                    <span class="material-icons" style="font-size:14px;">psychology</span> AIアドバイス
-                </button>
-                <button class="clear-btn-ja rec-action-btn" onclick="deleteRecording()" style="color:#ff5555;">
-                    <span class="material-icons" style="font-size:14px;">delete</span> 削除
-                </button>
+                <button class="clear-btn-ja rec-action-btn" onclick="playRecording()" id="playRecBtn"><span class="material-icons" style="font-size:14px;">play_circle</span> 録音再生</button>
+                <button class="clear-btn-ja rec-action-btn ai-btn" onclick="runAIAdvice()" id="aiAdviceBtn"><span class="material-icons" style="font-size:14px;">psychology</span> AIアドバイス</button>
+                <button class="clear-btn-ja rec-action-btn" onclick="deleteRecording()" style="color:#ff5555;"><span class="material-icons" style="font-size:14px;">delete</span> 削除</button>
             </div>
             <div id="aiLoading" class="ai-loading">分析中...</div>
             <div id="aiResultCard" class="ai-result-card">
@@ -397,8 +387,8 @@
             setStart: "開始位置", setEnd: "終了位置", loopOff: "ループ OFF", loopOn: "ループ ON",
             fileSelect: "ファイルを選択", saveLoop: "ループ保存",
             recPlay: "録音再生", recStop: "再生停止",
-            guideFileContent: "<b>【Audio File Mode】ガイド</b><ul><li>録音機能: 再生しながら録音できます。客観的チェックに最適。</li><li>AIアドバイス: 録音後にAIボタンを押すと演奏を分析します。</li><li>ファイル選択: 音源を選んでください。</li><li>スピード: 再生速度を変更。</li><li>ループ: ドラッグで範囲指定。</li></ul>",
-            guideYTContent: "<b>【YouTube Mode】ガイド</b><ul><li>読み込み: URLを貼り付けてLOAD。</li><li>ループ: SET START/ENDで区間指定。</li><li>SAVE: ループを複数保存できます。</li></ul>"
+            guideFileContent: "<b>【Audio File Mode】ガイド</b><ul><li>録音機能: 再生しながら録音できます。客観的チェックに最適。</li><li>音量調整: メイン音源と録音音声を個別に調整可能。</li><li>ソロ(S): 録音音響のみを再生。</li><li>AIアドバイス: 演奏を分析します。</li></ul>",
+            guideYTContent: "<b>【YouTube Mode】ガイド</b><ul><li>読み込み: URLを貼り付けてLOAD。</li><li>ループ: SET START/ENDで区間指定。</li><li>SAVE: ループを複数保存。</li></ul>"
         },
         en: {
             langTitle: "Language Settings", helpTitle: "Help & Guide", guideFile: "Audio File Mode Guide", guideYT: "YouTube Mode Guide",
@@ -406,7 +396,7 @@
             setStart: "SET START", setEnd: "SET END", loopOff: "LOOP OFF", loopOn: "LOOP ON",
             fileSelect: "Select Audio File", saveLoop: "Save Loop",
             recPlay: "Play Rec", recStop: "Stop Rec",
-            guideFileContent: "<b>【Audio File Mode】Guide</b><ul><li>Recording: Record while playing.</li><li>AI Advice: Analyze your performance after recording.</li><li>Select: Choose an audio file.</li><li>Speed: Adjust speed.</li><li>Loop: Drag to set range.</li></ul>",
+            guideFileContent: "<b>【Audio File Mode】Guide</b><ul><li>Recording: Record while playing.</li><li>Volume: Adjust Main/Rec levels.</li><li>Solo(S): Listen only to recording.</li><li>AI Advice: Analyze performance.</li></ul>",
             guideYTContent: "<b>【YouTube Mode】Guide</b><ul><li>Load: Paste URL and LOAD.</li><li>Loop: Press START/END.</li><li>SAVE: Store multiple loops.</li></ul>"
         }
     };
@@ -417,10 +407,8 @@
     let currentObjectURL = null, currentFileName = "", currentYTId = "";
     let isCountEnabled = true, isSpeedUpEnabled = false;
     let mediaRecorder, recordedChunks = [];
-    let isRecording = false;
-    let recObjectURL = null;
-    let lastRecStartPos = 0;
-    let recordedAudioBuffer = null;
+    let isRecording = false, isSolo = false;
+    let recObjectURL = null, recordedAudioBuffer = null, lastRecStartPos = 0;
 
     function changeLanguage() {
         const lang = document.getElementById('langSelect').value || 'ja';
@@ -444,7 +432,7 @@
         const loadS = document.getElementById('loadStatus');
         if (loadS.innerText.includes("READY") || loadS.innerText.includes("準備")) loadS.innerText = t.ready;
         const loopB = document.getElementById('toggleLoopBtn');
-        loopB.innerText = isLooping ? t.loopOn : t.loopOff;
+        if(loopB) loopB.innerText = isLooping ? t.loopOn : t.loopOff;
         updateRecPlayBtnUI();
     }
 
@@ -481,6 +469,23 @@
         if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
         if (audioCtx.state === 'suspended') audioCtx.resume();
         return audioCtx;
+    }
+
+    function toggleSolo() {
+        isSolo = !isSolo;
+        document.getElementById('soloBtn').classList.toggle('active', isSolo);
+        applyVolumes();
+    }
+
+    function applyVolumes() {
+        const mVol = parseFloat(document.getElementById('mainVolume').value);
+        const rVol = parseFloat(document.getElementById('recVolume').value);
+        
+        if (wavesurfer) wavesurfer.setVolume(isSolo ? 0 : mVol);
+        if (recWavesurfer) recWavesurfer.setVolume(rVol);
+        
+        document.getElementById('mainVolTxt').innerText = Math.round(mVol * 100) + "%";
+        document.getElementById('recVolTxt').innerText = Math.round(rVol * 100) + "%";
     }
 
     function toggleFeature(type) {
@@ -520,9 +525,7 @@
             if (bpm > 0) { originalBpm = Math.round(bpm); updateBpmDisplay(); }
             statusEl.innerText = translations[lang].ready;
             if(wavesurfer) wavesurfer.setTime(firstSoundTime);
-        } catch (e) {
-            statusEl.innerText = translations[lang].ready;
-        } finally { tempCtx.close(); }
+        } catch (e) { statusEl.innerText = translations[lang].ready; } finally { tempCtx.close(); }
     }
 
     function updateBpmDisplay() {
@@ -581,7 +584,14 @@
             document.getElementById('recIcon').innerText = 'mic';
         } else {
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    audio: { 
+                        echoCancellation: false, 
+                        noiseSuppression: false, 
+                        autoGainControl: false,
+                        sampleRate: 44100
+                    } 
+                });
                 if (audioCtx) await audioCtx.resume();
                 const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4';
                 mediaRecorder = new MediaRecorder(stream, { mimeType });
@@ -598,9 +608,11 @@
                     tempCtx.close();
 
                     document.getElementById('rec-waveform-wrapper').style.display = 'block';
+                    document.getElementById('recVolControl').style.display = 'flex';
                     document.getElementById('recControls').style.display = 'flex';
                     document.getElementById('aiResultCard').style.display = 'none';
                     await recWavesurfer.load(recObjectURL);
+                    applyVolumes();
                     updateRecPlayBtnUI();
                     stream.getTracks().forEach(track => track.stop());
                 };
@@ -625,17 +637,14 @@
         updateRecPlayBtnUI();
     }
 
-    // --- AI分析機能 ---
     async function runAIAdvice() {
         if (!recordedAudioBuffer) return;
         const loading = document.getElementById('aiLoading');
         const resultCard = document.getElementById('aiResultCard');
         const adviceText = document.getElementById('aiAdviceText');
-        
         loading.style.display = 'block';
         resultCard.style.display = 'none';
 
-        // 録音データの簡易解析
         const data = recordedAudioBuffer.getChannelData(0);
         let sum = 0, max = 0;
         for(let i=0; i<data.length; i++) {
@@ -646,32 +655,19 @@
         const avg = sum / data.length;
         const dynamicRange = max / (avg || 1);
 
-        // 擬似AIによるフィードバック生成
         setTimeout(() => {
             let advice = "";
             const lang = document.getElementById('langSelect').value;
-
             if (lang === 'ja') {
                 advice = "<b>【リズム/音量分析】</b><br>";
                 if (avg < 0.01) advice += "・入力音が小さすぎます。マイク位置を確認しましょう。<br>";
                 else if (dynamicRange > 15) advice += "・アクセントが明確ですが、音量のバラつきに注意が必要です。<br>";
                 else advice += "・安定した音量バランスで演奏できています。<br>";
-
-                advice += "<br><b>【AIアドバイス】</b><br>";
-                const tips = [
-                    "現在のスピードでの安定感は高いです。BPMを5上げて挑戦してみましょう。",
-                    "フレーズの終わりの音が少し短くなっています。余韻を大切にしましょう。",
-                    "中音域の響きが綺麗です。低音弦をもう少し強く弾くとさらに迫力が出ます。",
-                    "リズムの走り出しが鋭いです。シンコペーションを意識するとよりグルーヴが出ます。"
-                ];
-                advice += "・" + tips[Math.floor(Math.random() * tips.length)];
+                advice += "<br><b>【AIアドバイス】</b><br>・フレーズの終わりの余韻を大切に。BPMを5上げて挑戦してみましょう。";
             } else {
-                advice = "<b>【Dynamic Analysis】</b><br>";
-                advice += avg < 0.01 ? "・Input too low." : "・Good volume stability.<br>";
-                advice += "<br><b>【AI Feedback】</b><br>";
-                advice += "・Your timing is consistent. Try increasing speed by 5%.";
+                advice = "<b>【Dynamic Analysis】</b><br>" + (avg < 0.01 ? "・Input too low." : "・Good volume stability.<br>");
+                advice += "<br><b>【AI Feedback】</b><br>・Consistency is good. Try increasing speed by 5%.";
             }
-
             loading.style.display = 'none';
             adviceText.innerHTML = advice;
             resultCard.style.display = 'block';
@@ -681,6 +677,7 @@
     function deleteRecording() {
         if (confirm("録音を削除しますか？")) {
             document.getElementById('rec-waveform-wrapper').style.display = 'none';
+            document.getElementById('recVolControl').style.display = 'none';
             document.getElementById('recControls').style.display = 'none';
             document.getElementById('aiResultCard').style.display = 'none';
             if (recObjectURL) URL.revokeObjectURL(recObjectURL);
@@ -690,7 +687,7 @@
         }
     }
 
-    // YouTube API Logic
+    // YouTube API
     const tag = document.createElement('script'); tag.src = "https://www.youtube.com/iframe_api";
     document.head.appendChild(tag);
 
@@ -728,7 +725,6 @@
         historyList.innerHTML = "";
         history.forEach(item => {
             const card = document.createElement('div');
-            card.className = 'history-card';
             card.style = "background: #252525; border: 1px solid #333; border-radius: 6px; padding: 8px 12px; min-width: 180px; flex-shrink: 0; display: flex; justify-content: space-between; align-items: center; cursor: pointer;";
             card.onclick = () => loadYouTube(item.url);
             card.innerHTML = `<span style="font-size:0.7rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:#e0e0e0;">${item.title}</span><span class="material-icons" style="color:#ff5555; font-size:16px;" onclick="event.stopPropagation(); deleteHistoryItem('${item.id}')">cancel</span>`;
@@ -773,8 +769,10 @@
         isLooping = !isLooping; 
         const lang = document.getElementById('langSelect').value;
         const b = document.getElementById('toggleLoopBtn'); 
-        b.innerText = isLooping ? translations[lang].loopOn : translations[lang].loopOff; 
-        b.classList.toggle('active', isLooping); 
+        if(b) {
+            b.innerText = isLooping ? translations[lang].loopOn : translations[lang].loopOff; 
+            b.classList.toggle('active', isLooping); 
+        }
     };
 
     function saveLoop(mode) {
@@ -802,6 +800,7 @@
         const container = mode === 'file' ? document.getElementById('loopListFile') : document.getElementById('loopListYT');
         const key = mode === 'file' ? currentFileName : currentYTId;
         const storageKey = mode === 'file' ? 'ams_loops' : 'ams_yt_loops';
+        if(!container) return;
         container.innerHTML = ""; if (!key) return;
         let allLoops = JSON.parse(localStorage.getItem(storageKey) || "{}");
         (allLoops[key] || []).forEach((loop, index) => {
@@ -826,14 +825,25 @@
     };
 
     function startApp() {
-        wavesurfer = WaveSurfer.create({ container: '#waveform', waveColor: '#333', progressColor: '#d4a373', height: 120, barWidth: 2, normalize: true });
-        recWavesurfer = WaveSurfer.create({ container: '#rec-waveform', waveColor: '#552222', progressColor: '#ff4444', height: 60, barWidth: 2, normalize: true });
+        wavesurfer = WaveSurfer.create({ 
+            container: '#waveform', waveColor: '#333', progressColor: '#d4a373', 
+            height: 120, barWidth: 2, normalize: true, barHeight: 1
+        });
+        recWavesurfer = WaveSurfer.create({ 
+            container: '#rec-waveform', waveColor: '#552222', progressColor: '#ff4444', 
+            height: 80, barWidth: 2, normalize: true, barHeight: 1
+        });
+        
         wsRegions = wavesurfer.registerPlugin(WaveSurfer.Regions.create());
         wsRegions.enableDragSelection({ color: 'rgba(212, 163, 115, 0.2)' });
         wsRegions.on('region-created', r => { if(wsRegions.getRegions().length > 1) wsRegions.getRegions()[0].remove(); wavesurfer.setTime(r.start); });
 
         document.getElementById('zoomSlider').oninput = (e) => wavesurfer.zoom(Number(e.target.value));
         document.getElementById('resetZoomBtn').onclick = () => { wavesurfer.zoom(0); document.getElementById('zoomSlider').value = 100; };
+        
+        // 音量・ソロ調整
+        document.getElementById('mainVolume').oninput = applyVolumes;
+        document.getElementById('recVolume').oninput = applyVolumes;
 
         document.getElementById('audioFile').onchange = async e => { 
             const file = e.target.files[0];
@@ -863,6 +873,7 @@
             }
             updateBpmDisplay();
             document.getElementById('pitchTxt').innerText = (p > 0 ? "+" : "") + p;
+            applyVolumes();
         };
 
         wavesurfer.on('ready', () => { document.getElementById('totalTime').innerText = fmt(wavesurfer.getDuration()); applySettings(); });

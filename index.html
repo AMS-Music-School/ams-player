@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AMS Practice Player v1.2.1 - Studio Edition</title>
+    <title>AMS Practice Player v1.3.0 - Studio Sync Edition</title>
     
     <meta name="apple-mobile-web-app-title" content="AMS Player">
     <meta name="apple-mobile-web-app-capable" content="yes">
     
-    <link rel="icon" href="icon.png?v=1.2.1" type="image/png">
-    <link rel="apple-touch-icon" href="icon.png?v=1.2.1">
+    <link rel="icon" href="icon.png?v=1.3.0" type="image/png">
+    <link rel="apple-touch-icon" href="icon.png?v=1.3.0">
 
     <script src="https://unpkg.com/wavesurfer.js@7/dist/wavesurfer.min.js"></script>
     <script src="https://unpkg.com/wavesurfer.js@7/dist/plugins/regions.min.js"></script>
@@ -57,7 +57,7 @@
             min-height: 120px;
         }
         
-        #rec-waveform-wrapper { min-height: 80px; margin-top: 8px; display: none; border: 1px solid var(--recording-red); }
+        #rec-waveform-wrapper { min-height: 100px; margin-top: 8px; display: none; border: 1px solid var(--recording-red); }
 
         .waveform-label { 
             font-size: 0.75rem; color: var(--text-dim); margin-bottom: 8px; 
@@ -76,18 +76,22 @@
 
         .row { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
 
-        /* スライダーのカスタマイズ */
         input[type="range"] { 
-            flex-grow: 1; accent-color: var(--primary-color); height: 6px; min-width: 50px; 
-            -webkit-appearance: none; background: #333; border-radius: 5px;
+            flex-grow: 1; accent-color: var(--primary-color); height: 24px; min-width: 50px; 
+            -webkit-appearance: none; background: transparent;
         }
-        /* つまみの色をアプリ色に統一 */
+        input[type="range"]::-webkit-slider-runnable-track {
+            background: #333; height: 6px; border-radius: 3px;
+        }
         input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%;
-            background: var(--primary-color); cursor: pointer; border: none;
+            -webkit-appearance: none; height: 18px; width: 18px; border-radius: 50%;
+            background: var(--primary-color); cursor: pointer; margin-top: -6px; border: none;
+        }
+        input[type="range"]::-moz-range-track {
+            background: #333; height: 6px; border-radius: 3px;
         }
         input[type="range"]::-moz-range-thumb {
-            height: 16px; width: 16px; border-radius: 50%;
+            height: 18px; width: 18px; border-radius: 50%;
             background: var(--primary-color); cursor: pointer; border: none;
         }
 
@@ -126,7 +130,6 @@
         }
 
         .reset-btn { background: #333; border: none; color: #999; padding: 2px 6px; border-radius: 4px; font-size: 0.65rem; cursor: pointer; }
-
         .menu-trigger { background: none; border: none; color: var(--text-main); cursor: pointer; padding: 5px; }
 
         .side-menu {
@@ -134,30 +137,23 @@
             background: var(--panel-bg); z-index: 3000; transition: right 0.3s ease;
             box-shadow: -5px 0 15px rgba(0,0,0,0.5); padding: 20px;
         }
-
         .side-menu.open { right: 0; }
-
         .menu-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.7); z-index: 2500; display: none;
         }
-
         .menu-header {
             display: flex; justify-content: space-between; align-items: center;
             border-bottom: 1px solid var(--border-color); padding-bottom: 15px; margin-bottom: 20px;
         }
-
         .menu-section-title { font-size: 0.75rem; color: var(--primary-color); text-transform: uppercase; letter-spacing: 1px; margin: 15px 0 10px; display: block; }
-        
         .menu-item {
             display: flex; align-items: center; gap: 12px; color: var(--text-main); padding: 10px;
             text-decoration: none; border-radius: 8px; margin-bottom: 5px; cursor: pointer; transition: background 0.2s; font-size: 0.9rem;
         }
         .menu-item:hover { background: #333; }
 
-        .lang-select {
-            width: 100%; padding: 10px; background: #2a2a2a; color: #fff; border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.9rem;
-        }
+        .lang-select { width: 100%; padding: 10px; background: #2a2a2a; color: #fff; border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.9rem; }
 
         .modal {
             display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
@@ -399,7 +395,7 @@
             setStart: "開始位置", setEnd: "終了位置", loopOff: "ループ OFF", loopOn: "ループ ON",
             fileSelect: "ファイルを選択", saveLoop: "ループ保存",
             recPlay: "録音再生", recStop: "再生停止",
-            guideFileContent: "<b>【Audio File Mode】ガイド</b><ul><li>録音機能: 再生しながら録音できます。客観的チェックに最適。</li><li>音量調整: メイン音源と録音音声を個別に調整可能。</li><li>ソロ(S): 録音音響のみを再生。</li><li>AIアドバイス: 演奏を分析します。</li></ul>",
+            guideFileContent: "<b>【Audio File Mode】ガイド</b><ul><li>録音機能: 再生しながら録音できます。</li><li>波形連動: メイン波形をタップすると録音波形も同じ位置へ移動します。</li><li>ソロ(S): 録音音声のみを聴けます。</li><li>AIアドバイス: 演奏を分析します。</li></ul>",
             guideYTContent: "<b>【YouTube Mode】ガイド</b><ul><li>読み込み: URLを貼り付けてLOAD。</li><li>ループ: SET START/ENDで区間指定。</li><li>SAVE: ループを複数保存。</li></ul>"
         },
         en: {
@@ -408,7 +404,7 @@
             setStart: "SET START", setEnd: "SET END", loopOff: "LOOP OFF", loopOn: "LOOP ON",
             fileSelect: "Select Audio File", saveLoop: "Save Loop",
             recPlay: "Play Rec", recStop: "Stop Rec",
-            guideFileContent: "<b>【Audio File Mode】Guide</b><ul><li>Recording: Record while playing.</li><li>Volume: Adjust Main/Rec levels.</li><li>Solo(S): Listen only to recording.</li><li>AI Advice: Analyze performance.</li></ul>",
+            guideFileContent: "<b>【Audio File Mode】Guide</b><ul><li>Recording: Record while playing.</li><li>Sync: Tap main waveform to sync rec position.</li><li>Solo(S): Listen only to recording.</li><li>AI Advice: Analyze performance.</li></ul>",
             guideYTContent: "<b>【YouTube Mode】Guide</b><ul><li>Load: Paste URL and LOAD.</li><li>Loop: Press START/END.</li><li>SAVE: Store multiple loops.</li></ul>"
         }
     };
@@ -494,15 +490,18 @@
         const mVol = parseFloat(document.getElementById('mainVolume').value);
         const rVol = parseFloat(document.getElementById('recVolume').value);
         
-        // ソロモードの確実な切り替え
+        // モバイル対応: ミュート解除を明示的に
+        wavesurfer.setMuted(false);
         if (isSolo) {
-            wavesurfer.setMuted(true);
+            wavesurfer.setVolume(0);
         } else {
-            wavesurfer.setMuted(false);
             wavesurfer.setVolume(mVol);
         }
         
-        if (recWavesurfer) recWavesurfer.setVolume(rVol);
+        if (recWavesurfer) {
+            recWavesurfer.setMuted(false);
+            recWavesurfer.setVolume(rVol);
+        }
         
         document.getElementById('mainVolTxt').innerText = Math.round(mVol * 100) + "%";
         document.getElementById('recVolTxt').innerText = Math.round(rVol * 100) + "%";
@@ -604,13 +603,8 @@
             document.getElementById('recIcon').innerText = 'mic';
         } else {
             try {
-                // モバイルでの音量低下を防ぐための強力な制約設定
                 const stream = await navigator.mediaDevices.getUserMedia({ 
-                    audio: { 
-                        echoCancellation: { ideal: false }, 
-                        noiseSuppression: { ideal: false }, 
-                        autoGainControl: { ideal: false }
-                    } 
+                    audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } 
                 });
                 
                 if (audioCtx) await audioCtx.resume();
@@ -654,7 +648,12 @@
     function playRecording() {
         if (!recWavesurfer || !recWavesurfer.getDuration()) return;
         if (recWavesurfer.isPlaying()) { recWavesurfer.pause(); wavesurfer.pause(); } 
-        else { wavesurfer.setTime(lastRecStartPos); recWavesurfer.setTime(0); wavesurfer.play(); recWavesurfer.play(); }
+        else { 
+            wavesurfer.setTime(lastRecStartPos); 
+            recWavesurfer.setTime(0); 
+            wavesurfer.play(); 
+            recWavesurfer.play(); 
+        }
         updateRecPlayBtnUI();
     }
 
@@ -680,14 +679,13 @@
             let advice = "";
             const lang = document.getElementById('langSelect').value;
             if (lang === 'ja') {
-                advice = "<b>【リズム/音量分析】</b><br>";
-                if (avg < 0.01) advice += "・入力音が小さすぎます。マイク位置を確認しましょう。<br>";
-                else if (dynamicRange > 15) advice += "・アクセントが明確ですが、音量のバラつきに注意が必要です。<br>";
-                else advice += "・安定した音量バランスで演奏できています。<br>";
-                advice += "<br><b>【AIアドバイス】</b><br>・フレーズの終わりの余韻を大切に。BPMを5上げて挑戦してみましょう。";
+                advice = "<b>【分析レポート】</b><br>";
+                if (avg < 0.01) advice += "・入力音が非常に小さいです。<br>";
+                else if (dynamicRange > 15) advice += "・ダイナミクスが豊かです。<br>";
+                else advice += "・音量が安定しています。<br>";
+                advice += "<br><b>【AIアドバイス】</b><br>・メイン音源とのズレを波形でチェックしましょう。";
             } else {
-                advice = "<b>【Dynamic Analysis】</b><br>" + (avg < 0.01 ? "・Input too low." : "・Good volume stability.<br>");
-                advice += "<br><b>【AI Feedback】</b><br>・Consistency is good. Try increasing speed by 5%.";
+                advice = "<b>【AI Feedback】</b><br>Consistency is key. Use the synced waveform to check your timing.";
             }
             loading.style.display = 'none';
             adviceText.innerHTML = advice;
@@ -708,7 +706,6 @@
         }
     }
 
-    // YouTube API
     const tag = document.createElement('script'); tag.src = "https://www.youtube.com/iframe_api";
     document.head.appendChild(tag);
 
@@ -846,24 +843,26 @@
     };
 
     function startApp() {
+        // 波形設定を左右対称（対称）に
         wavesurfer = WaveSurfer.create({ 
             container: '#waveform', waveColor: '#333', progressColor: '#d4a373', 
-            height: 120, barWidth: 2, normalize: true, barHeight: 1
+            height: 120, barWidth: 2, normalize: true, barHeight: 0.5, minPxPerSec: 50
         });
         recWavesurfer = WaveSurfer.create({ 
             container: '#rec-waveform', waveColor: '#552222', progressColor: '#ff4444', 
-            height: 80, barWidth: 2, normalize: true, barHeight: 1
+            height: 100, barWidth: 2, normalize: true, barHeight: 0.5, minPxPerSec: 50
         });
         
         wsRegions = wavesurfer.registerPlugin(WaveSurfer.Regions.create());
         wsRegions.enableDragSelection({ color: 'rgba(212, 163, 115, 0.2)' });
         wsRegions.on('region-created', r => { if(wsRegions.getRegions().length > 1) wsRegions.getRegions()[0].remove(); wavesurfer.setTime(r.start); });
 
-        document.getElementById('zoomSlider').oninput = (e) => wavesurfer.zoom(Number(e.target.value));
+        document.getElementById('zoomSlider').addEventListener('input', (e) => wavesurfer.zoom(Number(e.target.value)));
         document.getElementById('resetZoomBtn').onclick = () => { wavesurfer.zoom(0); document.getElementById('zoomSlider').value = 100; };
         
-        document.getElementById('mainVolume').oninput = applyVolumes;
-        document.getElementById('recVolume').oninput = applyVolumes;
+        // モバイル対応ボリューム調整リスナー
+        document.getElementById('mainVolume').addEventListener('input', applyVolumes);
+        document.getElementById('recVolume').addEventListener('input', applyVolumes);
 
         document.getElementById('audioFile').onchange = async e => { 
             const file = e.target.files[0];
@@ -913,8 +912,26 @@
 
         wavesurfer.on('play', () => document.getElementById('playIcon').innerText = 'pause');
         wavesurfer.on('pause', () => { document.getElementById('playIcon').innerText = 'play_arrow'; if (recWavesurfer.isPlaying()) recWavesurfer.pause(); });
+        
+        // メイン波形操作に録音波形を完全連動させるロジック
+        const syncRecToMain = () => {
+            if (!recordedAudioBuffer) return;
+            const currentTime = wavesurfer.getCurrentTime();
+            const relativeTime = currentTime - lastRecStartPos;
+            if (relativeTime >= 0 && relativeTime <= recWavesurfer.getDuration()) {
+                recWavesurfer.setTime(relativeTime);
+            } else if (relativeTime < 0) {
+                recWavesurfer.setTime(0);
+            } else {
+                recWavesurfer.setTime(recWavesurfer.getDuration());
+            }
+        };
+
+        wavesurfer.on('interaction', syncRecToMain);
         wavesurfer.on('timeupdate', t => {
             document.getElementById('currentTime').innerText = fmt(t);
+            syncRecToMain(); // 録音波形を追従
+            
             const r = wsRegions.getRegions()[0];
             if(r && t >= r.end) { 
                 wavesurfer.setTime(r.start); 

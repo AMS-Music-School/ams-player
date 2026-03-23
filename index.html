@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AMS Practice Player v1.2.0 - Studio Edition</title>
+    <title>AMS Practice Player v1.2.1 - Studio Edition</title>
     
     <meta name="apple-mobile-web-app-title" content="AMS Player">
     <meta name="apple-mobile-web-app-capable" content="yes">
     
-    <link rel="icon" href="icon.png?v=1.2.0" type="image/png">
-    <link rel="apple-touch-icon" href="icon.png?v=1.2.0">
+    <link rel="icon" href="icon.png?v=1.2.1" type="image/png">
+    <link rel="apple-touch-icon" href="icon.png?v=1.2.1">
 
     <script src="https://unpkg.com/wavesurfer.js@7/dist/wavesurfer.min.js"></script>
     <script src="https://unpkg.com/wavesurfer.js@7/dist/plugins/regions.min.js"></script>
@@ -76,8 +76,20 @@
 
         .row { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
 
-        input[type="range"] { flex-grow: 1; accent-color: var(--primary-color); height: 6px; min-width: 50px; }
-        .vol-slider { accent-color: var(--text-main) !important; }
+        /* スライダーのカスタマイズ */
+        input[type="range"] { 
+            flex-grow: 1; accent-color: var(--primary-color); height: 6px; min-width: 50px; 
+            -webkit-appearance: none; background: #333; border-radius: 5px;
+        }
+        /* つまみの色をアプリ色に統一 */
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%;
+            background: var(--primary-color); cursor: pointer; border: none;
+        }
+        input[type="range"]::-moz-range-thumb {
+            height: 16px; width: 16px; border-radius: 50%;
+            background: var(--primary-color); cursor: pointer; border: none;
+        }
 
         .val-display { color: var(--primary-color); font-weight: bold; min-width: 70px; text-align: right; font-size: 0.95rem; }
         
@@ -274,7 +286,7 @@
         <div class="panel" style="margin-top:-5px; padding: 10px 15px;">
             <div class="row">
                 <span class="material-icons" style="font-size:18px; color:var(--text-dim);">volume_up</span>
-                <input type="range" id="mainVolume" class="vol-slider" min="0" max="1" step="0.05" value="0.8">
+                <input type="range" id="mainVolume" min="0" max="1" step="0.05" value="0.8">
                 <span id="mainVolTxt" style="font-size:0.75rem; min-width:35px; text-align:right;">80%</span>
             </div>
         </div>
@@ -307,7 +319,7 @@
             <div id="recVolControl" style="display:none; flex-direction:column; gap:8px;">
                 <div class="row">
                     <span class="material-icons" style="font-size:18px; color:var(--recording-red);">hearing</span>
-                    <input type="range" id="recVolume" class="vol-slider" min="0" max="1.5" step="0.05" value="1.0">
+                    <input type="range" id="recVolume" min="0" max="1.5" step="0.05" value="1.0">
                     <span id="recVolTxt" style="font-size:0.75rem; min-width:35px; text-align:right;">100%</span>
                 </div>
             </div>
@@ -478,10 +490,18 @@
     }
 
     function applyVolumes() {
+        if (!wavesurfer) return;
         const mVol = parseFloat(document.getElementById('mainVolume').value);
         const rVol = parseFloat(document.getElementById('recVolume').value);
         
-        if (wavesurfer) wavesurfer.setVolume(isSolo ? 0 : mVol);
+        // ソロモードの確実な切り替え
+        if (isSolo) {
+            wavesurfer.setMuted(true);
+        } else {
+            wavesurfer.setMuted(false);
+            wavesurfer.setVolume(mVol);
+        }
+        
         if (recWavesurfer) recWavesurfer.setVolume(rVol);
         
         document.getElementById('mainVolTxt').innerText = Math.round(mVol * 100) + "%";
@@ -584,14 +604,15 @@
             document.getElementById('recIcon').innerText = 'mic';
         } else {
             try {
+                // モバイルでの音量低下を防ぐための強力な制約設定
                 const stream = await navigator.mediaDevices.getUserMedia({ 
                     audio: { 
-                        echoCancellation: false, 
-                        noiseSuppression: false, 
-                        autoGainControl: false,
-                        sampleRate: 44100
+                        echoCancellation: { ideal: false }, 
+                        noiseSuppression: { ideal: false }, 
+                        autoGainControl: { ideal: false }
                     } 
                 });
+                
                 if (audioCtx) await audioCtx.resume();
                 const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4';
                 mediaRecorder = new MediaRecorder(stream, { mimeType });
@@ -841,7 +862,6 @@
         document.getElementById('zoomSlider').oninput = (e) => wavesurfer.zoom(Number(e.target.value));
         document.getElementById('resetZoomBtn').onclick = () => { wavesurfer.zoom(0); document.getElementById('zoomSlider').value = 100; };
         
-        // 音量・ソロ調整
         document.getElementById('mainVolume').oninput = applyVolumes;
         document.getElementById('recVolume').oninput = applyVolumes;
 

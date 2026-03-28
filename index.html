@@ -3,124 +3,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AMS Practice Player v1.2.2</title>
+    <title>AMS Practice Player v1.2.1</title>
     
     <link rel="manifest" href="manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black">
-    <link rel="icon" href="icon.png?v=1.2.2" type="image/png">
-    <link rel="apple-touch-icon" href="icon.png?v=1.2.2">
+    <link rel="icon" href="icon.png" type="image/png">
+    <link rel="apple-touch-icon" href="icon.png">
 
     <script src="https://unpkg.com/wavesurfer.js@7/dist/wavesurfer.min.js"></script>
     <script src="https://unpkg.com/wavesurfer.js@7/dist/plugins/regions.min.js"></script>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     
-    <link rel="stylesheet" href="style.css?v=1.2.2">
-
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-
-        const firebaseConfig = {
-            apiKey: "AIzaSyDI4ReBg15LAaQbd-4slccBHOS9R69sLNU",
-            authDomain: "ams-player-e04bf.firebaseapp.com",
-            projectId: "ams-player-e04bf",
-            storageBucket: "ams-player-e04bf.firebasestorage.app",
-            messagingSenderId: "102274983236",
-            appId: "1:102274983236:web:f4334348391dde42dd6311",
-            measurementId: "G-GYHLQKN6SS"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth();
-        const db = getFirestore(app);
-        const provider = new GoogleAuthProvider();
-
-        async function syncUser(user) {
-            const userRef = doc(db, "users", user.uid);
-            const userSnap = await getDoc(userRef);
-            const statusEl = document.getElementById('authStatus');
-            if (userSnap.exists() && userSnap.data().isPremium) {
-                statusEl.innerHTML += ' <span class="premium-badge">PREMIUM</span>';
-            } else if (!userSnap.exists()) {
-                await setDoc(userRef, { displayName: user.displayName, email: user.email, isPremium: false, createdAt: new Date() });
-            }
-        }
-
-        window.login = () => signInWithPopup(auth, provider);
-        window.logout = () => signOut(auth);
-
-        onAuthStateChanged(auth, (user) => {
-            const statusEl = document.getElementById('authStatus');
-            const loginBtn = document.getElementById('loginBtn');
-            const logoutBtn = document.getElementById('logoutBtn');
-            if (user) {
-                statusEl.innerHTML = `<img src="${user.photoURL}" style="width:24px;border-radius:50%;margin-right:8px;vertical-align:middle;">${user.displayName}`;
-                loginBtn.style.display = 'none';
-                logoutBtn.style.display = 'flex';
-                syncUser(user);
-            } else {
-                statusEl.innerText = "未ログイン";
-                loginBtn.style.display = 'flex';
-                logoutBtn.style.display = 'none';
-            }
-        });
-    </script>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <header>
         <div class="header-logo">AMS PLAYER</div>
-        <button class="menu-trigger" onclick="toggleMenu(true)"><span class="material-icons">menu</span></button>
+        <button class="menu-trigger" onclick="toggleMenu(true)">
+            <span class="material-icons">menu</span>
+        </button>
     </header>
 
     <div class="menu-overlay" id="menuOverlay" onclick="toggleMenu(false)"></div>
-    <div class="side-menu" id="sideMenu">
-        <div class="menu-header">
-            <span style="font-weight:bold; color:var(--primary-color);">MENU</span>
-            <button class="menu-trigger" onclick="toggleMenu(false)"><span class="material-icons">close</span></button>
-        </div>
-        <span class="menu-section-title">Account</span>
-        <div id="authStatus" style="padding:10px 15px; font-size:0.85rem; color:#fff;">確認中...</div>
-        <div class="menu-item" id="loginBtn" onclick="login()"><span class="material-icons">login</span><span>Googleログイン</span></div>
-        <div class="menu-item" id="logoutBtn" onclick="logout()" style="display:none;"><span class="material-icons">logout</span><span>ログアウト</span></div>
-        <hr style="border:0; border-top:1px solid var(--border-color); margin:10px 0;">
-        <span class="menu-section-title" id="langTitle">言語設定</span>
-        <select id="langSelect" class="lang-select" onchange="changeLanguage()">
-            <option value="ja">日本語</option>
-            <option value="en">English</option>
-        </select>
-        <span class="menu-section-title" id="helpTitle">ヘルプ & ガイド</span>
-        <div class="menu-item" onclick="showGuide('file')"><span class="material-icons">description</span><span id="guideFileTitle">ガイド</span></div>
-    </div>
-
-    <div class="container">
-        <div class="mode-tabs">
-            <button class="tab-btn active" id="tab-file" onclick="switchMode('file')">Audio File</button>
-            <button class="tab-btn" id="tab-yt" onclick="switchMode('yt')">YouTube</button>
-        </div>
-
-        <div id="file-section" class="content-section active">
-            <label for="audioFile" class="custom-file-upload">ファイル選択</label>
-            <input type="file" id="audioFile" accept="audio/*">
-            <div id="waveform-wrapper"><div id="waveform"></div></div>
-            <div class="transport-controls">
-                <button class="btn-ctrl play-main" id="playBtn"><span class="material-icons" id="playIcon">play_arrow</span></button>
-            </div>
-            <div class="panel panel-rec">
-                <button class="btn-ctrl rec-btn" id="recBtn" onclick="toggleRecording()"><span class="material-icons">mic</span></button>
-                <div id="rec-waveform-wrapper"><div id="rec-waveform"></div></div>
-            </div>
-        </div>
-
-        <div id="yt-section" class="content-section">
-            <input type="text" id="ytUrl" placeholder="YouTube URL...">
-            <button onclick="loadYouTube()">LOAD</button>
-            <div id="player"></div>
-        </div>
-    </div>
+    <div class="side-menu" id="sideMenu">...</div>
+    <div class="container">...</div>
 
     <script src="https://www.youtube.com/iframe_api"></script>
-    <script src="app.js?v=1.2.2"></script>
+    <script src="app.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js').catch(console.error);
+        }
+    </script>
 </body>
 </html>

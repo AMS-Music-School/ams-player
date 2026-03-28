@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AMS Practice Player v1.3.1 - Subscription Edition</title>
+    <title>AMS Practice Player v1.3.2 - Subscription Edition</title>
     
     <meta name="apple-mobile-web-app-title" content="AMS Player">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -322,7 +322,6 @@
     const auth = firebase.auth();
     const db = firebase.firestore();
 
-    // サブスクリプション状態管理フラグ
     let isSubscribed = false;
 
     // --- Auth & Subscription Logic ---
@@ -336,7 +335,6 @@
     }
 
     function redirectToCheckout() {
-        // Square/Stripe等の決済リンク
         window.location.href = "https://your-payment-link.com";
     }
 
@@ -346,10 +344,12 @@
 
     async function checkSubscriptionStatus(user) {
         try {
-            // Firestoreのusersコレクションからサブスク情報を取得
-            const doc = await db.collection('users').doc(user.uid).get();
-            if (doc.exists && doc.data().isSubscribed) {
-                return true;
+            // あなたの設定通り「School Member」コレクションのドキュメント（メールアドレス）を参照
+            const doc = await db.collection('School Member').doc(user.email).get();
+            if (doc.exists) {
+                const data = doc.data();
+                // フィールド「isSubscribed」が true であるか確認
+                return data.isSubscribed === true;
             }
             return false; 
         } catch (e) {
@@ -360,12 +360,12 @@
 
     auth.onAuthStateChanged(async user => {
         const authOverlay = document.getElementById('auth-overlay');
-        const subOverlay = document.getElementById('subscription-overlay');
         const userInfo = document.getElementById('userInfoDisplay');
         const userName = document.getElementById('userName');
 
         if (user) {
             authOverlay.style.display = 'none';
+            // ログイン時にサブスクリプション状態を確認
             isSubscribed = await checkSubscriptionStatus(user);
             
             userInfo.style.display = 'flex';
@@ -374,7 +374,7 @@
             else renderLoopList('yt');
         } else {
             authOverlay.style.display = 'flex';
-            subOverlay.style.display = 'none';
+            document.getElementById('subscription-overlay').style.display = 'none';
             userInfo.style.display = 'none';
             isSubscribed = false;
         }

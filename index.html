@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AMS Practice Player v1.3.1 - Studio Edition</title>
+    <title>AMS Practice Player v1.3.2 - Studio Edition</title>
     
     <meta name="apple-mobile-web-app-title" content="AMS Player">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -76,16 +76,20 @@
         }
         .header-logo { color: var(--primary-color); font-weight: bold; letter-spacing: 1px; font-size: 0.9rem; }
         .container { width: 100%; max-width: 1200px; margin: 0 auto; padding: 10px; padding-bottom: 40px; }
+
         #waveform-wrapper, #rec-waveform-wrapper { position: relative; background: #000; border: 1px solid var(--border-color); border-radius: 8px; margin-bottom: 10px; overflow: hidden; min-height: 120px; }
         #rec-waveform-wrapper { min-height: 80px; margin-top: 8px; display: none; border: 1px solid var(--recording-red); }
         .waveform-label { font-size: 0.75rem; color: var(--text-dim); margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 5px; }
         .time-display { color: var(--primary-color); font-weight: bold; font-size: 1rem; }
+
         .panel { background: var(--panel-bg); padding: 15px; border-radius: 12px; border: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 12px; margin-bottom: 15px; }
         .panel-rec { padding: 10px 15px; gap: 8px; border-color: rgba(255, 68, 68, 0.4); }
         .row { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+        
         input[type="range"] { flex-grow: 1; accent-color: var(--primary-color); height: 6px; min-width: 50px; -webkit-appearance: none; background: #333; border-radius: 5px; }
         input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%; background: var(--primary-color); cursor: pointer; border: none; }
         .val-display { color: var(--primary-color); font-weight: bold; min-width: 70px; text-align: right; font-size: 0.95rem; }
+
         .transport-controls { display: flex; justify-content: center; align-items: center; gap: 10px; margin: 15px 0; }
         .btn-ctrl { background: var(--panel-bg); color: var(--text-dim); border: 1px solid var(--border-color); border-radius: 50%; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; }
         .btn-ctrl.active { color: var(--primary-color); border-color: var(--primary-color); }
@@ -93,35 +97,35 @@
         .rec-btn { color: var(--recording-red); border-color: #442222; width: 40px; height: 40px; }
         .rec-btn.recording { background: var(--recording-red); color: white; animation: blink 1s infinite; }
         @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+
         .solo-btn { width: 32px; height: 32px; border-radius: 4px; font-weight: bold; font-size: 0.8rem; background: #333; color: var(--text-dim); border: 1px solid var(--border-color); }
         .solo-btn.active { background: var(--solo-yellow); color: #000; border-color: var(--solo-yellow); }
+
         .custom-file-upload { display: block; width: 100%; padding: 12px; border: 2px dashed var(--border-color); border-radius: 10px; margin-bottom: 12px; background: #181818; color: #888; font-size: 0.8rem; text-align: center; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         input[type="file"] { display: none; }
         #countdown-overlay { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 80px; color: var(--primary-color); font-weight: bold; z-index: 1000; display: none; text-shadow: 0 0 20px rgba(0,0,0,0.8); pointer-events: none; }
-        .reset-btn { background: #333; border: none; color: #999; padding: 2px 6px; border-radius: 4px; font-size: 0.65rem; cursor: pointer; }
-        .menu-trigger { background: none; border: none; color: var(--text-main); cursor: pointer; padding: 5px; }
+        
+        /* Menu & Modal Styles */
         .side-menu { position: fixed; top: 0; right: -280px; width: 280px; height: 100%; background: var(--panel-bg); z-index: 3000; transition: right 0.3s ease; box-shadow: -5px 0 15px rgba(0,0,0,0.5); padding: 20px; }
         .side-menu.open { right: 0; }
         .menu-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 2500; display: none; }
         .menu-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 15px; margin-bottom: 20px; }
-        .menu-section-title { font-size: 0.75rem; color: var(--primary-color); text-transform: uppercase; letter-spacing: 1px; margin: 15px 0 10px; display: block; }
         .menu-item { display: flex; align-items: center; gap: 12px; color: var(--text-main); padding: 10px; text-decoration: none; border-radius: 8px; margin-bottom: 5px; cursor: pointer; transition: background 0.2s; font-size: 0.9rem; }
         .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 90%; max-width: 500px; background: var(--panel-bg); border: 1px solid var(--primary-color); border-radius: 16px; z-index: 4000; padding: 20px; box-shadow: 0 0 50px rgba(0,0,0,1); max-height: 80vh; overflow-y: auto; }
-        .title-area { text-align: center; margin-bottom: 15px; }
-        .title-area h2 { color: var(--primary-color); font-size: 0.9rem; letter-spacing: 4px; margin: 0; font-weight: bold; text-transform: uppercase; }
+
+        /* Tabs & YouTube */
         .mode-tabs { display: flex; justify-content: center; gap: 4px; margin-bottom: 15px; background: var(--panel-bg); padding: 4px; border-radius: 10px; border: 1px solid var(--border-color); }
-        .tab-btn { background: transparent; border: none; color: var(--text-dim); padding: 8px; cursor: pointer; border-radius: 6px; font-size: 0.75rem; flex: 1; transition: all 0.3s ease; position: relative; }
+        .tab-btn { background: transparent; border: none; color: var(--text-dim); padding: 8px; cursor: pointer; border-radius: 6px; font-size: 0.75rem; flex: 1; transition: all 0.3s ease; }
         .tab-btn.active { background: var(--primary-color); color: #121212; font-weight: bold; }
         .content-section { display: none; }
         .content-section.active { display: block; }
-        .clear-btn-ja { background: #333; border: none; color: var(--text-main); padding: 6px 15px; border-radius: 20px; font-size: 0.75rem; cursor: pointer; display: flex; align-items: center; gap: 5px; }
         #ytPlayerContainer { position: relative; width: 100%; aspect-ratio: 16 / 9; border-radius: 8px; overflow: hidden; border: 1px solid var(--border-color); background: #000; }
         #ytPlayerContainer iframe { position: absolute; top: 0; left: 0; width: 100% !important; height: 100% !important; }
-        .loop-badge { background: #252525; padding: 6px 10px; border-radius: 20px; display: flex; align-items: center; gap: 6px; border: 1px solid var(--border-color); cursor: pointer; position: relative; }
         .loop-list-container { margin-top: 10px; border-top: 1px solid var(--border-color); padding-top: 10px; display: flex; flex-wrap: wrap; gap: 10px; }
-        .adj-btn { background: #333; border: none; color: #fff; padding: 4px 8px; border-radius: 4px; cursor: pointer; }
         .loop-btn-main { background: var(--panel-bg); color: var(--text-main); border: 1px solid var(--primary-color); padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 0.75rem; }
+        .clear-btn-ja { background: #333; border: none; color: var(--text-main); padding: 6px 15px; border-radius: 20px; font-size: 0.75rem; cursor: pointer; display: flex; align-items: center; gap: 5px; }
         .premium-lock { font-size: 12px; margin-left: 4px; vertical-align: middle; opacity: 0.7; }
+        .reset-btn { background: #333; border: none; color: #999; padding: 2px 6px; border-radius: 4px; font-size: 0.65rem; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -130,7 +134,7 @@
     <div class="login-card">
         <div class="header-logo" style="font-size: 1.5rem; margin-bottom: 10px;">AMS PLAYER</div>
         <p style="font-size: 0.8rem; color: var(--text-dim);">練習を同期するためにログインしてください</p>
-        <button class="google-btn" onclick="loginWithGoogle()">
+        <button class="google-btn" id="loginBtnTrigger">
             <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="18" alt="G">
             Googleでログイン
         </button>
@@ -145,7 +149,6 @@
             サブスクリプションを開始する
         </button>
         <button class="clear-btn-ja" onclick="closeSubOverlay()" style="margin-top:15px; width:100%; justify-content:center;">閉じる</button>
-        <button class="logout-btn" onclick="logout()" style="margin-top:20px; display:block; width:100%;">ログアウト</button>
     </div>
 </div>
 
@@ -155,7 +158,7 @@
         <span id="userName">Guest</span>
         <button class="logout-btn" onclick="logout()">Logout</button>
     </div>
-    <button class="menu-trigger" onclick="toggleMenu(true)">
+    <button class="menu-trigger" style="background:none; border:none; color:white;" onclick="toggleMenu(true)">
         <span class="material-icons">menu</span>
     </button>
 </header>
@@ -164,24 +167,18 @@
 <div class="side-menu" id="sideMenu">
     <div class="menu-header">
         <span style="font-weight:bold; color:var(--primary-color);">MENU</span>
-        <button class="menu-trigger" onclick="toggleMenu(false)">
+        <button style="background:none; border:none; color:white;" onclick="toggleMenu(false)">
             <span class="material-icons">close</span>
         </button>
     </div>
-    <span class="menu-section-title" id="langTitle">Language Settings</span>
-    <select id="langSelect" class="lang-select" onchange="changeLanguage()">
+    <span style="font-size:0.7rem; color:var(--primary-color); display:block; margin-bottom:10px;">LANGUAGE</span>
+    <select id="langSelect" onchange="changeLanguage()" style="width:100%; background:#333; color:white; border:1px solid #555; padding:5px; border-radius:5px;">
         <option value="ja">日本語</option> <option value="en">English</option>
     </select>
-    <span class="menu-section-title" id="helpTitle">Help & Guide</span>
-    <div class="menu-item" onclick="showGuide('file')"><span class="material-icons">description</span><span id="guideFileTitle">Audio Fileモード ガイド</span></div>
-    <div class="menu-item" onclick="showGuide('yt')"><span class="material-icons">smart_display</span><span id="guideYTTitle">YouTubeモード ガイド</span></div>
 </div>
 
-<div id="guideModalFile" class="modal"><div class="guide-box-inner" id="guideFileContent"></div><button class="clear-btn-ja" style="width:100%; margin-top:20px;" onclick="closeModals()">閉じる</button></div>
-<div id="guideModalYT" class="modal"><div class="guide-box-inner" id="guideYTContent"></div><button class="clear-btn-ja" style="width:100%; margin-top:20px;" onclick="closeModals()">閉じる</button></div>
-
 <div class="container">
-    <div class="title-area"><h2>AMS Practice Player</h2></div>
+    <div style="text-align:center; margin-bottom:15px;"><h2 style="color:var(--primary-color); font-size:0.9rem; letter-spacing:4px; text-transform:uppercase;">AMS Practice Player</h2></div>
 
     <div class="mode-tabs">
         <button class="tab-btn active" id="tab-file" onclick="switchMode('file')">Audio File Mode</button>
@@ -190,7 +187,7 @@
 
     <div id="file-section" class="content-section active">
         <label for="audioFile" class="custom-file-upload" id="fileSelectBtn">ファイルを選択</label>
-        <input type="file" id="audioFile" accept="audio/*, .mp3, .wav, .m4a, .aac, .mp4, .ogg, .flac, .webma">
+        <input type="file" id="audioFile" accept="audio/*">
 
         <div class="waveform-label">
             <span id="loadStatus">READY</span>
@@ -215,9 +212,9 @@
             </div>
         </div>
 
-        <div class="clear-btn-container" style="display:flex; justify-content:center; gap:10px; margin-bottom:10px;">
-            <button class="clear-btn-ja" onclick="wsRegions.clearRegions()" id="clearRangeBtn"><span class="material-icons" style="font-size:16px;">layers_clear</span> 範囲解除</button>
-            <button class="clear-btn-ja" onclick="saveLoop('file')" id="saveLoopBtn" style="border: 1px solid var(--primary-color);"><span class="material-icons" style="font-size:16px;">bookmark_add</span> ループ保存</button>
+        <div style="display:flex; justify-content:center; gap:10px; margin-bottom:10px;">
+            <button class="clear-btn-ja" onclick="wsRegions.clearRegions()"><span class="material-icons" style="font-size:16px;">layers_clear</span> 範囲解除</button>
+            <button class="clear-btn-ja" onclick="saveLoop('file')" style="border: 1px solid var(--primary-color);"><span class="material-icons" style="font-size:16px;">bookmark_add</span> ループ保存</button>
         </div>
         <div id="loopListFile" class="loop-list-container"></div>
         
@@ -238,16 +235,9 @@
                 </div>
             </div>
             <div id="rec-waveform-wrapper"><div id="rec-waveform"></div></div>
-            <div id="recVolControl" style="display:none; flex-direction:column; gap:8px;">
-                <div class="row">
-                    <span class="material-icons" style="font-size:18px; color:var(--recording-red);">hearing</span>
-                    <input type="range" id="recVolume" min="0" max="1.5" step="0.05" value="1.0">
-                    <span id="recVolTxt" style="font-size:0.75rem; min-width:35px; text-align:right;">100%</span>
-                </div>
-            </div>
-            <div class="row" id="recControls" style="display:none; justify-content:center; gap:8px; margin-top:4px;">
-                <button class="clear-btn-ja rec-action-btn" onclick="playRecording()" id="playRecBtn"><span class="material-icons" style="font-size:14px;">play_circle</span> 録音再生</button>
-                <button class="clear-btn-ja rec-action-btn" onclick="deleteRecording()" style="color:#ff5555;"><span class="material-icons" style="font-size:14px;">delete</span> 削除</button>
+            <div id="recControls" style="display:none; justify-content:center; gap:8px; margin-top:4px;">
+                <button class="clear-btn-ja" onclick="playRecording()"><span class="material-icons" style="font-size:14px;">play_circle</span> 録音再生</button>
+                <button class="clear-btn-ja" onclick="deleteRecording()" style="color:#ff5555;"><span class="material-icons" style="font-size:14px;">delete</span> 削除</button>
             </div>
         </div>
     </div>
@@ -261,13 +251,13 @@
         <div class="waveform-label" style="margin-top:10px;">
             <span id="ytTimeDisplay" class="time-display">00:00 / 00:00</span>
             <div style="display:flex; gap:10px;">
-                <button class="clear-btn-ja" onclick="setYTLoop('start')" id="ytLoopStartBtn">IN</button>
-                <button class="clear-btn-ja" onclick="setYTLoop('end')" id="ytLoopEndBtn">OUT</button>
+                <button class="clear-btn-ja" onclick="setYTLoop('start')">IN</button>
+                <button class="clear-btn-ja" onclick="setYTLoop('end')">OUT</button>
             </div>
         </div>
-        <div class="clear-btn-container" style="display:flex; justify-content:center; gap:10px; margin-bottom:10px;">
-            <button class="clear-btn-ja" onclick="clearYTLoop()" id="ytClearLoopBtn"><span class="material-icons" style="font-size:16px;">layers_clear</span> 範囲解除</button>
-            <button class="clear-btn-ja" onclick="saveLoop('yt')" id="saveLoopBtnYT" style="border: 1px solid var(--primary-color);"><span class="material-icons" style="font-size:16px;">bookmark_add</span> ループ保存</button>
+        <div style="display:flex; justify-content:center; gap:10px; margin-bottom:10px;">
+            <button class="clear-btn-ja" onclick="clearYTLoop()"><span class="material-icons" style="font-size:16px;">layers_clear</span> 範囲解除</button>
+            <button class="clear-btn-ja" onclick="saveLoop('yt')" style="border: 1px solid var(--primary-color);"><span class="material-icons" style="font-size:16px;">bookmark_add</span> ループ保存</button>
         </div>
         <div id="loopListYT" class="loop-list-container"></div>
     </div>
@@ -293,7 +283,7 @@
 </div>
 
 <script>
-    // --- Firebase Configuration ---
+    // --- Firebase Setup ---
     const firebaseConfig = {
         apiKey: "YOUR_API_KEY",
         authDomain: "YOUR_PROJECT.firebaseapp.com",
@@ -302,31 +292,34 @@
         messagingSenderId: "YOUR_SENDER_ID",
         appId: "YOUR_APP_ID"
     };
-    firebase.initializeApp(firebaseConfig);
+    
+    // Initialize Firebase
+    if (!firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+    }
     const auth = firebase.auth();
     const db = firebase.firestore();
 
-    // --- State & Variables ---
+    // --- State Management ---
     let wavesurfer, wsRegions, recWavesurfer;
     let audioContext, mediaRecorder, chunks = [], recordedUrl = null;
     let isRecording = false, isSolo = false, isCountEnabled = true, isSpeedUpEnabled = false;
     let ytPlayer = null, ytLoop = { start: null, end: null }, ytInterval = null;
-    let currentLanguage = 'ja';
-    let isSubscribed = false;
-    let currentUser = null;
+    let isSubscribed = false, currentUser = null;
 
-    // 無料開放する会員IDのリスト
-    const freeMemberIDs = ["YOUR_MEMBER_ID"]; // ここに特定のUIDを記述
+    // 無料開放する会員ID (UID)
+    const freeMemberIDs = ["YOUR_MEMBER_ID"]; 
 
-    const translations = {
-        ja: { fileSelect: 'ファイルを選択', ready: '準備完了', loading: '読み込み中...', speed: '速度', pitch: 'ピッチ', guideFile: 'Audio Fileモード ガイド', guideYT: 'YouTubeモード ガイド' },
-        en: { fileSelect: 'Select File', ready: 'READY', loading: 'LOADING...', speed: 'SPEED', pitch: 'PITCH', guideFile: 'Audio File Guide', guideYT: 'YouTube Guide' }
-    };
-
-    // --- Authentication & Subscription Logic ---
-    function loginWithGoogle() {
-        const provider = new firebase.auth.GoogleAuthProvider();
-        auth.signInWithPopup(provider);
+    // --- Auth Functions (修正版：確実なクリック反応) ---
+    const loginBtn = document.getElementById('loginBtnTrigger');
+    if (loginBtn) {
+        loginBtn.addEventListener('click', () => {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            auth.signInWithPopup(provider).catch(err => {
+                console.error("Login Error:", err);
+                alert("ログインに失敗しました: " + err.message);
+            });
+        });
     }
 
     function logout() { auth.signOut().then(() => location.reload()); }
@@ -338,11 +331,10 @@
             document.getElementById('userInfoDisplay').style.display = 'flex';
             document.getElementById('userName').innerText = user.displayName || 'User';
             
-            // 会員IDチェック（無料開放）
+            // 会員権限チェック
             if (freeMemberIDs.includes(user.uid)) {
                 isSubscribed = true;
             } else {
-                // 通常のサブスクチェック
                 const snap = await db.collection('users').doc(user.uid).get();
                 isSubscribed = snap.exists && snap.data().isSubscribed;
             }
@@ -356,24 +348,16 @@
         }
     });
 
-    function redirectToCheckout() {
-        alert("サブスクリプション決済ページへ移動します（実装例）");
-    }
-
-    // --- Core Functions ---
+    // --- Core Audio Logic ---
     function initAudioContext() { if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)(); }
 
     function startApp() {
         wavesurfer = WaveSurfer.create({
-            container: '#waveform', waveColor: '#555', progressColor: varColor('--primary-color'),
-            cursorColor: '#fff', barWidth: 2, barRadius: 3, height: 120, minPxPerSec: 100
+            container: '#waveform', waveColor: '#555', progressColor: '#d4a373',
+            cursorColor: '#fff', barWidth: 2, height: 120, minPxPerSec: 100
         });
         wsRegions = wavesurfer.registerPlugin(WaveSurfer.Regions.create());
-
-        recWavesurfer = WaveSurfer.create({
-            container: '#rec-waveform', waveColor: '#ff4444', progressColor: '#ff8888',
-            cursorColor: 'transparent', barWidth: 2, height: 80
-        });
+        recWavesurfer = WaveSurfer.create({ container: '#rec-waveform', waveColor: '#ff4444', progressColor: '#ff8888', height: 80 });
 
         setupEventListeners();
     }
@@ -382,43 +366,15 @@
         document.getElementById('audioFile').onchange = e => {
             const file = e.target.files[0];
             if (file) {
-                const url = URL.createObjectURL(file);
-                wavesurfer.load(url);
+                wavesurfer.load(URL.createObjectURL(file));
                 document.getElementById('fileSelectBtn').innerText = file.name;
-                document.getElementById('loadStatus').innerText = translations[currentLanguage].loading;
+                document.getElementById('loadStatus').innerText = "LOADING...";
             }
         };
 
         wavesurfer.on('ready', () => {
-            document.getElementById('loadStatus').innerText = translations[currentLanguage].ready;
+            document.getElementById('loadStatus').innerText = "READY";
             document.getElementById('totalTime').innerText = fmt(wavesurfer.getDuration());
-            wavesurfer.zoom(100);
-        });
-
-        document.getElementById('zoomSlider').oninput = e => wavesurfer.zoom(parseFloat(e.target.value));
-        document.getElementById('resetZoomBtn').onclick = () => { wavesurfer.zoom(0); document.getElementById('zoomSlider').value = 0; };
-        document.getElementById('mainVolume').oninput = e => { wavesurfer.setVolume(e.target.value); document.getElementById('mainVolTxt').innerText = Math.round(e.target.value*100)+'%'; };
-        document.getElementById('speed').oninput = applySettings;
-        document.getElementById('pitch').oninput = applySettings;
-
-        document.getElementById('playBtn').onclick = async () => {
-            initAudioContext();
-            if (wavesurfer.isPlaying()) {
-                wavesurfer.pause();
-                if (recWavesurfer.isPlaying()) recWavesurfer.pause();
-            } else {
-                const current = wavesurfer.getCurrentTime(), region = wsRegions.getRegions()[0];
-                if (isCountEnabled && region && (current < region.start || current >= region.end)) wavesurfer.setTime(region.start);
-                await runCountdown();
-                applySettings();
-                wavesurfer.play();
-            }
-        };
-
-        wavesurfer.on('play', () => document.getElementById('playIcon').innerText = 'pause');
-        wavesurfer.on('pause', () => {
-            document.getElementById('playIcon').innerText = 'play_arrow';
-            if (recWavesurfer.isPlaying()) recWavesurfer.pause();
         });
 
         wavesurfer.on('timeupdate', t => {
@@ -431,13 +387,31 @@
                     s.value = Math.min(1.5, parseFloat(s.value) + 0.05).toFixed(2);
                     applySettings();
                 }
-                if (isRecording) toggleRecording();
             }
         });
 
-        wsRegions.on('region-created', r => { if(wsRegions.getRegions().length > 1) wsRegions.getRegions()[0].remove(); });
-        window.resetSetting = (id, val) => { document.getElementById(id).value = val; applySettings(); };
-        changeLanguage();
+        document.getElementById('playBtn').onclick = async () => {
+            initAudioContext();
+            if (wavesurfer.isPlaying()) wavesurfer.pause();
+            else {
+                const region = wsRegions.getRegions()[0];
+                if (isCountEnabled && region) wavesurfer.setTime(region.start);
+                await runCountdown();
+                applySettings();
+                wavesurfer.play();
+            }
+        };
+
+        wavesurfer.on('play', () => document.getElementById('playIcon').innerText = 'pause');
+        wavesurfer.on('pause', () => document.getElementById('playIcon').innerText = 'play_arrow');
+
+        document.getElementById('zoomSlider').oninput = e => wavesurfer.zoom(parseFloat(e.target.value));
+        document.getElementById('mainVolume').oninput = e => {
+            wavesurfer.setVolume(e.target.value);
+            document.getElementById('mainVolTxt').innerText = Math.round(e.target.value*100)+'%';
+        };
+        document.getElementById('speed').oninput = applySettings;
+        document.getElementById('pitch').oninput = applySettings;
     }
 
     function applySettings() {
@@ -459,20 +433,7 @@
         overlay.style.display = 'none';
     }
 
-    function switchMode(mode) {
-        if (mode === 'yt' && !isSubscribed) {
-            document.getElementById('subscription-overlay').style.display = 'flex';
-            return;
-        }
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        document.getElementById('tab-' + mode).classList.add('active');
-        document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
-        document.getElementById(mode + '-section').classList.add('active');
-        if (mode === 'yt') initYoutube();
-        else if (ytPlayer) ytPlayer.pauseVideo();
-    }
-
-    // --- Recording Logic ---
+    // --- Recording & UI Functions ---
     async function toggleRecording() {
         if (!isRecording) {
             initAudioContext();
@@ -485,51 +446,30 @@
                 recWavesurfer.load(recordedUrl);
                 document.getElementById('rec-waveform-wrapper').style.display = 'block';
                 document.getElementById('recControls').style.display = 'flex';
-                document.getElementById('recVolControl').style.display = 'flex';
                 chunks = [];
             };
             mediaRecorder.start();
             isRecording = true;
             document.getElementById('recBtn').classList.add('recording');
-            document.getElementById('recIcon').innerText = 'stop';
         } else {
             mediaRecorder.stop();
             isRecording = false;
             document.getElementById('recBtn').classList.remove('recording');
-            document.getElementById('recIcon').innerText = 'mic';
         }
     }
 
-    function playRecording() {
-        if (recWavesurfer.isPlaying()) recWavesurfer.pause();
-        else {
-            recWavesurfer.setVolume(document.getElementById('recVolume').value);
-            recWavesurfer.play();
-        }
-    }
+    function playRecording() { recWavesurfer.play(); }
+    function deleteRecording() { recWavesurfer.empty(); document.getElementById('rec-waveform-wrapper').style.display = 'none'; }
+    function toggleSolo() { isSolo = !isSolo; document.getElementById('soloBtn').classList.toggle('active', isSolo); wavesurfer.setVolume(isSolo ? 0 : 0.8); }
+    function toggleFeature(t) { if(t==='count'){ isCountEnabled=!isCountEnabled; document.getElementById('countToggleBtn').classList.toggle('active'); } else { isSpeedUpEnabled=!isSpeedUpEnabled; document.getElementById('speedUpToggleBtn').classList.toggle('active'); }}
 
-    function deleteRecording() {
-        recWavesurfer.empty();
-        document.getElementById('rec-waveform-wrapper').style.display = 'none';
-        document.getElementById('recControls').style.display = 'none';
-        document.getElementById('recVolControl').style.display = 'none';
-        recordedUrl = null;
-    }
-
-    function toggleSolo() {
-        isSolo = !isSolo;
-        document.getElementById('soloBtn').classList.toggle('active', isSolo);
-        wavesurfer.setVolume(isSolo ? 0 : document.getElementById('mainVolume').value);
-    }
-
-    function toggleFeature(type) {
-        if (type === 'count') {
-            isCountEnabled = !isCountEnabled;
-            document.getElementById('countToggleBtn').classList.toggle('active', isCountEnabled);
-        } else if (type === 'speedup') {
-            isSpeedUpEnabled = !isSpeedUpEnabled;
-            document.getElementById('speedUpToggleBtn').classList.toggle('active', isSpeedUpEnabled);
-        }
+    function switchMode(m) {
+        if (m === 'yt' && !isSubscribed) { document.getElementById('subscription-overlay').style.display = 'flex'; return; }
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById('tab-' + m).classList.add('active');
+        document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
+        document.getElementById(m + '-section').classList.add('active');
+        if (m === 'yt') initYoutube();
     }
 
     // --- YouTube Logic ---
@@ -541,8 +481,8 @@
         window.onYouTubeIframeAPIReady = () => {
             ytPlayer = new YT.Player('ytPlayerContainer', {
                 height: '100%', width: '100%',
-                playerVars: { 'playsinline': 1, 'controls': 1, 'disablekb': 1 },
-                events: { 'onStateChange': onYTStateChange }
+                playerVars: { 'playsinline': 1 },
+                events: { 'onStateChange': e => { if(e.data === YT.PlayerState.ENDED && ytLoop.start!==null) ytPlayer.seekTo(ytLoop.start); } }
             });
         };
     }
@@ -550,62 +490,29 @@
     function loadYoutube() {
         const url = document.getElementById('ytUrl').value;
         const id = url.split('v=')[1]?.split('&')[0] || url.split('/').pop();
-        if (id && ytPlayer) {
-            ytPlayer.loadVideoById(id);
-            startYTTracking();
-        }
+        if (id && ytPlayer) { ytPlayer.loadVideoById(id); startYTTracking(); }
     }
 
     function startYTTracking() {
-        if (ytInterval) clearInterval(ytInterval);
         ytInterval = setInterval(() => {
             if (ytPlayer && ytPlayer.getCurrentTime) {
                 const curr = ytPlayer.getCurrentTime();
-                const dur = ytPlayer.getDuration();
-                document.getElementById('ytTimeDisplay').innerText = fmt(curr) + ' / ' + fmt(dur);
-                if (ytLoop.start !== null && ytLoop.end !== null) {
-                    if (curr >= ytLoop.end || curr < ytLoop.start) ytPlayer.seekTo(ytLoop.start);
-                }
+                document.getElementById('ytTimeDisplay').innerText = fmt(curr) + ' / ' + fmt(ytPlayer.getDuration());
+                if (ytLoop.start !== null && (curr >= ytLoop.end || curr < ytLoop.start)) ytPlayer.seekTo(ytLoop.start);
             }
         }, 500);
     }
 
-    function onYTStateChange(e) { if (e.data === YT.PlayerState.ENDED && ytLoop.start !== null) ytPlayer.seekTo(ytLoop.start); }
-    function setYTLoop(type) { if (ytPlayer) ytLoop[type] = ytPlayer.getCurrentTime(); }
+    function setYTLoop(t) { ytLoop[t] = ytPlayer.getCurrentTime(); }
     function clearYTLoop() { ytLoop = { start: null, end: null }; }
 
-    // --- Utility ---
-    function fmt(s) {
-        const m = Math.floor(s / 60);
-        const sec = Math.floor(s % 60);
-        return `${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
-    }
+    // --- Helpers ---
+    function fmt(s) { const m=Math.floor(s/60), sec=Math.floor(s%60); return `${m.toString().padStart(2,'0')}:${sec.toString().padStart(2,'0')}`; }
+    function toggleMenu(s) { document.getElementById('sideMenu').classList.toggle('open', s); document.getElementById('menuOverlay').style.display = s ? 'block' : 'none'; }
+    function resetSetting(id, v) { document.getElementById(id).value = v; applySettings(); }
+    function closeSubOverlay() { document.getElementById('subscription-overlay').style.display = 'none'; }
 
-    function varColor(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
-
-    function toggleMenu(show) {
-        document.getElementById('sideMenu').classList.toggle('open', show);
-        document.getElementById('menuOverlay').style.display = show ? 'block' : 'none';
-    }
-
-    function changeLanguage() {
-        currentLanguage = document.getElementById('langSelect').value;
-        const t = translations[currentLanguage];
-        document.getElementById('fileSelectBtn').innerText = t.fileSelect;
-        document.getElementById('speedLabel').innerText = t.speed;
-        document.getElementById('pitchLabel').innerText = t.pitch;
-        document.getElementById('guideFileTitle').innerText = t.guideFile;
-        document.getElementById('guideYTTitle').innerText = t.guideYT;
-    }
-
-    function closeModals() {
-        document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
-    }
-
-    function closeSubOverlay() {
-        document.getElementById('subscription-overlay').style.display = 'none';
-    }
-
+    // --- Firestore Loops ---
     async function saveLoop(type) {
         if (!currentUser) return;
         let data = {};
@@ -624,25 +531,22 @@
     async function loadSavedLoops() {
         if (!currentUser) return;
         const snap = await db.collection('users').doc(currentUser.uid).collection('loops').get();
-        const containerFile = document.getElementById('loopListFile');
-        const containerYT = document.getElementById('loopListYT');
-        containerFile.innerHTML = ''; containerYT.innerHTML = '';
+        const containerF = document.getElementById('loopListFile'), containerY = document.getElementById('loopListYT');
+        containerF.innerHTML = ''; containerY.innerHTML = '';
         snap.forEach(doc => {
             const d = doc.data();
             const btn = document.createElement('button');
-            btn.className = 'loop-btn-main';
-            btn.innerText = `${fmt(d.start)} - ${fmt(d.end)}`;
+            btn.className = 'loop-btn-main'; btn.innerText = `${fmt(d.start)} - ${fmt(d.end)}`;
             btn.onclick = () => {
                 if (d.type === 'file') {
                     wsRegions.clearRegions();
                     wsRegions.addRegion({ start: d.start, end: d.end, color: 'rgba(212, 163, 115, 0.3)' });
                     wavesurfer.setTime(d.start);
                 } else {
-                    ytLoop = { start: d.start, end: d.end };
-                    ytPlayer.seekTo(d.start);
+                    ytLoop = { start: d.start, end: d.end }; ytPlayer.seekTo(d.start);
                 }
             };
-            if (d.type === 'file') containerFile.appendChild(btn); else containerYT.appendChild(btn);
+            if (d.type === 'file') containerF.appendChild(btn); else containerY.appendChild(btn);
         });
     }
 

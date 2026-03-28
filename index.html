@@ -3,28 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AMS Practice Player v1.2.1 - Studio Edition</title>
+    <title>AMS Practice Player v1.2.2</title>
     
     <link rel="manifest" href="manifest.json">
-    <meta name="apple-mobile-web-app-title" content="AMS Player">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black">
     
-    <link rel="icon" href="icon.png?v=1.2.1" type="image/png">
-    <link rel="apple-touch-icon" href="icon.png?v=1.2.1">
+    <link rel="icon" href="icon.png?v=1.2.2" type="image/png">
+    <link rel="apple-touch-icon" href="icon.png?v=1.2.2">
 
     <script src="https://unpkg.com/wavesurfer.js@7/dist/wavesurfer.min.js"></script>
     <script src="https://unpkg.com/wavesurfer.js@7/dist/plugins/regions.min.js"></script>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=1.2.2">
 
     <script type="module">
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
       import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
       import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-      // 提供された firebaseConfig を反映
       const firebaseConfig = {
         apiKey: "AIzaSyDI4ReBg15LAaQbd-4slccBHOS9R69sLNU",
         authDomain: "ams-player-e04bf.firebaseapp.com",
@@ -40,18 +38,17 @@
       const db = getFirestore(app);
       const provider = new GoogleAuthProvider();
 
-      // ユーザーの会員状態を確認する関数
       async function checkUserStatus(user) {
         const userRef = doc(db, "users", user.uid);
         const userSnap = await getDoc(userRef);
+        const statusEl = document.getElementById('authStatus');
 
         if (userSnap.exists()) {
           const data = userSnap.data();
           if (data.isPremium === true) {
-            document.getElementById('authStatus').innerHTML += ' <span style="color:#ffd700; font-weight:bold; font-size:0.7rem; border:1px solid #ffd700; padding:1px 4px; border-radius:4px; margin-left:5px;">PREMIUM</span>';
+            statusEl.innerHTML += ' <span class="premium-badge">PREMIUM</span>';
           }
         } else {
-          // 初回ログイン時にデータベースへ初期登録
           await setDoc(userRef, {
             displayName: user.displayName,
             email: user.email,
@@ -61,24 +58,29 @@
         }
       }
 
-      window.login = () => signInWithPopup(auth, provider).catch(err => console.error(err));
-      window.logout = () => signOut(auth).catch(err => console.error(err));
+      window.login = () => signInWithPopup(auth, provider).catch(err => console.error("Login Error:", err));
+      window.logout = () => signOut(auth).catch(err => console.error("Logout Error:", err));
 
-      onAuthStateChanged(auth, (user) => {
-        const statusEl = document.getElementById('authStatus');
-        const loginBtn = document.getElementById('loginBtn');
-        const logoutBtn = document.getElementById('logoutBtn');
+      // DOMの読み込み完了を待ってから監視を開始
+      document.addEventListener('DOMContentLoaded', () => {
+          onAuthStateChanged(auth, (user) => {
+            const statusEl = document.getElementById('authStatus');
+            const loginBtn = document.getElementById('loginBtn');
+            const logoutBtn = document.getElementById('logoutBtn');
 
-        if (user) {
-          statusEl.innerHTML = `<img src="${user.photoURL}" style="width:24px; border-radius:50%; margin-right:8px; vertical-align:middle;"><span>${user.displayName}</span>`;
-          loginBtn.style.display = 'none';
-          logoutBtn.style.display = 'flex';
-          checkUserStatus(user);
-        } else {
-          statusEl.innerText = "ログインしていません";
-          loginBtn.style.display = 'flex';
-          logoutBtn.style.display = 'none';
-        }
+            if (!statusEl || !loginBtn || !logoutBtn) return;
+
+            if (user) {
+              statusEl.innerHTML = `<img src="${user.photoURL}" style="width:24px; border-radius:50%; margin-right:8px; vertical-align:middle;"><span>${user.displayName}</span>`;
+              loginBtn.style.display = 'none';
+              logoutBtn.style.display = 'flex';
+              checkUserStatus(user);
+            } else {
+              statusEl.innerText = "ログインしていません";
+              loginBtn.style.display = 'flex';
+              logoutBtn.style.display = 'none';
+            }
+          });
       });
     </script>
 </head>
@@ -121,12 +123,8 @@
     <div class="menu-item" onclick="showGuide('yt')"><span class="material-icons">smart_display</span><span id="guideYTTitle">YouTubeモード ガイド</span></div>
 </div>
 
-<div id="guideModalFile" class="modal"><div class="guide-box-inner" id="guideFileContent"></div><button class="clear-btn-ja" id="closeBtn1" style="width:100%; margin-top:20px;" onclick="closeModals()">閉じる</button></div>
-<div id="guideModalYT" class="modal"><div class="guide-box-inner" id="guideYTContent"></div><button class="clear-btn-ja" id="closeBtn2" style="width:100%; margin-top:20px;" onclick="closeModals()">閉じる</button></div>
-
 <div class="container">
     <div class="title-area"><h2>AMS Practice Player</h2></div>
-
     <div class="mode-tabs">
         <button class="tab-btn active" id="tab-file" onclick="switchMode('file')">Audio File Mode</button>
         <button class="tab-btn" id="tab-yt" onclick="switchMode('yt')">YouTube Mode</button>
@@ -148,21 +146,17 @@
             <div id="countdown-overlay"></div>
             <div id="waveform"></div>
         </div>
-        
-        <div class="panel" style="margin-top:-5px; padding: 10px 15px;">
+        <div class="panel">
             <div class="row">
                 <span class="material-icons" style="font-size:18px; color:var(--text-dim);">volume_up</span>
                 <input type="range" id="mainVolume" min="0" max="1" step="0.05" value="0.8">
-                <span id="mainVolTxt" style="font-size:0.75rem; min-width:35px; text-align:right;">80%</span>
             </div>
         </div>
-
         <div class="clear-btn-container">
             <button class="clear-btn-ja" onclick="wsRegions.clearRegions()" id="clearRangeBtn">範囲解除</button>
             <button class="clear-btn-ja" onclick="saveLoop('file')" id="saveLoopBtn">ループ保存</button>
         </div>
         <div id="loopListFile" class="loop-list-container"></div>
-
         <div class="transport-controls">
             <button class="btn-ctrl active" onclick="toggleFeature('count')"><span class="material-icons">timer</span></button>
             <button class="btn-ctrl" onclick="wavesurfer.skip(-5)"><span class="material-icons">replay_5</span></button>
@@ -170,7 +164,6 @@
             <button class="btn-ctrl" onclick="wavesurfer.skip(5)"><span class="material-icons">forward_5</span></button>
             <button class="btn-ctrl" onclick="toggleFeature('speedup')"><span class="material-icons">speed</span></button>
         </div>
-
         <div class="panel panel-rec">
             <div class="row">
                 <span>SELF-RECORDING CHECK</span>
@@ -178,43 +171,31 @@
             </div>
             <div id="rec-waveform-wrapper"><div id="rec-waveform"></div></div>
         </div>
-
         <div class="panel">
-            <div class="row">
-                <div style="min-width:65px;">Speed</div>
-                <input type="range" id="speed" min="0.5" max="1.5" step="0.01" value="1.0">
-                <span id="spTxt">BPM ---</span>
-            </div>
-            <div class="row">
-                <div style="min-width:65px;">Pitch</div>
-                <input type="range" id="pitch" min="-6" max="6" step="1" value="0">
-                <span id="pitchTxt">±0</span>
-            </div>
+            <div class="row">Speed <input type="range" id="speed" min="0.5" max="1.5" step="0.01" value="1.0"><span id="spTxt">BPM ---</span></div>
+            <div class="row">Pitch <input type="range" id="pitch" min="-6" max="6" step="1" value="0"><span id="pitchTxt">±0</span></div>
         </div>
     </div>
 
     <div id="yt-section" class="content-section">
-        <div style="display:flex; gap:8px; margin-bottom:10px;">
-            <input type="text" id="ytUrl" placeholder="YouTube URL..." style="flex-grow:1;">
-            <button onclick="loadYouTube()">LOAD</button>
-        </div>
+        <div style="display:flex; gap:8px; margin-bottom:10px;"><input type="text" id="ytUrl" placeholder="YouTube URL..." style="flex-grow:1;"><button onclick="loadYouTube()">LOAD</button></div>
         <div id="ytPlayerContainer"><div id="player"></div></div>
-        <div class="panel" style="margin-top:15px;">
-            <button onclick="setLoopPoint('start')">SET START</button>
-            <button onclick="setLoopPoint('end')">SET END</button>
-            <button onclick="toggleLoop()">LOOP OFF</button>
-            <button onclick="saveLoop('yt')">SAVE</button>
-        </div>
-        <div id="loopListYT" class="loop-list-container"></div>
     </div>
 </div>
 
 <script src="https://www.youtube.com/iframe_api"></script>
-<script src="app.js"></script>
+<script src="app.js?v=1.2.2"></script>
 <script>
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('sw.js').then(() => {
-            console.log('AMS Player: Service Worker Registered');
+        navigator.serviceWorker.register('sw.js?v=1.2.2').then(reg => {
+            reg.onupdatefound = () => {
+                const installingWorker = reg.installing;
+                installingWorker.onstatechange = () => {
+                    if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                        if(confirm("新しいバージョンがあります。更新しますか？")) window.location.reload();
+                    }
+                };
+            };
         });
     }
 </script>

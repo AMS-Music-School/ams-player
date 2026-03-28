@@ -28,7 +28,6 @@
             messagingSenderId: "102274983236",
             appId: "1:102274983236:web:f4334348391dde42dd6311"
         };
-
         const app = initializeApp(firebaseConfig);
         const auth = getAuth();
         const db = getFirestore(app);
@@ -82,23 +81,19 @@
         </div>
 
         <div id="file-section" class="content-section active">
-            <label for="audioFile" class="custom-file-upload">ファイルを選択</label>
+            <label for="audioFile" class="custom-file-upload" id="fileSelectBtn">ファイルを選択</label>
             <input type="file" id="audioFile" accept="audio/*">
             <div id="waveform-wrapper"><div id="waveform"></div></div>
+            
             <div class="transport-controls">
                 <button class="btn-ctrl play-main" id="playBtn"><span class="material-icons" id="playIcon">play_arrow</span></button>
             </div>
-            
+
             <div class="panel">
                 <div class="row">
                     <div style="min-width:65px;">Speed</div>
                     <input type="range" id="speed" min="0.5" max="1.5" step="0.01" value="1.0">
                     <span id="spTxt">BPM ---</span>
-                </div>
-                <div class="row">
-                    <div style="min-width:65px;">Pitch</div>
-                    <input type="range" id="pitch" min="-6" max="6" step="1" value="0">
-                    <span id="pitchTxt">±0</span>
                 </div>
             </div>
         </div>

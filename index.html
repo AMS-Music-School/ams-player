@@ -6,10 +6,8 @@
     <title>AMS Practice Player v1.2.2</title>
     
     <link rel="manifest" href="manifest.json">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black">
-    <link rel="icon" href="icon.png?v=1.2.2" type="image/png">
-    <link rel="apple-touch-icon" href="icon.png?v=1.2.2">
+    <link rel="icon" href="icon.png" type="image/png">
+    <link rel="apple-touch-icon" href="icon.png">
 
     <script src="https://unpkg.com/wavesurfer.js@7/dist/wavesurfer.min.js"></script>
     <script src="https://unpkg.com/wavesurfer.js@7/dist/plugins/regions.min.js"></script>
@@ -90,7 +88,20 @@
             <div class="transport-controls">
                 <button class="btn-ctrl play-main" id="playBtn"><span class="material-icons" id="playIcon">play_arrow</span></button>
             </div>
+            
+            <div class="panel">
+                <div class="row">
+                    <div style="min-width:65px;">Speed</div>
+                    <input type="range" id="speed" min="0.5" max="1.5" step="0.01" value="1.0">
+                    <span id="spTxt">BPM ---</span>
+                </div>
+                <div class="row">
+                    <div style="min-width:65px;">Pitch</div>
+                    <input type="range" id="pitch" min="-6" max="6" step="1" value="0">
+                    <span id="pitchTxt">±0</span>
+                </div>
             </div>
+        </div>
 
         <div id="yt-section" class="content-section">
             <input type="text" id="ytUrl" placeholder="YouTube URL...">

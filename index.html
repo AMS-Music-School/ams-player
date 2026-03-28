@@ -111,7 +111,7 @@
         .title-area { text-align: center; margin-bottom: 15px; }
         .title-area h2 { color: var(--primary-color); font-size: 0.9rem; letter-spacing: 4px; margin: 0; font-weight: bold; text-transform: uppercase; }
         .mode-tabs { display: flex; justify-content: center; gap: 4px; margin-bottom: 15px; background: var(--panel-bg); padding: 4px; border-radius: 10px; border: 1px solid var(--border-color); }
-        .tab-btn { background: transparent; border: none; color: var(--text-dim); padding: 8px; cursor: pointer; border-radius: 6px; font-size: 0.75rem; flex: 1; transition: all 0.3s ease; }
+        .tab-btn { background: transparent; border: none; color: var(--text-dim); padding: 8px; cursor: pointer; border-radius: 6px; font-size: 0.75rem; flex: 1; transition: all 0.3s ease; position: relative; }
         .tab-btn.active { background: var(--primary-color); color: #121212; font-weight: bold; }
         .content-section { display: none; }
         .content-section.active { display: block; }
@@ -122,10 +122,9 @@
         #ytPlayerContainer iframe { position: absolute; top: 0; left: 0; width: 100% !important; height: 100% !important; }
         .loop-badge { background: #252525; padding: 6px 10px; border-radius: 20px; display: flex; align-items: center; gap: 6px; border: 1px solid var(--border-color); cursor: pointer; position: relative; }
         .loop-list-container { margin-top: 10px; border-top: 1px solid var(--border-color); padding-top: 10px; display: flex; flex-wrap: wrap; gap: 10px; }
-
-        /* YouTube用追加スタイル */
         .adj-btn { background: #333; border: none; color: #fff; padding: 4px 8px; border-radius: 4px; cursor: pointer; }
         .loop-btn-main { background: var(--panel-bg); color: var(--text-main); border: 1px solid var(--primary-color); padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 0.75rem; }
+        .premium-lock { font-size: 12px; margin-left: 4px; vertical-align: middle; opacity: 0.7; }
     </style>
 </head>
 <body>
@@ -144,11 +143,12 @@
 <div id="subscription-overlay">
     <div class="login-card">
         <div class="header-logo" style="font-size: 1.5rem; margin-bottom: 10px;">PREMIUM PLAN</div>
-        <p style="font-size: 0.9rem; color: var(--text-main);">全ての機能を利用するには<br>サブスクリプションへの登録が必要です。</p>
+        <p style="font-size: 0.9rem; color: var(--text-main);">この機能を利用するには<br>サブスクリプションへの登録が必要です。</p>
         <button class="subscribe-btn" onclick="redirectToCheckout()">
             サブスクリプションを開始する
         </button>
-        <button class="logout-btn" onclick="logout()" style="margin-top:20px; display:block; width:100%;">別のアカウントでログイン</button>
+        <button class="clear-btn-ja" onclick="closeSubOverlay()" style="margin-top:15px; width:100%; justify-content:center;">閉じる</button>
+        <button class="logout-btn" onclick="logout()" style="margin-top:20px; display:block; width:100%;">ログアウト</button>
     </div>
 </div>
 
@@ -189,7 +189,7 @@
 
     <div class="mode-tabs">
         <button class="tab-btn active" id="tab-file" onclick="switchMode('file')">Audio File Mode</button>
-        <button class="tab-btn" id="tab-yt" onclick="switchMode('yt')">YouTube Mode</button>
+        <button class="tab-btn" id="tab-yt" onclick="switchMode('yt')">YouTube Mode <span class="material-icons premium-lock">lock</span></button>
     </div>
 
     <div id="file-section" class="content-section active">
@@ -331,6 +331,9 @@
     const auth = firebase.auth();
     const db = firebase.firestore();
 
+    // サブスクリプション状態管理フラグ
+    let isSubscribed = false;
+
     // --- Auth & Subscription Logic ---
     function loginWithGoogle() {
         const provider = new firebase.auth.GoogleAuthProvider();
@@ -342,20 +345,19 @@
     }
 
     function redirectToCheckout() {
-        // StripeのPayment LinkやSquareの決済ページURLをここに設定してください
         window.location.href = "https://your-payment-link.com";
     }
 
+    function closeSubOverlay() {
+        document.getElementById('subscription-overlay').style.display = 'none';
+    }
+
     async function checkSubscriptionStatus(user) {
-        // 本番環境ではFirestore等で管理： db.collection('users').doc(user.uid).get()
-        // ここではデモ用に「ログインしていればOK」とする場合は true に、
-        // 決済確認が必要な場合は非同期でステータスを読み込む処理を記述します。
         try {
             const doc = await db.collection('users').doc(user.uid).get();
             if (doc.exists && doc.data().isSubscribed) {
                 return true;
             }
-            // 暫定対応: 未購読でもテストしたい場合はここを true に書き換えてください
             return false; 
         } catch (e) {
             console.error("Subscription check error:", e);
@@ -371,24 +373,17 @@
 
         if (user) {
             authOverlay.style.display = 'none';
+            isSubscribed = await checkSubscriptionStatus(user);
             
-            // サブスク購読チェック
-            const isSubscribed = await checkSubscriptionStatus(user);
-            
-            if (isSubscribed) {
-                subOverlay.style.display = 'none';
-                userInfo.style.display = 'flex';
-                userName.innerText = user.displayName;
-                if (currentMode === 'file') renderLoopList('file');
-                else renderLoopList('yt');
-            } else {
-                subOverlay.style.display = 'flex';
-                userInfo.style.display = 'none';
-            }
+            userInfo.style.display = 'flex';
+            userName.innerText = user.displayName;
+            if (currentMode === 'file') renderLoopList('file');
+            else renderLoopList('yt');
         } else {
             authOverlay.style.display = 'flex';
             subOverlay.style.display = 'none';
             userInfo.style.display = 'none';
+            isSubscribed = false;
         }
     });
 
@@ -498,6 +493,10 @@
     }
 
     function switchMode(mode) {
+        if (mode === 'yt' && !isSubscribed) {
+            document.getElementById('subscription-overlay').style.display = 'flex';
+            return;
+        }
         currentMode = mode;
         document.getElementById('file-section').classList.toggle('active', mode === 'file');
         document.getElementById('yt-section').classList.toggle('active', mode === 'yt');
@@ -612,6 +611,10 @@
     }
 
     async function runAIAdvice() {
+        if (!isSubscribed) {
+            document.getElementById('subscription-overlay').style.display = 'flex';
+            return;
+        }
         if (!recordedAudioBuffer) return;
         const loading = document.getElementById('aiLoading');
         const resultCard = document.getElementById('aiResultCard');
@@ -710,6 +713,10 @@
     };
 
     function saveLoop(mode) {
+        if (!isSubscribed) {
+            document.getElementById('subscription-overlay').style.display = 'flex';
+            return;
+        }
         let start, end, key;
         if (mode === 'file') {
             const regions = wsRegions.getRegions(); if (regions.length === 0) return alert("範囲を指定してください");

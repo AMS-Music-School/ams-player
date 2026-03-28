@@ -334,34 +334,39 @@
     let isSubscribed = false;
     let currentUser = null;
 
-    function loginWithGoogle() {
+    // --- Authentication Logic ---
+    async function loginWithGoogle() {
         const provider = new firebase.auth.GoogleAuthProvider();
-        auth.signInWithPopup(provider).catch(e => console.error(e));
+        try {
+            await auth.signInWithPopup(provider);
+            // ログイン後の処理は onAuthStateChanged で行われる
+        } catch (e) {
+            console.error("Login error:", e);
+            alert("ログインに失敗しました。");
+        }
     }
 
     function logout() {
-        auth.signOut().then(() => location.reload());
+        auth.signOut().then(() => {
+            location.reload();
+        }).catch(e => console.error(e));
     }
 
-    // サブスクリプション状態の判定ロジックを最適化
+    // サブスク判定ロジック
     async function checkSubscriptionStatus(user) {
         try {
             const doc = await db.collection('users').doc(user.uid).get();
             if (doc.exists) {
                 const data = doc.data();
-                console.log("Firestore Data:", data);
-                
-                // 複数の権限フラグに対応。真偽値でも文字列でも判定可能にする
-                const hasAccess = 
-                    data.isSubscribed === true || String(data.isSubscribed).toLowerCase() === "true" ||
-                    data.isPremium === true || String(data.isPremium).toLowerCase() === "true" ||
-                    data.isStudent === true || String(data.isStudent).toLowerCase() === "true";
-                
-                return hasAccess;
+                // isSubscribed, isPremium, isStudent のいずれかが true ならOK
+                return data.isSubscribed === true || data.isPremium === true || data.isStudent === true ||
+                       String(data.isSubscribed).toLowerCase() === "true" ||
+                       String(data.isPremium).toLowerCase() === "true" ||
+                       String(data.isStudent).toLowerCase() === "true";
             }
             return false;
         } catch (e) {
-            console.error("Error checking subscription:", e);
+            console.error("Subscription check error:", e);
             return false;
         }
     }
@@ -374,9 +379,9 @@
             document.getElementById('userName').innerText = user.displayName || 'User';
             
             isSubscribed = await checkSubscriptionStatus(user);
-            console.log("isSubscribed status:", isSubscribed);
         } else {
             document.getElementById('auth-overlay').style.display = 'flex';
+            document.getElementById('userInfoDisplay').style.display = 'none';
         }
     });
 
@@ -433,7 +438,7 @@
             document.getElementById('guideFileContent').innerHTML = guides[lang].file;
             document.getElementById('guideModalFile').style.display = 'block';
         } else {
-            document.getElementById('guideModalYT').innerHTML = guides[lang].yt;
+            document.getElementById('guideYTContent').innerHTML = guides[lang].yt;
             document.getElementById('guideModalYT').style.display = 'block';
         }
     }
@@ -459,9 +464,7 @@
         const v = parseFloat(document.getElementById('mainVolume').value);
         if(wavesurfer) {
             wavesurfer.setPlaybackRate(s, true);
-            wavesurfer.setVolume(v);
-            const pitchShift = Math.pow(2, p / 12);
-            // pitch shifting implementation would go here if needed via WebAudio
+            wavesurfer.setVolume(isSolo ? 0 : v);
         }
         document.getElementById('spTxt').innerText = `BPM ${Math.round(originalBPM * s)}`;
         document.getElementById('pitchTxt').innerText = (p > 0 ? "+" : "") + p;
@@ -492,21 +495,23 @@
     // --- Recording Logic ---
     async function toggleRecording() {
         if (!isRecording) {
-            mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            recorder = new MediaRecorder(mediaStream);
-            const chunks = [];
-            recorder.ondataavailable = e => chunks.push(e.data);
-            recorder.onstop = () => {
-                recordedBlob = new Blob(chunks, { type: 'audio/webm' });
-                const url = URL.createObjectURL(recordedBlob);
-                recWavesurfer.load(url);
-                document.getElementById('rec-waveform-wrapper').style.display = 'block';
-                document.getElementById('recControls').style.display = 'flex';
-                document.getElementById('recVolControl').style.display = 'flex';
-            };
-            recorder.start();
-            isRecording = true;
-            document.getElementById('recBtn').classList.add('recording');
+            try {
+                mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                recorder = new MediaRecorder(mediaStream);
+                const chunks = [];
+                recorder.ondataavailable = e => chunks.push(e.data);
+                recorder.onstop = () => {
+                    recordedBlob = new Blob(chunks, { type: 'audio/webm' });
+                    const url = URL.createObjectURL(recordedBlob);
+                    recWavesurfer.load(url);
+                    document.getElementById('rec-waveform-wrapper').style.display = 'block';
+                    document.getElementById('recControls').style.display = 'flex';
+                    document.getElementById('recVolControl').style.display = 'flex';
+                };
+                recorder.start();
+                isRecording = true;
+                document.getElementById('recBtn').classList.add('recording');
+            } catch (e) { console.error("Mic error:", e); alert("マイクへのアクセスを許可してください。"); }
         } else {
             recorder.stop();
             mediaStream.getTracks().forEach(t => t.stop());
@@ -533,7 +538,7 @@
     function toggleSolo() {
         isSolo = !isSolo;
         document.getElementById('soloBtn').classList.toggle('active', isSolo);
-        if(wavesurfer) wavesurfer.setVolume(isSolo ? 0 : document.getElementById('mainVolume').value);
+        applySettings();
     }
 
     async function runAIAdvice() {
@@ -681,7 +686,7 @@
     // --- App Start ---
     function startApp() {
         wavesurfer = WaveSurfer.create({
-            container: '#waveform', waveColor: '#555', progressColor: var(--primary-color),
+            container: '#waveform', waveColor: '#555', progressColor: '#d4a373',
             cursorColor: '#fff', cursorWidth: 2, height: 120, normalize: true,
             minPxPerSec: 100, hideScrollbar: false,
         });
@@ -696,7 +701,7 @@
             document.getElementById('loadStatus').innerText = 'LOADED';
             document.getElementById('totalTime').innerText = fmt(wavesurfer.getDuration());
             applySettings();
-            originalBPM = 120; // Default or extract from filename if possible
+            originalBPM = 120;
             renderLoops();
         });
 

@@ -23,43 +23,57 @@
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
       import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-      // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyDI4ReBg15LAaQbd-4slccBHOS9R69sLNU",
-  authDomain: "ams-player-e04bf.firebaseapp.com",
-  projectId: "ams-player-e04bf",
-  storageBucket: "ams-player-e04bf.firebasestorage.app",
-  messagingSenderId: "102274983236",
-  appId: "1:102274983236:web:f4334348391dde42dd6311",
-  measurementId: "G-GYHLQKN6SS"
-};
+      // 提供いただいた設定値を反映
+      const firebaseConfig = {
+        apiKey: "AIzaSyDI4ReBg15LAaQbd-4slccBHOS9R69sLNU",
+        authDomain: "ams-player-e04bf.firebaseapp.com",
+        projectId: "ams-player-e04bf",
+        storageBucket: "ams-player-e04bf.firebasestorage.app",
+        messagingSenderId: "102274983236",
+        appId: "1:102274983236:web:f4334348391dde42dd6311",
+        measurementId: "G-GYHLQKN6SS"
+      };
 
       const app = initializeApp(firebaseConfig);
       const auth = getAuth();
       const provider = new GoogleAuthProvider();
 
-      // ボタンから呼べるようにする
-      window.login = () => signInWithPopup(auth, provider).catch(err => console.error(err));
-      window.logout = () => signOut(auth);
+      // ボタンから呼び出せるようにグローバル関数として定義
+      window.login = () => {
+        signInWithPopup(auth, provider).catch((error) => {
+          console.error("Login Error:", error);
+          alert("ログインエラーが発生しました。Firebaseの承認済みドメイン設定を確認してください。");
+        });
+      };
 
-      // ログイン状態によって表示を変える
+      window.logout = () => {
+        signOut(auth).catch((error) => console.error("Logout Error:", error));
+      };
+
+      // ログイン状態を監視
       onAuthStateChanged(auth, (user) => {
         const statusEl = document.getElementById('authStatus');
         const loginBtn = document.getElementById('loginBtn');
         const logoutBtn = document.getElementById('logoutBtn');
 
         if (user) {
-          statusEl.innerHTML = `<img src="${user.photoURL}" style="width:20px; border-radius:50%; vertical-align:middle; margin-right:8px;"> ${user.displayName}`;
+          // ログイン中：アイコンと名前を表示
+          statusEl.innerHTML = `
+            <div style="display:flex; align-items:center; gap:10px;">
+              <img src="${user.photoURL}" style="width:28px; border-radius:50%; border:1px solid var(--primary-color);">
+              <span>${user.displayName}</span>
+            </div>`;
           loginBtn.style.display = 'none';
           logoutBtn.style.display = 'flex';
         } else {
+          // 未ログイン
           statusEl.innerText = "ログインしていません";
           loginBtn.style.display = 'flex';
           logoutBtn.style.display = 'none';
         }
       });
     </script>
-    </head>
+</head>
 <body>
 
 <header>
@@ -79,9 +93,14 @@ const firebaseConfig = {
     </div>
 
     <span class="menu-section-title">Account</span>
-    <div id="authStatus" style="padding: 10px 15px; font-size: 0.8rem; color: #ccc;">確認中...</div>
-    <div class="menu-item" id="loginBtn" onclick="login()"><span class="material-icons">login</span><span>Googleログイン</span></div>
-    <div class="menu-item" id="logoutBtn" onclick="logout()" style="display:none;"><span class="material-icons">logout</span><span>ログアウト</span></div>
+    <div id="authStatus" style="padding: 10px 15px; font-size: 0.85rem; color: #fff; min-height: 40px; display:flex; align-items:center;">確認中...</div>
+    <div class="menu-item" id="loginBtn" onclick="login()">
+        <span class="material-icons">login</span><span>Googleログイン</span>
+    </div>
+    <div class="menu-item" id="logoutBtn" onclick="logout()" style="display:none;">
+        <span class="material-icons">logout</span><span>ログアウト</span>
+    </div>
+
     <hr style="border:0; border-top:1px solid var(--border-color); margin: 10px 0;">
 
     <span class="menu-section-title" id="langTitle">Language Settings</span>

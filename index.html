@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AMS Practice Player v1.3.2 - Subscription Edition</title>
+    <title>AMS Practice Player v1.3.3 - Subscription Edition</title>
     
     <meta name="apple-mobile-web-app-title" content="AMS Player">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -121,7 +121,6 @@
         .loop-list-container { margin-top: 10px; border-top: 1px solid var(--border-color); padding-top: 10px; display: flex; flex-wrap: wrap; gap: 10px; }
         .adj-btn { background: #333; border: none; color: #fff; padding: 4px 8px; border-radius: 4px; cursor: pointer; }
         .loop-btn-main { background: var(--panel-bg); color: var(--text-main); border: 1px solid var(--primary-color); padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 0.75rem; }
-        .premium-lock { font-size: 12px; margin-left: 4px; vertical-align: middle; opacity: 0.7; }
     </style>
 </head>
 <body>
@@ -186,7 +185,7 @@
 
     <div class="mode-tabs">
         <button class="tab-btn active" id="tab-file" onclick="switchMode('file')">Audio File Mode</button>
-        <button class="tab-btn" id="tab-yt" onclick="switchMode('yt')">YouTube Mode <span class="material-icons premium-lock">lock</span></button>
+        <button class="tab-btn" id="tab-yt" onclick="switchMode('yt')">YouTube Mode</button>
     </div>
 
     <div id="file-section" class="content-section active">
@@ -276,7 +275,7 @@
                 <span style="font-size:0.7rem; color:var(--primary-color); font-weight:bold;">RECENT HISTORY</span>
                 <button class="reset-btn" onclick="clearYTHistory()" style="font-size:0.6rem;">Clear All</button>
             </div>
-            <div id="ytHistoryList" style="display:flex; gap:8px; overflow-x:auto; padding-bottom:8px;"></div>
+            <div id="ytHistoryList" style="display:flex; gap:8px; overflow-x:auto; padding-bottom:8px;" onclick="handleHistoryClick(event)"></div>
         </div>
         <div id="ytPlayerContainer"><div id="player"></div></div>
         <div class="panel" style="margin-top:15px;">
@@ -324,7 +323,6 @@
 
     let isSubscribed = false;
 
-    // --- Auth & Subscription Logic ---
     function loginWithGoogle() {
         const provider = new firebase.auth.GoogleAuthProvider();
         auth.signInWithPopup(provider).catch(e => alert("ログインエラー: " + e.message));
@@ -344,11 +342,9 @@
 
     async function checkSubscriptionStatus(user) {
         try {
-            // あなたの設定通り「School Member」コレクションのドキュメント（メールアドレス）を参照
             const doc = await db.collection('School Member').doc(user.email).get();
             if (doc.exists) {
                 const data = doc.data();
-                // フィールド「isSubscribed」が true であるか確認
                 return data.isSubscribed === true;
             }
             return false; 
@@ -365,9 +361,7 @@
 
         if (user) {
             authOverlay.style.display = 'none';
-            // ログイン時にサブスクリプション状態を確認
             isSubscribed = await checkSubscriptionStatus(user);
-            
             userInfo.style.display = 'flex';
             userName.innerText = user.displayName;
             if (currentMode === 'file') renderLoopList('file');
@@ -481,15 +475,19 @@
     }
 
     function toggleFeature(type) {
-        if (type === 'count') { isCountEnabled = !isCountEnabled; document.getElementById('countToggleBtn').classList.toggle('active', isCountEnabled); }
-        else if (type === 'speedup') { isSpeedUpEnabled = !isSpeedUpEnabled; document.getElementById('speedUpToggleBtn').classList.toggle('active', isSpeedUpEnabled); }
+        if (type === 'count') { 
+            isCountEnabled = !isCountEnabled; 
+            document.getElementById('countToggleBtn').classList.toggle('active', isCountEnabled); 
+        }
+        else if (type === 'speedup') { 
+            // サブスク制限：スピードアップ（タイマーボタン）
+            if (!isSubscribed) { document.getElementById('subscription-overlay').style.display = 'flex'; return; }
+            isSpeedUpEnabled = !isSpeedUpEnabled; 
+            document.getElementById('speedUpToggleBtn').classList.toggle('active', isSpeedUpEnabled); 
+        }
     }
 
     function switchMode(mode) {
-        if (mode === 'yt' && !isSubscribed) {
-            document.getElementById('subscription-overlay').style.display = 'flex';
-            return;
-        }
         currentMode = mode;
         document.getElementById('file-section').classList.toggle('active', mode === 'file');
         document.getElementById('yt-section').classList.toggle('active', mode === 'yt');
@@ -560,6 +558,9 @@
     }
 
     async function toggleRecording() {
+        // サブスク制限：録音機能
+        if (!isSubscribed) { document.getElementById('subscription-overlay').style.display = 'flex'; return; }
+        
         initAudioContext();
         if (isRecording) {
             if (mediaRecorder) mediaRecorder.stop();
@@ -633,7 +634,8 @@
         history = history.filter(item => item.id !== id);
         history.unshift({ id: id, title: title || id, url: `https://www.youtube.com/watch?v=${id}`, time: Date.now() });
         if (history.length > 20) history.pop();
-        localStorage.setItem('ams_yt_history', JSON.stringify(history)); renderYTHistory();
+        localStorage.setItem('ams_yt_history', JSON.stringify(history)); 
+        renderYTHistory();
     }
 
     function renderYTHistory() {
@@ -645,10 +647,19 @@
         history.forEach(item => {
             const card = document.createElement('div');
             card.style = "background: #252525; border: 1px solid #333; border-radius: 6px; padding: 8px 12px; min-width: 180px; flex-shrink: 0; display: flex; justify-content: space-between; align-items: center; cursor: pointer;";
-            card.onclick = () => loadYouTube(item.url);
+            card.setAttribute('data-url', item.url);
             card.innerHTML = `<span style="font-size:0.7rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:#e0e0e0;">${item.title}</span><span class="material-icons" style="color:#ff5555; font-size:16px;" onclick="event.stopPropagation(); deleteHistoryItem('${item.id}')">cancel</span>`;
             historyList.appendChild(card);
         });
+    }
+
+    // サブスク制限：YouTube履歴クリック
+    function handleHistoryClick(event) {
+        const card = event.target.closest('div[data-url]');
+        if (card) {
+            if (!isSubscribed) { document.getElementById('subscription-overlay').style.display = 'flex'; return; }
+            loadYouTube(card.getAttribute('data-url'));
+        }
     }
 
     window.deleteHistoryItem = (id) => {
@@ -690,10 +701,9 @@
     };
 
     function saveLoop(mode) {
-        if (!isSubscribed) {
-            document.getElementById('subscription-overlay').style.display = 'flex';
-            return;
-        }
+        // サブスク制限：ループ保存
+        if (!isSubscribed) { document.getElementById('subscription-overlay').style.display = 'flex'; return; }
+        
         let start, end, key;
         if (mode === 'file') {
             const regions = wsRegions.getRegions(); if (regions.length === 0) return alert("範囲を指定してください");
@@ -724,6 +734,9 @@
     }
 
     window.applyStoredLoop = (mode, start, end) => {
+        // サブスク制限：保存されたループの適用
+        if (!isSubscribed) { document.getElementById('subscription-overlay').style.display = 'flex'; return; }
+        
         if (mode === 'file') { wsRegions.clearRegions(); wsRegions.addRegion({ start, end, color: 'rgba(212, 163, 115, 0.2)' }); wavesurfer.setTime(start); } 
         else { loopStart = start; loopEnd = end; document.getElementById('loopStartTxt').innerText = fmt(start); document.getElementById('loopEndTxt').innerText = fmt(end); ytPlayer.seekTo(start); if (!isLooping) toggleLoop(); }
     };
@@ -775,7 +788,16 @@
 
         wavesurfer.on('ready', () => { document.getElementById('totalTime').innerText = fmt(wavesurfer.getDuration()); applySettings(); });
         recWavesurfer.on('finish', () => { wavesurfer.pause(); updateRecPlayBtnUI(); });
+        
         document.getElementById('speed').oninput = applySettings;
+        
+        // サブスク制限：Pitch調整
+        document.getElementById('pitch').onmousedown = document.getElementById('pitch').ontouchstart = (e) => {
+            if (!isSubscribed) { 
+                e.preventDefault(); 
+                document.getElementById('subscription-overlay').style.display = 'flex'; 
+            }
+        };
         document.getElementById('pitch').oninput = applySettings;
 
         document.getElementById('playBtn').onclick = async () => {
@@ -795,6 +817,7 @@
             const r = wsRegions.getRegions()[0];
             if(r && t >= r.end) { 
                 wavesurfer.setTime(r.start); 
+                // タイマーボタン連動のスピードアップ機能
                 if (isSpeedUpEnabled) { 
                     const s = document.getElementById('speed'); 
                     s.value = Math.min(1.5, parseFloat(s.value) + 0.05).toFixed(2); 

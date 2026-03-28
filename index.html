@@ -7,7 +7,6 @@
     
     <meta name="apple-mobile-web-app-title" content="AMS Player">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black">
     
     <link rel="icon" href="icon.png?v=1.2.1" type="image/png">
     <link rel="apple-touch-icon" href="icon.png?v=1.2.1">
@@ -65,24 +64,23 @@
 
         .panel { background: var(--panel-bg); border-radius: 16px; padding: 15px; margin-bottom: 15px; border: 1px solid var(--border-color); }
         .row { display: flex; align-items: center; justify-content: space-between; gap: 15px; margin-bottom: 10px; }
-        .row:last-child { margin-bottom: 0; }
-
-        input[type="range"] { flex-grow: 1; accent-color: var(--primary-color); cursor: pointer; height: 6px; border-radius: 3px; }
+        
+        input[type="range"] { flex-grow: 1; accent-color: var(--primary-color); cursor: pointer; }
         
         .btn-ctrl { background: #2a2a2a; border: 1px solid var(--border-color); color: #fff; border-radius: 50%; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s; }
-        .btn-ctrl:active { transform: scale(0.9); background: #333; }
         .play-main { width: 70px; height: 70px; background: var(--primary-color); color: #000; border: none; }
 
         .side-menu { position: fixed; top: 0; right: -280px; width: 280px; height: 100%; background: var(--panel-bg); z-index: 3000; transition: 0.3s ease-out; padding: 20px; border-left: 1px solid var(--border-color); }
-        .side-menu.open { right: 0; box-shadow: -10px 0 30px rgba(0,0,0,0.5); }
+        .side-menu.open { right: 0; }
         .menu-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 2500; display: none; }
         
-        .menu-item { display: flex; align-items: center; gap: 12px; padding: 15px; border-radius: 10px; cursor: pointer; margin-bottom: 5px; color: var(--text-main); }
-        .menu-item:active { background: #333; }
+        .menu-item { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 8px; cursor: pointer; color: var(--text-main); }
         
-        /* YouTube プレイヤー */
-        #ytPlayerContainer { width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 12px; overflow: hidden; border: 1px solid var(--border-color); }
-        #player { width: 100%; height: 100%; pointer-events: none; }
+        #ytPlayerContainer { width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 12px; overflow: hidden; }
+        
+        /* 録音・解析系スタイル */
+        .rec-active { color: var(--recording-red); animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
     </style>
 
     <script type="module">
@@ -130,13 +128,13 @@
     <div class="row"><span style="color:var(--primary-color); font-weight:bold;">MENU</span><span class="material-icons" onclick="toggleMenu(false)">close</span></div>
     <hr style="border:0; border-top:1px solid var(--border-color); margin:15px 0;">
     
-    <div id="authStatus" style="padding:10px 15px; font-size:0.9rem; color:var(--text-main); display:flex; align-items:center;">確認中...</div>
-    <div class="menu-item" id="loginBtn" onclick="login()"><span class="material-icons">login</span>Googleログイン</div>
+    <div id="authStatus" style="padding:10px 12px; font-size:0.9rem; display:flex; align-items:center;"></div>
+    <div class="menu-item" id="loginBtn" onclick="login()"><span class="material-icons">login</span>ログイン</div>
     <div class="menu-item" id="logoutBtn" onclick="logout()" style="display:none;"><span class="material-icons">logout</span>ログアウト</div>
     
     <hr style="border:0; border-top:1px solid var(--border-color); margin:10px 0;">
-    <span class="row" style="padding:0 15px; font-size:0.75rem; color:var(--text-dim);" id="langTitle">言語設定</span>
-    <select id="langSelect" onchange="changeLanguage()" style="width:calc(100% - 30px); margin:10px 15px; padding:8px; background:#121212; color:#fff; border:1px solid var(--border-color); border-radius:5px;">
+    <div class="row" style="padding:0 12px; font-size:0.8rem; color:var(--text-dim);">Language</div>
+    <select id="langSelect" onchange="changeLanguage()" style="width:calc(100% - 24px); margin:10px 12px; padding:8px; background:#121212; color:#fff; border:1px solid var(--border-color); border-radius:5px;">
         <option value="ja">日本語</option>
         <option value="en">English</option>
     </select>
@@ -197,17 +195,20 @@
 </div>
 
 <script src="https://www.youtube.com/iframe_api"></script>
+
 <script>
     let wavesurfer, wsRegions, recWavesurfer, ytPlayer;
     let loopStart = 0, loopEnd = 0, isLoopActive = true;
 
-    function initApp() {
+    async function startApp() {
+        // WaveSurfer初期化
         wavesurfer = WaveSurfer.create({
             container: '#waveform', waveColor: '#333', progressColor: '#d4a373',
             cursorColor: '#fff', height: 120, backend: 'WebAudio'
         });
         wsRegions = wavesurfer.registerPlugin(WaveSurfer.Regions.create());
 
+        // イベント登録
         wavesurfer.on('play', () => document.getElementById('playIcon').innerText = 'pause');
         wavesurfer.on('pause', () => document.getElementById('playIcon').innerText = 'play_arrow');
         wavesurfer.on('timeupdate', t => document.getElementById('currentTime').innerText = fmt(t));
@@ -218,6 +219,7 @@
             if(f) wavesurfer.loadBlob(f);
         };
 
+        // BPM/Speed連動
         document.getElementById('speed').oninput = e => {
             const v = e.target.value;
             wavesurfer.setPlaybackRate(v);
@@ -227,6 +229,7 @@
         document.getElementById('playBtn').onclick = () => wavesurfer.playPause();
     }
 
+    // 基本UI制御
     function toggleMenu(s) {
         document.getElementById('sideMenu').classList.toggle('open', s);
         document.getElementById('menuOverlay').style.display = s ? 'block' : 'none';
@@ -245,6 +248,7 @@
         return `${m}:${sc < 10 ? '0' : ''}${sc}`;
     }
 
+    // YouTubeロジック
     function onYouTubeIframeAPIReady() {
         ytPlayer = new YT.Player('player', { events: { 'onStateChange': onState } });
     }
@@ -266,7 +270,6 @@
     function setLoopPoint(t) {
         const c = ytPlayer.getCurrentTime();
         if(t === 'start') loopStart = c; else loopEnd = c;
-        alert(`${t === 'start' ? '開始' : '終了'}位置を固定しました`);
     }
 
     function toggleLoop() {
@@ -279,7 +282,7 @@
         document.getElementById('fileSelectTxt').innerText = l === 'ja' ? 'ファイルを選択' : 'Select File';
     }
 
-    window.onload = initApp;
+    window.addEventListener('DOMContentLoaded', startApp);
 </script>
 </body>
 </html>

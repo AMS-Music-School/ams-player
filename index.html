@@ -19,82 +19,30 @@
     
     <style>
         :root {
-            --primary-color: #d4a373;
-            --bg-dark: #121212;
-            --panel-bg: #1e1e1e;
-            --text-main: #e0e0e0;
-            --text-dim: #999999;
-            --border-color: #333333;
-            --header-height: 60px;
-            --recording-red: #ff4444;
-            --ai-purple: #a855f7;
-            --solo-yellow: #ffcc00;
+            --primary-color: #d4a373; --bg-dark: #121212; --panel-bg: #1e1e1e;
+            --text-main: #e0e0e0; --text-dim: #999999; --border-color: #333333;
+            --header-height: 60px; --recording-red: #ff4444; --ai-purple: #a855f7;
         }
-
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-
-        body { 
-            background-color: var(--bg-dark);
-            color: var(--text-main);
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            padding: 0; margin: 0; 
-            overscroll-behavior-y: contain;
-            padding-top: var(--header-height);
-        }
-
-        header {
-            position: fixed; top: 0; left: 0; width: 100%; height: var(--header-height);
-            background: rgba(18, 18, 18, 0.95); border-bottom: 1px solid var(--border-color);
-            display: flex; align-items: center; justify-content: space-between; padding: 0 15px;
-            z-index: 2000; backdrop-filter: blur(10px);
-        }
-
-        .header-logo { font-weight: 900; letter-spacing: 2px; color: var(--primary-color); font-size: 1.2rem; }
+        body { background: var(--bg-dark); color: var(--text-main); font-family: sans-serif; margin: 0; padding-top: var(--header-height); overscroll-behavior-y: contain; }
+        header { position: fixed; top: 0; width: 100%; height: var(--header-height); background: rgba(18,18,18,0.9); display: flex; align-items: center; justify-content: space-between; padding: 0 15px; z-index: 2000; border-bottom: 1px solid var(--border-color); }
+        .header-logo { font-weight: 900; color: var(--primary-color); letter-spacing: 2px; }
         .container { max-width: 600px; margin: 0 auto; padding: 15px; }
-        
-        /* モード切替タブ */
-        .mode-tabs { display: flex; gap: 10px; margin-bottom: 20px; background: var(--panel-bg); padding: 5px; border-radius: 12px; }
-        .tab-btn { flex: 1; padding: 12px; border: none; background: none; color: var(--text-dim); font-weight: bold; border-radius: 8px; transition: 0.3s; cursor: pointer; }
-        .tab-btn.active { background: var(--primary-color); color: #000; }
-
-        .content-section { display: none; }
-        .content-section.active { display: block; }
-
-        /* 波形エリア */
-        #waveform-wrapper, #rec-waveform-wrapper { background: #000; border-radius: 12px; margin: 10px 0; border: 1px solid var(--border-color); overflow: hidden; position: relative; }
-        #waveform { height: 120px; }
-        #rec-waveform { height: 60px; }
-
-        /* コントロールパネル */
         .panel { background: var(--panel-bg); border-radius: 16px; padding: 15px; margin-bottom: 15px; border: 1px solid var(--border-color); }
-        .row { display: flex; align-items: center; justify-content: space-between; gap: 15px; margin-bottom: 10px; }
-        .row:last-child { margin-bottom: 0; }
-
-        /* ボタン・入力 */
-        input[type="range"] { flex-grow: 1; accent-color: var(--primary-color); cursor: pointer; }
-        .btn-ctrl { background: #2a2a2a; border: 1px solid var(--border-color); color: #fff; border-radius: 50%; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s; }
-        .btn-ctrl:active { transform: scale(0.9); background: #333; }
-        .btn-ctrl.active { color: var(--primary-color); border-color: var(--primary-color); }
+        .mode-tabs { display: flex; gap: 10px; margin-bottom: 20px; background: var(--panel-bg); padding: 5px; border-radius: 12px; }
+        .tab-btn { flex: 1; padding: 12px; border: none; background: none; color: var(--text-dim); font-weight: bold; border-radius: 8px; cursor: pointer; }
+        .tab-btn.active { background: var(--primary-color); color: #000; }
+        .content-section { display: none; } .content-section.active { display: block; }
+        #waveform { background: #000; border-radius: 12px; height: 120px; margin-bottom: 10px; border: 1px solid var(--border-color); }
+        .btn-ctrl { background: #2a2a2a; border: 1px solid var(--border-color); color: #fff; border-radius: 50%; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
         .play-main { width: 70px; height: 70px; background: var(--primary-color); color: #000; border: none; }
-        
-        /* 録音・AI */
-        .rec-btn.recording { background: var(--recording-red); animation: pulse 1.5s infinite; color: #fff; }
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
-        .ai-result-card { background: #1a1a2e; border: 1px solid var(--ai-purple); border-radius: 12px; padding: 15px; margin-top: 10px; display: none; }
-        
-        /* サイドメニュー */
-        .side-menu { position: fixed; top: 0; right: -280px; width: 280px; height: 100%; background: var(--panel-bg); z-index: 3000; transition: 0.3s; padding: 20px; border-left: 1px solid var(--border-color); box-shadow: -5px 0 15px rgba(0,0,0,0.5); }
+        .row { display: flex; align-items: center; justify-content: space-between; gap: 15px; margin-bottom: 10px; }
+        input[type="range"] { flex: 1; accent-color: var(--primary-color); }
+        .side-menu { position: fixed; top: 0; right: -280px; width: 280px; height: 100%; background: var(--panel-bg); z-index: 3000; transition: 0.3s; padding: 20px; border-left: 1px solid var(--border-color); }
         .side-menu.open { right: 0; }
         .menu-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 2500; display: none; }
-        .menu-item { display: flex; align-items: center; gap: 12px; padding: 15px; border-radius: 8px; cursor: pointer; color: var(--text-main); }
-        .menu-item:active { background: #333; }
-
-        /* YouTube */
         #ytPlayerContainer { width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 12px; overflow: hidden; }
-        #player { width: 100%; height: 100%; }
-
-        .custom-file-upload { display: block; width: 100%; padding: 15px; background: #2a2a2a; color: var(--primary-color); text-align: center; border-radius: 12px; border: 1px dashed var(--primary-color); cursor: pointer; font-weight: bold; }
-        input[type="file"] { display: none; }
+        .custom-file-upload { display: block; width: 100%; padding: 15px; background: #2a2a2a; color: var(--primary-color); text-align: center; border-radius: 12px; border: 1px dashed var(--primary-color); cursor: pointer; font-weight: bold; margin-bottom: 10px; }
     </style>
 
     <script type="module">
@@ -121,10 +69,10 @@
             if (user) {
                 statusEl.innerHTML = `<img src="${user.photoURL}" style="width:24px;border-radius:50%;margin-right:8px;vertical-align:middle;">${user.displayName}`;
                 document.getElementById('loginBtn').style.display = 'none';
-                document.getElementById('logoutBtn').style.display = 'flex';
+                document.getElementById('logoutBtn').style.display = 'block';
             } else {
                 statusEl.innerText = "未ログイン";
-                document.getElementById('loginBtn').style.display = 'flex';
+                document.getElementById('loginBtn').style.display = 'block';
                 document.getElementById('logoutBtn').style.display = 'none';
             }
         });
@@ -134,21 +82,16 @@
 
 <header>
     <div class="header-logo">AMS PLAYER</div>
-    <button class="btn-ctrl" style="width:40px;height:40px;border:none;" onclick="toggleMenu(true)">
-        <span class="material-icons">menu</span>
-    </button>
+    <button class="btn-ctrl" style="border:none; background:none;" onclick="toggleMenu(true)"><span class="material-icons">menu</span></button>
 </header>
 
 <div class="menu-overlay" id="menuOverlay" onclick="toggleMenu(false)"></div>
 <div class="side-menu" id="sideMenu">
-    <div class="row">
-        <span style="font-weight:bold; color:var(--primary-color);">MENU</span>
-        <span class="material-icons" onclick="toggleMenu(false)">close</span>
-    </div>
-    <hr style="border:0; border-top:1px solid var(--border-color); margin:15px 0;">
-    <div id="authStatus" style="padding:0 15px 10px; font-size:0.9rem;"></div>
-    <div class="menu-item" id="loginBtn" onclick="login()"><span class="material-icons">login</span>ログイン</div>
-    <div class="menu-item" id="logoutBtn" onclick="logout()" style="display:none;"><span class="material-icons">logout</span>ログアウト</div>
+    <div class="row"><span style="color:var(--primary-color); font-weight:bold;">MENU</span><span class="material-icons" onclick="toggleMenu(false)">close</span></div>
+    <hr style="border-top:1px solid var(--border-color); margin:15px 0;">
+    <div id="authStatus" style="padding:10px; font-size:0.9rem;"></div>
+    <div id="loginBtn" class="row" onclick="login()" style="cursor:pointer; padding:10px;"><span class="material-icons">login</span>ログイン</div>
+    <div id="logoutBtn" class="row" onclick="logout()" style="display:none; cursor:pointer; padding:10px;"><span class="material-icons">logout</span>ログアウト</div>
 </div>
 
 <div class="container">
@@ -160,46 +103,26 @@
     <div id="file-section" class="content-section active">
         <label for="audioFile" class="custom-file-upload">ファイルを選択</label>
         <input type="file" id="audioFile" accept="audio/*">
-        
-        <div id="waveform-wrapper"><div id="waveform"></div></div>
-        
+        <div id="waveform"></div>
         <div class="row">
             <span id="currentTime">00:00</span>
+            <div style="display:flex; gap:15px;">
+                <button class="btn-ctrl" onclick="wavesurfer.skip(-5)"><span class="material-icons">replay_5</span></button>
+                <button class="btn-ctrl play-main" id="playBtn"><span class="material-icons" id="playIcon" style="font-size:40px;">play_arrow</span></button>
+                <button class="btn-ctrl" onclick="wavesurfer.skip(5)"><span class="material-icons">forward_5</span></button>
+            </div>
             <span id="totalTime">00:00</span>
         </div>
-
-        <div style="display:flex; justify-content:center; gap:20px; margin:20px 0;">
-            <button class="btn-ctrl" onclick="wavesurfer.skip(-5)"><span class="material-icons">replay_5</span></button>
-            <button class="btn-ctrl play-main" id="playBtn"><span class="material-icons" id="playIcon" style="font-size:40px;">play_arrow</span></button>
-            <button class="btn-ctrl" onclick="wavesurfer.skip(5)"><span class="material-icons">forward_5</span></button>
-        </div>
-
         <div class="panel">
-            <div class="row">
-                <span>Speed</span>
-                <input type="range" id="speed" min="0.5" max="1.5" step="0.01" value="1.0">
-                <span id="spTxt">1.00x</span>
-            </div>
-            <div class="row">
-                <span>Pitch</span>
-                <input type="range" id="pitch" min="-6" max="6" step="1" value="0">
-                <span id="pitchTxt">±0</span>
-            </div>
-        </div>
-
-        <div class="panel">
-            <div class="row">
-                <span style="color:var(--recording-red); font-weight:bold; font-size:0.8rem;">REC CHECK</span>
-                <button class="btn-ctrl rec-btn" id="recBtn"><span class="material-icons">mic</span></button>
-            </div>
-            <div id="rec-waveform-wrapper"><div id="rec-waveform"></div></div>
+            <div class="row"><span>Speed</span><input type="range" id="speed" min="0.5" max="1.5" step="0.01" value="1.0"><span id="spTxt">BPM ---</span></div>
+            <div class="row"><span>Pitch</span><input type="range" id="pitch" min="-6" max="6" step="1" value="0"><span id="pitchTxt">±0</span></div>
         </div>
     </div>
 
     <div id="yt-section" class="content-section">
         <div class="row">
             <input type="text" id="ytUrl" placeholder="YouTube URL..." style="flex:1; padding:12px; background:#000; border:1px solid var(--border-color); color:#fff; border-radius:8px;">
-            <button onclick="loadYouTube()" style="padding:12px 20px; background:var(--primary-color); border:none; border-radius:8px; font-weight:bold;">LOAD</button>
+            <button onclick="loadYouTube()" style="padding:12px; background:var(--primary-color); border:none; border-radius:8px; font-weight:bold;">LOAD</button>
         </div>
         <div id="ytPlayerContainer"><div id="player"></div></div>
         <div class="panel" style="margin-top:15px;">
@@ -212,106 +135,37 @@
     </div>
 </div>
 
+<script src="https://www.youtube.com/iframe_api"></script>
 <script>
-    let wavesurfer, wsRegions;
-    let recWavesurfer;
-    let ytPlayer;
+    let wavesurfer, ytPlayer;
     let loopStart = 0, loopEnd = 0, isLoopActive = true;
 
-    function initWaveSurfer() {
-        wavesurfer = WaveSurfer.create({
-            container: '#waveform',
-            waveColor: '#333',
-            progressColor: '#d4a373',
-            cursorColor: '#fff',
-            height: 120,
-            responsive: true,
-            backend: 'WebAudio'
-        });
-        wsRegions = wavesurfer.registerPlugin(WaveSurfer.Regions.create());
-        
+    function initWS() {
+        wavesurfer = WaveSurfer.create({ container: '#waveform', waveColor: '#333', progressColor: '#d4a373', height: 120, backend: 'WebAudio' });
         wavesurfer.on('play', () => document.getElementById('playIcon').innerText = 'pause');
         wavesurfer.on('pause', () => document.getElementById('playIcon').innerText = 'play_arrow');
-        
-        wavesurfer.on('timeupdate', (t) => {
-            document.getElementById('currentTime').innerText = fmt(t);
-        });
-
-        document.getElementById('audioFile').onchange = e => {
-            const file = e.target.files[0];
-            if(file) wavesurfer.loadBlob(file);
-        };
+        wavesurfer.on('timeupdate', t => document.getElementById('currentTime').innerText = fmt(t));
+        wavesurfer.on('ready', () => document.getElementById('totalTime').innerText = fmt(wavesurfer.getDuration()));
+        document.getElementById('audioFile').onchange = e => { const f = e.target.files[0]; if(f) wavesurfer.loadBlob(f); };
+        document.getElementById('speed').oninput = e => { wavesurfer.setPlaybackRate(e.target.value); document.getElementById('spTxt').innerText = `BPM ${Math.round(e.target.value * 120)}`; };
     }
 
-    function toggleMenu(show) {
-        document.getElementById('sideMenu').classList.toggle('open', show);
-        document.getElementById('menuOverlay').style.display = show ? 'block' : 'none';
-    }
-
-    function switchMode(mode) {
+    function toggleMenu(s) { document.getElementById('sideMenu').classList.toggle('open', s); document.getElementById('menuOverlay').style.display = s ? 'block' : 'none'; }
+    function switchMode(m) { 
         document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        document.getElementById(mode + '-section').classList.add('active');
-        document.getElementById('tab-' + mode).classList.add('active');
+        document.getElementById(m + '-section').classList.add('active');
+        document.getElementById('tab-' + m).classList.add('active');
     }
+    function fmt(s) { const m = Math.floor(s/60); const sc = Math.floor(s%60); return `${m}:${sc<10?'0':''}${sc}`; }
 
-    function fmt(s) {
-        const m = Math.floor(s / 60);
-        const sec = Math.floor(s % 60);
-        return `${m}:${sec < 10 ? '0' : ''}${sec}`;
-    }
+    function onYouTubeIframeAPIReady() { ytPlayer = new YT.Player('player', { events: { 'onStateChange': onState } }); }
+    function loadYouTube() { const url = document.getElementById('ytUrl').value; const id = url.split('v=')[1]?.split('&')[0] || url.split('/').pop(); if(id) ytPlayer.loadVideoById(id); }
+    function onState(e) { if(e.data == YT.PlayerState.PLAYING && isLoopActive) { setInterval(() => { if(loopEnd > 0 && ytPlayer.getCurrentTime() >= loopEnd) ytPlayer.seekTo(loopStart); }, 500); } }
+    function setLoopPoint(t) { const c = ytPlayer.getCurrentTime(); if(t==='start') loopStart = c; else loopEnd = c; }
+    function toggleLoop() { isLoopActive = !isLoopActive; document.getElementById('toggleLoopBtn').innerText = isLoopActive ? "LOOP ON" : "LOOP OFF"; }
 
-    // YouTube用
-    function onYouTubeIframeAPIReady() {
-        ytPlayer = new YT.Player('player', {
-            events: { 'onStateChange': onPlayerStateChange }
-        });
-    }
-
-    function loadYouTube() {
-        const url = document.getElementById('ytUrl').value;
-        const id = url.split('v=')[1]?.split('&')[0] || url.split('/').pop();
-        if(id) ytPlayer.loadVideoById(id);
-    }
-
-    function onPlayerStateChange(event) {
-        if (event.data == YT.PlayerState.PLAYING && isLoopActive) {
-            setInterval(() => {
-                const cur = ytPlayer.getCurrentTime();
-                if (loopEnd > 0 && cur >= loopEnd) ytPlayer.seekTo(loopStart);
-            }, 500);
-        }
-    }
-
-    function setLoopPoint(type) {
-        const cur = ytPlayer.getCurrentTime();
-        if(type === 'start') loopStart = cur;
-        else loopEnd = cur;
-        alert(`${type}に設定しました: ${fmt(cur)}`);
-    }
-
-    function toggleLoop() {
-        isLoopActive = !isLoopActive;
-        document.getElementById('toggleLoopBtn').innerText = isLoopActive ? "LOOP ON" : "LOOP OFF";
-    }
-
-    window.onload = () => {
-        initWaveSurfer();
-        
-        // 再生ボタン
-        document.getElementById('playBtn').onclick = () => {
-            wavesurfer.playPause();
-        };
-
-        // スピード/ピッチ
-        document.getElementById('speed').oninput = e => {
-            const v = e.target.value;
-            wavesurfer.setPlaybackRate(v);
-            document.getElementById('spTxt').innerText = parseFloat(v).toFixed(2) + 'x';
-        };
-    };
+    window.onload = () => { initWS(); document.getElementById('playBtn').onclick = () => wavesurfer.playPause(); };
 </script>
-
-<script src="https://www.youtube.com/iframe_api"></script>
 </body>
 </html>

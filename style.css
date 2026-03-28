@@ -204,17 +204,3 @@ input[type="file"] { display: none; }
     .time-display { font-size: 0.9rem; }
     .adj-btn { width: 36px; }
 }
-
-/* 既存のコードに以下を追加 */
-.premium-badge {
-    color: #ffd700;
-    font-weight: bold;
-    font-size: 0.7rem;
-    border: 1px solid #ffd700;
-    padding: 1px 4px;
-    border-radius: 4px;
-    margin-left: 8px;
-    display: inline-block;
-    vertical-align: middle;
-}
-/* その他、元のスタイルを維持 */

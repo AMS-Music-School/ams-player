@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AMS Practice Player v1.3.1 - Subscription Edition</title>
+    <title>AMS Practice Player v1.3.1 - Studio Edition</title>
     
     <meta name="apple-mobile-web-app-title" content="AMS Player">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -29,7 +29,6 @@
             --border-color: #333333;
             --header-height: 60px;
             --recording-red: #ff4444;
-            --ai-purple: #a855f7;
             --solo-yellow: #ffcc00;
         }
 
@@ -116,8 +115,6 @@
         .content-section { display: none; }
         .content-section.active { display: block; }
         .clear-btn-ja { background: #333; border: none; color: var(--text-main); padding: 6px 15px; border-radius: 20px; font-size: 0.75rem; cursor: pointer; display: flex; align-items: center; gap: 5px; }
-        .ai-result-card { background: #1a1a2e; border: 1px solid var(--ai-purple); border-radius: 12px; padding: 15px; margin-top: 10px; display: none; }
-        .ai-loading { text-align: center; padding: 10px; display: none; color: var(--ai-purple); font-size: 0.8rem; }
         #ytPlayerContainer { position: relative; width: 100%; aspect-ratio: 16 / 9; border-radius: 8px; overflow: hidden; border: 1px solid var(--border-color); background: #000; }
         #ytPlayerContainer iframe { position: absolute; top: 0; left: 0; width: 100% !important; height: 100% !important; }
         .loop-badge { background: #252525; padding: 6px 10px; border-radius: 20px; display: flex; align-items: center; gap: 6px; border: 1px solid var(--border-color); cursor: pointer; position: relative; }
@@ -173,23 +170,22 @@
     </div>
     <span class="menu-section-title" id="langTitle">Language Settings</span>
     <select id="langSelect" class="lang-select" onchange="changeLanguage()">
-        <option value="ja">日本語</option>
-        <option value="en">English</option>
+        <option value="ja">日本語</option> <option value="en">English</option>
     </select>
     <span class="menu-section-title" id="helpTitle">Help & Guide</span>
     <div class="menu-item" onclick="showGuide('file')"><span class="material-icons">description</span><span id="guideFileTitle">Audio Fileモード ガイド</span></div>
     <div class="menu-item" onclick="showGuide('yt')"><span class="material-icons">smart_display</span><span id="guideYTTitle">YouTubeモード ガイド</span></div>
 </div>
 
-<div id="guideModalFile" class="modal"><div class="guide-box-inner" id="guideFileContent"></div><button class="clear-btn-ja" id="closeBtn1" style="width:100%; margin-top:20px;" onclick="closeModals()">閉じる</button></div>
-<div id="guideModalYT" class="modal"><div class="guide-box-inner" id="guideYTContent"></div><button class="clear-btn-ja" id="closeBtn2" style="width:100%; margin-top:20px;" onclick="closeModals()">閉じる</button></div>
+<div id="guideModalFile" class="modal"><div class="guide-box-inner" id="guideFileContent"></div><button class="clear-btn-ja" style="width:100%; margin-top:20px;" onclick="closeModals()">閉じる</button></div>
+<div id="guideModalYT" class="modal"><div class="guide-box-inner" id="guideYTContent"></div><button class="clear-btn-ja" style="width:100%; margin-top:20px;" onclick="closeModals()">閉じる</button></div>
 
 <div class="container">
     <div class="title-area"><h2>AMS Practice Player</h2></div>
 
     <div class="mode-tabs">
         <button class="tab-btn active" id="tab-file" onclick="switchMode('file')">Audio File Mode</button>
-        <button class="tab-btn" id="tab-yt" onclick="switchMode('yt')">YouTube Mode <span class="material-icons premium-lock">lock</span></button>
+        <button class="tab-btn" id="tab-yt" onclick="switchMode('yt')">YouTube Mode <span class="material-icons premium-lock" id="ytLock">lock</span></button>
     </div>
 
     <div id="file-section" class="content-section active">
@@ -251,162 +247,341 @@
             </div>
             <div class="row" id="recControls" style="display:none; justify-content:center; gap:8px; margin-top:4px;">
                 <button class="clear-btn-ja rec-action-btn" onclick="playRecording()" id="playRecBtn"><span class="material-icons" style="font-size:14px;">play_circle</span> 録音再生</button>
-                <button class="clear-btn-ja rec-action-btn ai-btn" onclick="runAIAdvice()" id="aiAdviceBtn"><span class="material-icons" style="font-size:14px;">psychology</span> AIアドバイス</button>
                 <button class="clear-btn-ja rec-action-btn" onclick="deleteRecording()" style="color:#ff5555;"><span class="material-icons" style="font-size:14px;">delete</span> 削除</button>
-            </div>
-            <div id="aiLoading" class="ai-loading">分析中...</div>
-            <div id="aiResultCard" class="ai-result-card">
-                <div class="ai-title"><span class="material-icons" style="font-size:16px;">auto_awesome</span> Practice Advice</div>
-                <div id="aiAdviceText" class="ai-text"></div>
-            </div>
-        </div>
-
-        <div class="panel">
-            <div class="row">
-                <div style="min-width:65px; font-weight:bold; color:var(--text-dim); font-size:0.75rem;">BPM <button class="reset-btn" onclick="resetSetting('speed', 1.0)">Reset</button></div>
-                <input type="range" id="speed" min="0.5" max="1.5" step="0.01" value="1.0">
-                <span id="spTxt" class="val-display">BPM ---</span>
-            </div>
-            <div class="row">
-                <div style="min-width:65px; font-weight:bold; color:var(--text-dim); font-size:0.75rem;">Pitch <button class="reset-btn" onclick="resetSetting('pitch', 0)">Reset</button></div>
-                <input type="range" id="pitch" min="-6" max="6" step="1" value="0">
-                <span id="pitchTxt" class="val-display">±0</span>
             </div>
         </div>
     </div>
 
     <div id="yt-section" class="content-section">
-        <div style="display:flex; gap:8px; margin-bottom:10px; background:var(--panel-bg); padding:10px; border-radius:10px; border: 1px solid var(--border-color);">
-            <input type="text" id="ytUrl" placeholder="YouTube URL..." style="flex-grow:1; padding:10px; border:1px solid var(--border-color); background:#000; color:#fff; border-radius:6px; font-size:0.8rem;">
-            <button class="tab-btn active" style="flex:0; min-width:60px;" onclick="loadYouTube()">LOAD</button>
+        <div class="row" style="margin-bottom:12px; gap:8px;">
+            <input type="text" id="ytUrl" placeholder="YouTube URLをペースト" style="flex-grow:1; background:#181818; border:1px solid var(--border-color); color:#fff; padding:10px; border-radius:8px; font-size:0.85rem;">
+            <button class="clear-btn-ja" onclick="loadYoutube()" style="background:var(--primary-color); color:#121212; font-weight:bold; height:40px;">LOAD</button>
         </div>
-        <div id="ytHistoryContainer" style="margin-bottom: 15px; display: none;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
-                <span style="font-size:0.7rem; color:var(--primary-color); font-weight:bold;">RECENT HISTORY</span>
-                <button class="reset-btn" onclick="clearYTHistory()" style="font-size:0.6rem;">Clear All</button>
+        <div id="ytPlayerContainer"></div>
+        <div class="waveform-label" style="margin-top:10px;">
+            <span id="ytTimeDisplay" class="time-display">00:00 / 00:00</span>
+            <div style="display:flex; gap:10px;">
+                <button class="clear-btn-ja" onclick="setYTLoop('start')" id="ytLoopStartBtn">IN</button>
+                <button class="clear-btn-ja" onclick="setYTLoop('end')" id="ytLoopEndBtn">OUT</button>
             </div>
-            <div id="ytHistoryList" style="display:flex; gap:8px; overflow-x:auto; padding-bottom:8px;"></div>
         </div>
-        <div id="ytPlayerContainer"><div id="player"></div></div>
-        <div class="panel" style="margin-top:15px;">
-            <div class="row" style="justify-content: center; flex-wrap: wrap; gap: 10px;">
-                <button class="loop-btn-main" id="setStartBtn" onclick="setLoopPoint('start')">SET START</button>
-                <div style="background:#000; padding:5px; border-radius:8px; border:1px solid var(--border-color); display:flex; align-items:center; gap:5px;">
-                    <button class="adj-btn" onclick="adjustTime('start', -1)">-1s</button>
-                    <span id="loopStartTxt" class="time-display">00:00</span>
-                    <button class="adj-btn" onclick="adjustTime('start', 1)">+1s</button>
-                </div>
-            </div>
-            <div class="row" style="justify-content: center; flex-wrap: wrap; gap: 10px;">
-                <button class="loop-btn-main" id="setEndBtn" onclick="setLoopPoint('end')">SET END</button>
-                <div style="background:#000; padding:5px; border-radius:8px; border:1px solid var(--border-color); display:flex; align-items:center; gap:5px;">
-                    <button class="adj-btn" onclick="adjustTime('end', -1)">-1s</button>
-                    <span id="loopEndTxt" class="time-display">00:00</span>
-                    <button class="adj-btn" onclick="adjustTime('end', 1)">+1s</button>
-                </div>
-            </div>
-            <div class="row" style="justify-content: center; gap: 10px;">
-                <button id="toggleLoopBtn" class="tab-btn" style="width:140px;" onclick="toggleLoop()">LOOP OFF</button>
-                <button class="clear-btn-ja" onclick="saveLoop('yt')" id="saveLoopBtnYT" style="border: 1px solid var(--primary-color); border-radius: 6px; padding: 8px 12px;">
-                    <span class="material-icons" style="font-size:16px;">bookmark_add</span> SAVE
-                </button>
-            </div>
+        <div class="clear-btn-container" style="display:flex; justify-content:center; gap:10px; margin-bottom:10px;">
+            <button class="clear-btn-ja" onclick="clearYTLoop()" id="ytClearLoopBtn"><span class="material-icons" style="font-size:16px;">layers_clear</span> 範囲解除</button>
+            <button class="clear-btn-ja" onclick="saveLoop('yt')" id="saveLoopBtnYT" style="border: 1px solid var(--primary-color);"><span class="material-icons" style="font-size:16px;">bookmark_add</span> ループ保存</button>
         </div>
         <div id="loopListYT" class="loop-list-container"></div>
+    </div>
+
+    <div class="panel">
+        <div class="row">
+            <div style="min-width:110px;">
+                <span id="speedLabel" style="font-size:0.8rem; font-weight:bold;">SPEED</span>
+                <button class="reset-btn" onclick="resetSetting('speed', 1.0)">RESET</button>
+            </div>
+            <input type="range" id="speed" min="0.5" max="1.5" step="0.05" value="1.0">
+            <span class="val-display" id="speedVal">1.00x</span>
+        </div>
+        <div class="row">
+            <div style="min-width:110px;">
+                <span id="pitchLabel" style="font-size:0.8rem; font-weight:bold;">PITCH</span>
+                <button class="reset-btn" onclick="resetSetting('pitch', 0)">RESET</button>
+            </div>
+            <input type="range" id="pitch" min="-12" max="12" step="1" value="0">
+            <span class="val-display" id="pitchVal">0 semi</span>
+        </div>
     </div>
 </div>
 
 <script>
     // --- Firebase Configuration ---
     const firebaseConfig = {
-        apiKey: "AIzaSyDI4ReBg15LAaQbd-4slccBHOS9R69sLNU",
-        authDomain: "ams-player-e04bf.firebaseapp.com",
-        projectId: "ams-player-e04bf",
-        storageBucket: "ams-player-e04bf.firebasestorage.app",
-        messagingSenderId: "102274983236",
-        appId: "1:102274983236:web:1584c0c16b60762a4923e3"
+        apiKey: "YOUR_API_KEY",
+        authDomain: "YOUR_PROJECT.firebaseapp.com",
+        projectId: "YOUR_PROJECT",
+        storageBucket: "YOUR_PROJECT.appspot.com",
+        messagingSenderId: "YOUR_SENDER_ID",
+        appId: "YOUR_APP_ID"
     };
-
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db = firebase.firestore();
 
+    // --- State & Variables ---
+    let wavesurfer, wsRegions, recWavesurfer;
+    let audioContext, mediaRecorder, chunks = [], recordedUrl = null;
+    let isRecording = false, isSolo = false, isCountEnabled = true, isSpeedUpEnabled = false;
+    let ytPlayer = null, ytLoop = { start: null, end: null }, ytInterval = null;
+    let currentLanguage = 'ja';
     let isSubscribed = false;
     let currentUser = null;
 
-    // --- Authentication Logic ---
-    async function loginWithGoogle() {
+    // 無料開放する会員IDのリスト
+    const freeMemberIDs = ["YOUR_MEMBER_ID"]; // ここに特定のUIDを記述
+
+    const translations = {
+        ja: { fileSelect: 'ファイルを選択', ready: '準備完了', loading: '読み込み中...', speed: '速度', pitch: 'ピッチ', guideFile: 'Audio Fileモード ガイド', guideYT: 'YouTubeモード ガイド' },
+        en: { fileSelect: 'Select File', ready: 'READY', loading: 'LOADING...', speed: 'SPEED', pitch: 'PITCH', guideFile: 'Audio File Guide', guideYT: 'YouTube Guide' }
+    };
+
+    // --- Authentication & Subscription Logic ---
+    function loginWithGoogle() {
         const provider = new firebase.auth.GoogleAuthProvider();
-        try {
-            await auth.signInWithPopup(provider);
-            // ログイン後の処理は onAuthStateChanged で行われる
-        } catch (e) {
-            console.error("Login error:", e);
-            alert("ログインに失敗しました。");
-        }
+        auth.signInWithPopup(provider);
     }
 
-    function logout() {
-        auth.signOut().then(() => {
-            location.reload();
-        }).catch(e => console.error(e));
-    }
+    function logout() { auth.signOut().then(() => location.reload()); }
 
-    // サブスク判定ロジック
-    async function checkSubscriptionStatus(user) {
-        try {
-            const doc = await db.collection('users').doc(user.uid).get();
-            if (doc.exists) {
-                const data = doc.data();
-                // isSubscribed, isPremium, isStudent のいずれかが true ならOK
-                return data.isSubscribed === true || data.isPremium === true || data.isStudent === true ||
-                       String(data.isSubscribed).toLowerCase() === "true" ||
-                       String(data.isPremium).toLowerCase() === "true" ||
-                       String(data.isStudent).toLowerCase() === "true";
-            }
-            return false;
-        } catch (e) {
-            console.error("Subscription check error:", e);
-            return false;
-        }
-    }
-
-    auth.onAuthStateChanged(async user => {
+    auth.onAuthStateChanged(async (user) => {
         if (user) {
             currentUser = user;
             document.getElementById('auth-overlay').style.display = 'none';
             document.getElementById('userInfoDisplay').style.display = 'flex';
             document.getElementById('userName').innerText = user.displayName || 'User';
             
-            isSubscribed = await checkSubscriptionStatus(user);
+            // 会員IDチェック（無料開放）
+            if (freeMemberIDs.includes(user.uid)) {
+                isSubscribed = true;
+            } else {
+                // 通常のサブスクチェック
+                const snap = await db.collection('users').doc(user.uid).get();
+                isSubscribed = snap.exists && snap.data().isSubscribed;
+            }
+
+            if (isSubscribed) {
+                document.getElementById('ytLock').style.display = 'none';
+            }
+            loadSavedLoops();
         } else {
             document.getElementById('auth-overlay').style.display = 'flex';
-            document.getElementById('userInfoDisplay').style.display = 'none';
         }
     });
 
-    function showSubOverlay() { document.getElementById('subscription-overlay').style.display = 'flex'; }
-    function closeSubOverlay() { document.getElementById('subscription-overlay').style.display = 'none'; }
-    function redirectToCheckout() { window.open('https://square.link/u/YourLink', '_blank'); }
+    function redirectToCheckout() {
+        alert("サブスクリプション決済ページへ移動します（実装例）");
+    }
 
-    // --- Core Player Logic ---
-    let wavesurfer, wsRegions, recWavesurfer, audioContext, mediaStream, recorder;
-    let isCountEnabled = true, isSpeedUpEnabled = false, isRecording = false, isSolo = false;
-    let recordedBlob = null, originalBPM = 120;
-    let ytPlayer, ytLoopTimer, ytLoopActive = false, ytLoopStart = 0, ytLoopEnd = 0;
+    // --- Core Functions ---
+    function initAudioContext() { if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)(); }
 
-    const fmt = s => { const m = Math.floor(s/60); const ss = Math.floor(s%60); return `${m}:${ss<10?'0':''}${ss}`; };
+    function startApp() {
+        wavesurfer = WaveSurfer.create({
+            container: '#waveform', waveColor: '#555', progressColor: varColor('--primary-color'),
+            cursorColor: '#fff', barWidth: 2, barRadius: 3, height: 120, minPxPerSec: 100
+        });
+        wsRegions = wavesurfer.registerPlugin(WaveSurfer.Regions.create());
 
-    const guides = {
-        ja: {
-            file: "<h3>Audio File Mode Guide</h3><ul><li><b>BPM/Speed:</b> BPM数値はSpeedと連動します。</li><li><b>AB Loop:</b> 波形をドラッグして範囲を選択し、ループ再生します。</li><li><b>Rec:</b> 自分の演奏を録音して客観的に聴くことができます。</li></ul>",
-            yt: "<h3>YouTube Mode Guide</h3><ul><li><b>YouTube連携:</b> URLを貼り付けて動画を練習に使えます。</li><li><b>AB Loop:</b> SET START/ENDで正確なループ箇所を指定できます。</li></ul>"
-        },
-        en: {
-            file: "<h3>Audio File Mode Guide</h3><ul><li><b>BPM/Speed:</b> BPM changes with the speed slider.</li><li><b>AB Loop:</b> Drag on waveform to set loop.</li><li><b>Rec:</b> Record yourself to check your progress.</li></ul>",
-            yt: "<h3>YouTube Mode Guide</h3><ul><li><b>Integration:</b> Paste URL to practice with videos.</li><li><b>AB Loop:</b> Precise looping with SET START/END.</li></ul>"
+        recWavesurfer = WaveSurfer.create({
+            container: '#rec-waveform', waveColor: '#ff4444', progressColor: '#ff8888',
+            cursorColor: 'transparent', barWidth: 2, height: 80
+        });
+
+        setupEventListeners();
+    }
+
+    function setupEventListeners() {
+        document.getElementById('audioFile').onchange = e => {
+            const file = e.target.files[0];
+            if (file) {
+                const url = URL.createObjectURL(file);
+                wavesurfer.load(url);
+                document.getElementById('fileSelectBtn').innerText = file.name;
+                document.getElementById('loadStatus').innerText = translations[currentLanguage].loading;
+            }
+        };
+
+        wavesurfer.on('ready', () => {
+            document.getElementById('loadStatus').innerText = translations[currentLanguage].ready;
+            document.getElementById('totalTime').innerText = fmt(wavesurfer.getDuration());
+            wavesurfer.zoom(100);
+        });
+
+        document.getElementById('zoomSlider').oninput = e => wavesurfer.zoom(parseFloat(e.target.value));
+        document.getElementById('resetZoomBtn').onclick = () => { wavesurfer.zoom(0); document.getElementById('zoomSlider').value = 0; };
+        document.getElementById('mainVolume').oninput = e => { wavesurfer.setVolume(e.target.value); document.getElementById('mainVolTxt').innerText = Math.round(e.target.value*100)+'%'; };
+        document.getElementById('speed').oninput = applySettings;
+        document.getElementById('pitch').oninput = applySettings;
+
+        document.getElementById('playBtn').onclick = async () => {
+            initAudioContext();
+            if (wavesurfer.isPlaying()) {
+                wavesurfer.pause();
+                if (recWavesurfer.isPlaying()) recWavesurfer.pause();
+            } else {
+                const current = wavesurfer.getCurrentTime(), region = wsRegions.getRegions()[0];
+                if (isCountEnabled && region && (current < region.start || current >= region.end)) wavesurfer.setTime(region.start);
+                await runCountdown();
+                applySettings();
+                wavesurfer.play();
+            }
+        };
+
+        wavesurfer.on('play', () => document.getElementById('playIcon').innerText = 'pause');
+        wavesurfer.on('pause', () => {
+            document.getElementById('playIcon').innerText = 'play_arrow';
+            if (recWavesurfer.isPlaying()) recWavesurfer.pause();
+        });
+
+        wavesurfer.on('timeupdate', t => {
+            document.getElementById('currentTime').innerText = fmt(t);
+            const r = wsRegions.getRegions()[0];
+            if(r && t >= r.end) {
+                wavesurfer.setTime(r.start);
+                if (isSpeedUpEnabled) {
+                    const s = document.getElementById('speed');
+                    s.value = Math.min(1.5, parseFloat(s.value) + 0.05).toFixed(2);
+                    applySettings();
+                }
+                if (isRecording) toggleRecording();
+            }
+        });
+
+        wsRegions.on('region-created', r => { if(wsRegions.getRegions().length > 1) wsRegions.getRegions()[0].remove(); });
+        window.resetSetting = (id, val) => { document.getElementById(id).value = val; applySettings(); };
+        changeLanguage();
+    }
+
+    function applySettings() {
+        const s = parseFloat(document.getElementById('speed').value);
+        const p = parseFloat(document.getElementById('pitch').value);
+        wavesurfer.setPlaybackRate(s, true);
+        document.getElementById('speedVal').innerText = s.toFixed(2) + 'x';
+        document.getElementById('pitchVal').innerText = p + ' semi';
+    }
+
+    async function runCountdown() {
+        if (!isCountEnabled) return;
+        const overlay = document.getElementById('countdown-overlay');
+        overlay.style.display = 'block';
+        for (let i = 3; i > 0; i--) {
+            overlay.innerText = i;
+            await new Promise(r => setTimeout(r, 600));
         }
-    };
+        overlay.style.display = 'none';
+    }
+
+    function switchMode(mode) {
+        if (mode === 'yt' && !isSubscribed) {
+            document.getElementById('subscription-overlay').style.display = 'flex';
+            return;
+        }
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById('tab-' + mode).classList.add('active');
+        document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
+        document.getElementById(mode + '-section').classList.add('active');
+        if (mode === 'yt') initYoutube();
+        else if (ytPlayer) ytPlayer.pauseVideo();
+    }
+
+    // --- Recording Logic ---
+    async function toggleRecording() {
+        if (!isRecording) {
+            initAudioContext();
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorder = new MediaRecorder(stream);
+            mediaRecorder.ondataavailable = e => chunks.push(e.data);
+            mediaRecorder.onstop = () => {
+                const blob = new Blob(chunks, { type: 'audio/ogg; codecs=opus' });
+                recordedUrl = URL.createObjectURL(blob);
+                recWavesurfer.load(recordedUrl);
+                document.getElementById('rec-waveform-wrapper').style.display = 'block';
+                document.getElementById('recControls').style.display = 'flex';
+                document.getElementById('recVolControl').style.display = 'flex';
+                chunks = [];
+            };
+            mediaRecorder.start();
+            isRecording = true;
+            document.getElementById('recBtn').classList.add('recording');
+            document.getElementById('recIcon').innerText = 'stop';
+        } else {
+            mediaRecorder.stop();
+            isRecording = false;
+            document.getElementById('recBtn').classList.remove('recording');
+            document.getElementById('recIcon').innerText = 'mic';
+        }
+    }
+
+    function playRecording() {
+        if (recWavesurfer.isPlaying()) recWavesurfer.pause();
+        else {
+            recWavesurfer.setVolume(document.getElementById('recVolume').value);
+            recWavesurfer.play();
+        }
+    }
+
+    function deleteRecording() {
+        recWavesurfer.empty();
+        document.getElementById('rec-waveform-wrapper').style.display = 'none';
+        document.getElementById('recControls').style.display = 'none';
+        document.getElementById('recVolControl').style.display = 'none';
+        recordedUrl = null;
+    }
+
+    function toggleSolo() {
+        isSolo = !isSolo;
+        document.getElementById('soloBtn').classList.toggle('active', isSolo);
+        wavesurfer.setVolume(isSolo ? 0 : document.getElementById('mainVolume').value);
+    }
+
+    function toggleFeature(type) {
+        if (type === 'count') {
+            isCountEnabled = !isCountEnabled;
+            document.getElementById('countToggleBtn').classList.toggle('active', isCountEnabled);
+        } else if (type === 'speedup') {
+            isSpeedUpEnabled = !isSpeedUpEnabled;
+            document.getElementById('speedUpToggleBtn').classList.toggle('active', isSpeedUpEnabled);
+        }
+    }
+
+    // --- YouTube Logic ---
+    function initYoutube() {
+        if (ytPlayer) return;
+        const tag = document.createElement('script');
+        tag.src = "https://www.youtube.com/iframe_api";
+        document.head.appendChild(tag);
+        window.onYouTubeIframeAPIReady = () => {
+            ytPlayer = new YT.Player('ytPlayerContainer', {
+                height: '100%', width: '100%',
+                playerVars: { 'playsinline': 1, 'controls': 1, 'disablekb': 1 },
+                events: { 'onStateChange': onYTStateChange }
+            });
+        };
+    }
+
+    function loadYoutube() {
+        const url = document.getElementById('ytUrl').value;
+        const id = url.split('v=')[1]?.split('&')[0] || url.split('/').pop();
+        if (id && ytPlayer) {
+            ytPlayer.loadVideoById(id);
+            startYTTracking();
+        }
+    }
+
+    function startYTTracking() {
+        if (ytInterval) clearInterval(ytInterval);
+        ytInterval = setInterval(() => {
+            if (ytPlayer && ytPlayer.getCurrentTime) {
+                const curr = ytPlayer.getCurrentTime();
+                const dur = ytPlayer.getDuration();
+                document.getElementById('ytTimeDisplay').innerText = fmt(curr) + ' / ' + fmt(dur);
+                if (ytLoop.start !== null && ytLoop.end !== null) {
+                    if (curr >= ytLoop.end || curr < ytLoop.start) ytPlayer.seekTo(ytLoop.start);
+                }
+            }
+        }, 500);
+    }
+
+    function onYTStateChange(e) { if (e.data === YT.PlayerState.ENDED && ytLoop.start !== null) ytPlayer.seekTo(ytLoop.start); }
+    function setYTLoop(type) { if (ytPlayer) ytLoop[type] = ytPlayer.getCurrentTime(); }
+    function clearYTLoop() { ytLoop = { start: null, end: null }; }
+
+    // --- Utility ---
+    function fmt(s) {
+        const m = Math.floor(s / 60);
+        const sec = Math.floor(s % 60);
+        return `${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
+    }
+
+    function varColor(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
 
     function toggleMenu(show) {
         document.getElementById('sideMenu').classList.toggle('open', show);
@@ -414,344 +589,63 @@
     }
 
     function changeLanguage() {
-        const lang = document.getElementById('langSelect').value;
-        const t = {
-            ja: { file: "Audio File モード", yt: "YouTube モード", select: "ファイルを選択", clear: "範囲解除", save: "ループ保存", count: "カウント", speed: "スピードアップ", rec: "録音再生", advice: "AIアドバイス", del: "削除", lang: "言語設定", help: "ヘルプ＆ガイド", gFile: "Audio Fileモード ガイド", gYT: "YouTubeモード ガイド" },
-            en: { file: "Audio File Mode", yt: "YouTube Mode", select: "Select File", clear: "Clear Range", save: "Save Loop", count: "Countdown", speed: "Auto Speed Up", rec: "Play Rec", advice: "AI Advice", del: "Delete", lang: "Language Settings", help: "Help & Guide", gFile: "File Mode Guide", gYT: "YouTube Mode Guide" }
-        }[lang];
-        document.getElementById('tab-file').childNodes[0].textContent = t.file;
-        document.getElementById('tab-yt').childNodes[0].textContent = t.yt;
-        document.getElementById('fileSelectBtn').innerText = t.select;
-        document.getElementById('clearRangeBtn').innerHTML = `<span class="material-icons" style="font-size:16px;">layers_clear</span> ${t.clear}`;
-        document.getElementById('saveLoopBtn').innerHTML = `<span class="material-icons" style="font-size:16px;">bookmark_add</span> ${t.save}`;
-        document.getElementById('playRecBtn').innerHTML = `<span class="material-icons" style="font-size:14px;">play_circle</span> ${t.rec}`;
-        document.getElementById('aiAdviceBtn').innerHTML = `<span class="material-icons" style="font-size:14px;">psychology</span> ${t.advice}`;
-        document.getElementById('langTitle').innerText = t.lang;
-        document.getElementById('helpTitle').innerText = t.help;
-        document.getElementById('guideFileTitle').innerText = t.gFile;
-        document.getElementById('guideYTTitle').innerText = t.gYT;
+        currentLanguage = document.getElementById('langSelect').value;
+        const t = translations[currentLanguage];
+        document.getElementById('fileSelectBtn').innerText = t.fileSelect;
+        document.getElementById('speedLabel').innerText = t.speed;
+        document.getElementById('pitchLabel').innerText = t.pitch;
+        document.getElementById('guideFileTitle').innerText = t.guideFile;
+        document.getElementById('guideYTTitle').innerText = t.guideYT;
     }
 
-    function showGuide(mode) {
-        const lang = document.getElementById('langSelect').value;
-        if(mode === 'file') {
-            document.getElementById('guideFileContent').innerHTML = guides[lang].file;
-            document.getElementById('guideModalFile').style.display = 'block';
-        } else {
-            document.getElementById('guideYTContent').innerHTML = guides[lang].yt;
-            document.getElementById('guideModalYT').style.display = 'block';
-        }
-    }
-    function closeModals() { document.querySelectorAll('.modal').forEach(m => m.style.display = 'none'); }
-
-    function switchMode(mode) {
-        if (mode === 'yt' && !isSubscribed) {
-            showSubOverlay();
-            return;
-        }
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
-        document.getElementById(`tab-${mode}`).classList.add('active');
-        document.getElementById(`${mode}-section`).classList.add('active');
-        if(mode==='yt') initYouTube();
+    function closeModals() {
+        document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
     }
 
-    function initAudioContext() { if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)(); }
-
-    function applySettings() {
-        const s = parseFloat(document.getElementById('speed').value);
-        const p = parseFloat(document.getElementById('pitch').value);
-        const v = parseFloat(document.getElementById('mainVolume').value);
-        if(wavesurfer) {
-            wavesurfer.setPlaybackRate(s, true);
-            wavesurfer.setVolume(isSolo ? 0 : v);
-        }
-        document.getElementById('spTxt').innerText = `BPM ${Math.round(originalBPM * s)}`;
-        document.getElementById('pitchTxt').innerText = (p > 0 ? "+" : "") + p;
-        document.getElementById('mainVolTxt').innerText = Math.round(v * 100) + "%";
+    function closeSubOverlay() {
+        document.getElementById('subscription-overlay').style.display = 'none';
     }
 
-    function toggleFeature(type) {
-        if(type === 'count') {
-            isCountEnabled = !isCountEnabled;
-            document.getElementById('countToggleBtn').classList.toggle('active', isCountEnabled);
-        } else {
-            isSpeedUpEnabled = !isSpeedUpEnabled;
-            document.getElementById('speedUpToggleBtn').classList.toggle('active', isSpeedUpEnabled);
-        }
-    }
-
-    async function runCountdown() {
-        if (!isCountEnabled) return;
-        const overlay = document.getElementById('countdown-overlay');
-        overlay.style.display = 'block';
-        for (let i = 4; i > 0; i--) {
-            overlay.innerText = i;
-            await new Promise(r => setTimeout(r, 600));
-        }
-        overlay.style.display = 'none';
-    }
-
-    // --- Recording Logic ---
-    async function toggleRecording() {
-        if (!isRecording) {
-            try {
-                mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                recorder = new MediaRecorder(mediaStream);
-                const chunks = [];
-                recorder.ondataavailable = e => chunks.push(e.data);
-                recorder.onstop = () => {
-                    recordedBlob = new Blob(chunks, { type: 'audio/webm' });
-                    const url = URL.createObjectURL(recordedBlob);
-                    recWavesurfer.load(url);
-                    document.getElementById('rec-waveform-wrapper').style.display = 'block';
-                    document.getElementById('recControls').style.display = 'flex';
-                    document.getElementById('recVolControl').style.display = 'flex';
-                };
-                recorder.start();
-                isRecording = true;
-                document.getElementById('recBtn').classList.add('recording');
-            } catch (e) { console.error("Mic error:", e); alert("マイクへのアクセスを許可してください。"); }
-        } else {
-            recorder.stop();
-            mediaStream.getTracks().forEach(t => t.stop());
-            isRecording = false;
-            document.getElementById('recBtn').classList.remove('recording');
-        }
-    }
-
-    function playRecording() {
-        if(recWavesurfer) {
-            recWavesurfer.setVolume(document.getElementById('recVolume').value);
-            recWavesurfer.play();
-        }
-    }
-
-    function deleteRecording() {
-        recordedBlob = null;
-        document.getElementById('rec-waveform-wrapper').style.display = 'none';
-        document.getElementById('recControls').style.display = 'none';
-        document.getElementById('recVolControl').style.display = 'none';
-        document.getElementById('aiResultCard').style.display = 'none';
-    }
-
-    function toggleSolo() {
-        isSolo = !isSolo;
-        document.getElementById('soloBtn').classList.toggle('active', isSolo);
-        applySettings();
-    }
-
-    async function runAIAdvice() {
-        document.getElementById('aiLoading').style.display = 'block';
-        document.getElementById('aiResultCard').style.display = 'none';
-        await new Promise(r => setTimeout(r, 2000));
-        const advices = [
-            "リズムの安定感が素晴らしいです。後半の速いパッセージで少し走る傾向があるので、メトロノームでBPMを5落として練習してみましょう。",
-            "ピッチが非常に正確です。アタックの強弱を意識すると、より表情豊かな演奏になります。特にフレーズの入りを丁寧に。",
-            "全体的にまとまっていますが、ハイポジションでの音の伸びを意識すると良くなります。ビブラートの幅を一定に保つ練習が効果的です。"
-        ];
-        document.getElementById('aiLoading').style.display = 'none';
-        document.getElementById('aiAdviceText').innerText = advices[Math.floor(Math.random() * advices.length)];
-        document.getElementById('aiResultCard').style.display = 'block';
-    }
-
-    // --- YouTube Logic ---
-    function initYouTube() {
-        if (ytPlayer) return;
-        const tag = document.createElement('script');
-        tag.src = "https://www.youtube.com/iframe_api";
-        document.head.appendChild(tag);
-    }
-
-    window.onYouTubeIframeAPIReady = () => {
-        ytPlayer = new YT.Player('player', {
-            height: '100%', width: '100%',
-            playerVars: { 'playsinline': 1, 'controls': 1, 'modestbranding': 1 },
-            events: { 'onStateChange': onPlayerStateChange }
-        });
-    };
-
-    function loadYouTube() {
-        const url = document.getElementById('ytUrl').value;
-        const id = url.split('v=')[1]?.split('&')[0] || url.split('/').pop();
-        if (id) {
-            ytPlayer.loadVideoById(id);
-            saveToHistory(id);
-            renderYTHistory();
-        }
-    }
-
-    function onPlayerStateChange(event) {
-        if (event.data == YT.PlayerState.PLAYING && ytLoopActive) {
-            if (ytLoopTimer) clearInterval(ytLoopTimer);
-            ytLoopTimer = setInterval(() => {
-                const curr = ytPlayer.getCurrentTime();
-                if (curr >= ytLoopEnd) ytPlayer.seekTo(ytLoopStart);
-            }, 100);
-        } else {
-            clearInterval(ytLoopTimer);
-        }
-    }
-
-    function setLoopPoint(type) {
-        const t = ytPlayer.getCurrentTime();
-        if(type === 'start') { ytLoopStart = t; document.getElementById('loopStartTxt').innerText = fmt(t); }
-        else { ytLoopEnd = t; document.getElementById('loopEndTxt').innerText = fmt(t); }
-    }
-
-    function adjustTime(type, amt) {
-        if(type === 'start') { ytLoopStart = Math.max(0, ytLoopStart + amt); document.getElementById('loopStartTxt').innerText = fmt(ytLoopStart); }
-        else { ytLoopEnd = Math.max(0, ytLoopEnd + amt); document.getElementById('loopEndTxt').innerText = fmt(ytLoopEnd); }
-    }
-
-    function toggleLoop() {
-        ytLoopActive = !ytLoopActive;
-        const btn = document.getElementById('toggleLoopBtn');
-        btn.innerText = ytLoopActive ? "LOOP ON" : "LOOP OFF";
-        btn.classList.toggle('active', ytLoopActive);
-        if(ytLoopActive && ytPlayer.getPlayerState() === YT.PlayerState.PLAYING) onPlayerStateChange({data: YT.PlayerState.PLAYING});
-    }
-
-    function saveToHistory(id) {
-        let history = JSON.parse(localStorage.getItem('ytHistory') || '[]');
-        history = [id, ...history.filter(i => i !== id)].slice(0, 10);
-        localStorage.setItem('ytHistory', JSON.stringify(history));
-    }
-
-    function renderYTHistory() {
-        const history = JSON.parse(localStorage.getItem('ytHistory') || '[]');
-        const container = document.getElementById('ytHistoryContainer');
-        const list = document.getElementById('ytHistoryList');
-        if (history.length === 0) { container.style.display = 'none'; return; }
-        container.style.display = 'block';
-        list.innerHTML = history.map(id => `
-            <img src="https://img.youtube.com/vi/${id}/default.jpg" onclick="loadVideoDirect('${id}')" 
-                 style="width:80px; height:60px; border-radius:4px; cursor:pointer; object-fit:cover; border:1px solid var(--border-color);">
-        `).join('');
-    }
-    window.loadVideoDirect = id => { ytPlayer.loadVideoById(id); document.getElementById('ytUrl').value = `https://www.youtube.com/watch?v=${id}`; };
-    window.clearYTHistory = () => { localStorage.removeItem('ytHistory'); renderYTHistory(); };
-
-    // --- AB Loop Management ---
-    function saveLoop(mode) {
-        if (!isSubscribed) { showSubOverlay(); return; }
-        let loop = {};
-        if (mode === 'file') {
+    async function saveLoop(type) {
+        if (!currentUser) return;
+        let data = {};
+        if (type === 'file') {
             const r = wsRegions.getRegions()[0];
             if (!r) return;
-            loop = { id: Date.now(), mode: 'file', start: r.start, end: r.end, name: `Loop ${fmt(r.start)}` };
+            data = { name: document.getElementById('fileSelectBtn').innerText, start: r.start, end: r.end, type: 'file' };
         } else {
-            if (ytLoopEnd <= ytLoopStart) return;
-            loop = { id: Date.now(), mode: 'yt', start: ytLoopStart, end: ytLoopEnd, name: `YT Loop ${fmt(ytLoopStart)}`, vid: document.getElementById('ytUrl').value };
+            if (ytLoop.start === null) return;
+            data = { name: "YT Loop", start: ytLoop.start, end: ytLoop.end, type: 'yt' };
         }
-        const loops = JSON.parse(localStorage.getItem('savedLoops') || '[]');
-        loops.push(loop);
-        localStorage.setItem('savedLoops', JSON.stringify(loops));
-        renderLoops();
+        await db.collection('users').doc(currentUser.uid).collection('loops').add(data);
+        loadSavedLoops();
     }
 
-    function renderLoops() {
-        const loops = JSON.parse(localStorage.getItem('savedLoops') || '[]');
-        const fList = document.getElementById('loopListFile');
-        const yList = document.getElementById('loopListYT');
-        fList.innerHTML = ''; yList.innerHTML = '';
-        loops.forEach(l => {
-            const badge = document.createElement('div');
-            badge.className = 'loop-badge';
-            badge.innerHTML = `<span class="material-icons" style="font-size:14px;">play_arrow</span> ${l.name} <span class="material-icons" onclick="deleteLoop(${l.id}, event)" style="font-size:14px; opacity:0.5;">close</span>`;
-            badge.onclick = () => applyLoop(l);
-            if(l.mode === 'file') fList.appendChild(badge); else yList.appendChild(badge);
-        });
-    }
-    window.deleteLoop = (id, e) => {
-        e.stopPropagation();
-        const loops = JSON.parse(localStorage.getItem('savedLoops') || '[]').filter(l => l.id !== id);
-        localStorage.setItem('savedLoops', JSON.stringify(loops));
-        renderLoops();
-    };
-    function applyLoop(l) {
-        if (l.mode === 'file') {
-            wsRegions.clearRegions();
-            wsRegions.addRegion({ start: l.start, end: l.end, color: 'rgba(212, 163, 115, 0.3)' });
-            wavesurfer.setTime(l.start);
-        } else {
-            ytLoopStart = l.start; ytLoopEnd = l.end;
-            document.getElementById('loopStartTxt').innerText = fmt(l.start);
-            document.getElementById('loopEndTxt').innerText = fmt(l.end);
-            if(!ytLoopActive) toggleLoop();
-            ytPlayer.seekTo(l.start);
-        }
-    }
-
-    // --- App Start ---
-    function startApp() {
-        wavesurfer = WaveSurfer.create({
-            container: '#waveform', waveColor: '#555', progressColor: '#d4a373',
-            cursorColor: '#fff', cursorWidth: 2, height: 120, normalize: true,
-            minPxPerSec: 100, hideScrollbar: false,
-        });
-        wsRegions = wavesurfer.registerPlugin(WaveSurfer.Regions.create());
-        
-        recWavesurfer = WaveSurfer.create({
-            container: '#rec-waveform', waveColor: '#ff8888', progressColor: '#ff4444',
-            height: 80, cursorWidth: 0, interact: false
-        });
-
-        wavesurfer.on('ready', () => {
-            document.getElementById('loadStatus').innerText = 'LOADED';
-            document.getElementById('totalTime').innerText = fmt(wavesurfer.getDuration());
-            applySettings();
-            originalBPM = 120;
-            renderLoops();
-        });
-
-        document.getElementById('audioFile').onchange = e => {
-            const file = e.target.files[0];
-            if (file) {
-                const url = URL.createObjectURL(file);
-                wavesurfer.load(url);
-                document.getElementById('fileSelectBtn').innerText = file.name;
-            }
-        };
-
-        wsRegions.on('region-created', r => { if(wsRegions.getRegions().length > 1) wsRegions.getRegions()[0].remove(); });
-        
-        document.getElementById('zoomSlider').oninput = e => wavesurfer.zoom(parseFloat(e.target.value));
-        document.getElementById('resetZoomBtn').onclick = () => { wavesurfer.zoom(100); document.getElementById('zoomSlider').value = 100; };
-        document.getElementById('mainVolume').oninput = applySettings;
-        document.getElementById('recVolume').oninput = () => { document.getElementById('recVolTxt').innerText = Math.round(document.getElementById('recVolume').value * 100) + "%"; };
-        document.getElementById('speed').oninput = applySettings;
-        document.getElementById('pitch').oninput = applySettings;
-
-        document.getElementById('playBtn').onclick = async () => {
-            initAudioContext();
-            if (wavesurfer.isPlaying()) { wavesurfer.pause(); } 
-            else {
-                const current = wavesurfer.getCurrentTime(), region = wsRegions.getRegions()[0];
-                if (isCountEnabled && region && (current < region.start || current >= region.end)) wavesurfer.setTime(region.start);
-                await runCountdown(); applySettings(); wavesurfer.play();
-            }
-        };
-
-        wavesurfer.on('play', () => document.getElementById('playIcon').innerText = 'pause');
-        wavesurfer.on('pause', () => { document.getElementById('playIcon').innerText = 'play_arrow'; });
-        wavesurfer.on('timeupdate', t => {
-            document.getElementById('currentTime').innerText = fmt(t);
-            const r = wsRegions.getRegions()[0];
-            if(r && t >= r.end) { 
-                wavesurfer.setTime(r.start); 
-                if (isSpeedUpEnabled) { 
-                    const s = document.getElementById('speed'); 
-                    s.value = Math.min(1.5, parseFloat(s.value) + 0.05).toFixed(2); 
-                    applySettings(); 
+    async function loadSavedLoops() {
+        if (!currentUser) return;
+        const snap = await db.collection('users').doc(currentUser.uid).collection('loops').get();
+        const containerFile = document.getElementById('loopListFile');
+        const containerYT = document.getElementById('loopListYT');
+        containerFile.innerHTML = ''; containerYT.innerHTML = '';
+        snap.forEach(doc => {
+            const d = doc.data();
+            const btn = document.createElement('button');
+            btn.className = 'loop-btn-main';
+            btn.innerText = `${fmt(d.start)} - ${fmt(d.end)}`;
+            btn.onclick = () => {
+                if (d.type === 'file') {
+                    wsRegions.clearRegions();
+                    wsRegions.addRegion({ start: d.start, end: d.end, color: 'rgba(212, 163, 115, 0.3)' });
+                    wavesurfer.setTime(d.start);
+                } else {
+                    ytLoop = { start: d.start, end: d.end };
+                    ytPlayer.seekTo(d.start);
                 }
-            }
+            };
+            if (d.type === 'file') containerFile.appendChild(btn); else containerYT.appendChild(btn);
         });
-
-        window.resetSetting = (id, val) => { document.getElementById(id).value = val; applySettings(); };
-        changeLanguage(); 
-        renderYTHistory();
     }
+
     window.addEventListener('DOMContentLoaded', startApp);
 </script>
 </body>

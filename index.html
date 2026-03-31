@@ -574,13 +574,17 @@
                 const region = wsRegions.getRegions()[0];
                 const startPos = region ? region.start : wavesurfer.getCurrentTime();
                 wavesurfer.setTime(startPos); lastRecStartPos = startPos;
-                await runCountdown(); mediaRecorder.start(); await wavesurfer.play();
+                await runCountdown();
+                
+                // 同期精度の向上のため、再生直後に録音を開始
+                await wavesurfer.play();
+                mediaRecorder.start();
+                
                 isRecording = true; document.getElementById('recBtn').classList.add('recording'); document.getElementById('recIcon').innerText = 'stop';
             } catch (err) { alert("マイクを許可してください"); }
         }
     }
 
-    // --- 連動録音再生 ---
     function playRecording() {
         if (!recWavesurfer || !recWavesurfer.getDuration()) return;
         if (recWavesurfer.isPlaying()) { 
@@ -775,7 +779,6 @@
 
         wavesurfer.on('ready', () => { document.getElementById('totalTime').innerText = fmt(wavesurfer.getDuration()); applySettings(); });
         
-        // --- 録音波形操作の同期 ---
         recWavesurfer.on('interaction', () => {
             if (recWavesurfer.getDuration() > 0) {
                 const seekTime = recWavesurfer.getCurrentTime();
@@ -814,11 +817,16 @@
             document.getElementById('currentTime').innerText = fmt(t);
             const r = wsRegions.getRegions()[0];
             if(r && t >= r.end) { 
-                wavesurfer.setTime(r.start); 
-                if (isSpeedUpEnabled) { 
-                    const s = document.getElementById('speed'); 
-                    s.value = Math.min(1.5, parseFloat(s.value) + 0.05).toFixed(2); 
-                    applySettings(); 
+                // 録音中の場合は停止、そうでない場合はループ処理
+                if (isRecording) {
+                    toggleRecording(); 
+                } else {
+                    wavesurfer.setTime(r.start); 
+                    if (isSpeedUpEnabled) { 
+                        const s = document.getElementById('speed'); 
+                        s.value = Math.min(1.5, parseFloat(s.value) + 0.05).toFixed(2); 
+                        applySettings(); 
+                    }
                 }
             }
         });

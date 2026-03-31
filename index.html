@@ -3,10 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AMS Practice Player v1.3.3 - Subscription Edition</title>
+    <title>AMS Practice Player v1.3.4 - Mobile Optimized</title>
     
     <meta name="apple-mobile-web-app-title" content="AMS Player">
     <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     
     <link rel="icon" href="icon.png?v=1.2.1" type="image/png">
     <link rel="apple-touch-icon" href="icon.png?v=1.2.1">
@@ -15,8 +16,8 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 
-    <script src="https://unpkg.com/wavesurfer.js@7/dist/wavesurfer.min.js"></script>
-    <script src="https://unpkg.com/wavesurfer.js@7/dist/plugins/regions.min.js"></script>
+    <script src="https://unpkg.com/wavesurfer.js@7.7.3/dist/wavesurfer.min.js"></script>
+    <script src="https://unpkg.com/wavesurfer.js@7.7.3/dist/plugins/regions.min.js"></script>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     
     <style>
@@ -486,7 +487,7 @@
         const lang = document.getElementById('langSelect').value;
         const statusEl = document.getElementById('loadStatus');
         statusEl.innerText = translations[lang].analyzing;
-        const tempCtx = new AudioContext();
+        const tempCtx = new (window.AudioContext || window.webkitAudioContext)();
         try {
             const arrayBuffer = await blob.arrayBuffer();
             const audioBuffer = await tempCtx.decodeAudioData(arrayBuffer);
@@ -563,7 +564,7 @@
                     if (recObjectURL) URL.revokeObjectURL(recObjectURL);
                     recObjectURL = URL.createObjectURL(blob);
                     const arrayBuffer = await blob.arrayBuffer();
-                    const tempCtx = new AudioContext();
+                    const tempCtx = new (window.AudioContext || window.webkitAudioContext)();
                     recordedAudioBuffer = await tempCtx.decodeAudioData(arrayBuffer); tempCtx.close();
                     document.getElementById('rec-waveform-wrapper').style.display = 'block';
                     document.getElementById('recVolControl').style.display = 'flex';
@@ -576,7 +577,6 @@
                 wavesurfer.setTime(startPos); lastRecStartPos = startPos;
                 await runCountdown();
                 
-                // 同期精度の向上のため、再生直後に録音を開始
                 await wavesurfer.play();
                 mediaRecorder.start();
                 
@@ -587,6 +587,7 @@
 
     function playRecording() {
         if (!recWavesurfer || !recWavesurfer.getDuration()) return;
+        initAudioContext();
         if (recWavesurfer.isPlaying()) { 
             recWavesurfer.pause(); 
             wavesurfer.pause(); 
@@ -620,7 +621,7 @@
         if (videoId) {
             currentYTId = videoId; document.getElementById('loopListYT').innerHTML = ""; 
             if (ytPlayer && ytPlayer.loadVideoById) ytPlayer.loadVideoById(videoId);
-            else ytPlayer = new YT.Player('player', { videoId: videoId, events: { 'onReady': () => { updateYTInfo(); }, 'onStateChange': onPlayerStateChange } });
+            else ytPlayer = new YT.Player('player', { videoId: videoId, playerVars: { playsinline: 1 }, events: { 'onReady': () => { updateYTInfo(); }, 'onStateChange': onPlayerStateChange } });
             urlInput.value = "";
         }
     }
@@ -740,6 +741,8 @@
     };
 
     function startApp() {
+        if (!document.getElementById('waveform')) return;
+        
         wavesurfer = WaveSurfer.create({ container: '#waveform', waveColor: '#333', progressColor: '#d4a373', height: 120, barWidth: 2, normalize: true });
         recWavesurfer = WaveSurfer.create({ container: '#rec-waveform', waveColor: '#552222', progressColor: '#ff4444', height: 80, barWidth: 2, normalize: true });
         wsRegions = wavesurfer.registerPlugin(WaveSurfer.Regions.create());
@@ -758,7 +761,11 @@
                 const reader = new FileReader();
                 reader.onload = async (event) => {
                     const blob = new Blob([event.target.result], { type: file.type });
-                    currentObjectURL = URL.createObjectURL(blob); wavesurfer.load(currentObjectURL); analyzeAudio(blob); renderLoopList('file');
+                    if (currentObjectURL) URL.revokeObjectURL(currentObjectURL);
+                    currentObjectURL = URL.createObjectURL(blob); 
+                    wavesurfer.load(currentObjectURL); 
+                    analyzeAudio(blob); 
+                    renderLoopList('file');
                 };
                 reader.readAsArrayBuffer(file);
             } 
@@ -817,7 +824,6 @@
             document.getElementById('currentTime').innerText = fmt(t);
             const r = wsRegions.getRegions()[0];
             if(r && t >= r.end) { 
-                // 録音中の場合は停止、そうでない場合はループ処理
                 if (isRecording) {
                     toggleRecording(); 
                 } else {
@@ -835,7 +841,13 @@
         changeLanguage(); 
         renderYTHistory();
     }
-    window.addEventListener('DOMContentLoaded', startApp);
+
+    // ページの読み込み完了後に実行
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', startApp);
+    } else {
+        startApp();
+    }
 </script>
 </body>
 </html>

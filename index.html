@@ -3,14 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AMS Practice Player v2.0 - Studio Elite</title>
+    <title>AMS Practice Player v1.5.0 - Professional Edition</title>
     
     <meta name="apple-mobile-web-app-title" content="AMS Player">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     
-    <link rel="icon" href="icon.png" type="image/png">
-    <link rel="apple-touch-icon" href="icon.png">
+    <link rel="icon" href="icon.png?v=1.2.1" type="image/png">
+    <link rel="apple-touch-icon" href="icon.png?v=1.2.1">
+
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 
     <script src="https://unpkg.com/wavesurfer.js@7/dist/wavesurfer.min.js"></script>
     <script src="https://unpkg.com/wavesurfer.js@7/dist/plugins/regions.min.js"></script>
@@ -18,432 +22,547 @@
     
     <style>
         :root {
-            --primary: #d4a373;
-            --primary-glow: rgba(212, 163, 115, 0.3);
-            --bg: #0a0a0a;
-            --surface: #1a1a1a;
-            --surface-light: #252525;
-            --text: #ffffff;
-            --text-dim: #a0a0a0;
-            --recording: #ff4757;
-            --ai: #8257e5;
-            --border: #333333;
-            --safe-bottom: env(safe-area-inset-bottom);
+            --accent-cyan: #00f2ff;
+            --accent-amber: #ffb400;
+            --bg-deep: #0a0a0c;
+            --card-bg: #16161e;
+            --text-primary: #f0f0f2;
+            --text-secondary: #a0a0ab;
+            --border-ui: #2d2d3a;
+            --danger: #ff4d4d;
+            --success: #4ade80;
+            --glass: rgba(22, 22, 30, 0.8);
         }
 
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
-        
-        body { 
-            background-color: var(--bg);
-            color: var(--text);
+        * { 
+            box-sizing: border-box; 
+            -webkit-tap-highlight-color: transparent;
             font-family: 'Inter', -apple-system, sans-serif;
-            padding: 0; margin: 0; 
+        }
+
+        body { 
+            background-color: var(--bg-deep);
+            color: var(--text-primary);
+            margin: 0; padding: 0;
             overscroll-behavior-y: contain;
-            display: flex;
-            flex-direction: column;
-            min-height: 100vh;
+            padding-bottom: 120px; /* 下部操作UI用スペース */
         }
 
-        /* --- Header --- */
-        header {
-            padding: 15px 20px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            background: rgba(10, 10, 10, 0.8);
-            backdrop-filter: blur(20px);
-            position: sticky; top: 0; z-index: 100;
-            border-bottom: 1px solid var(--border);
+        /* --- 認証・サブスク オーバーレイ --- */
+        #auth-overlay, #subscription-overlay {
+            position: fixed; inset: 0;
+            background: var(--bg-deep); z-index: 9000;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            text-align: center; padding: 20px;
         }
-
-        .brand { font-weight: 800; letter-spacing: 2px; font-size: 1rem; color: var(--primary); }
+        #subscription-overlay { background: rgba(0,0,0,0.92); z-index: 9500; display: none; backdrop-filter: blur(8px); }
         
-        /* --- Layout Container --- */
-        .container { 
-            flex: 1;
-            width: 100%; max-width: 800px; margin: 0 auto; 
-            padding: 20px; padding-bottom: 180px; /* 余白確保 */
+        .overlay-card {
+            background: var(--card-bg); padding: 40px 24px; border-radius: 24px;
+            border: 1px solid var(--accent-cyan); max-width: 360px; width: 100%;
+            box-shadow: 0 0 30px rgba(0, 242, 255, 0.15);
+        }
+        
+        .google-btn {
+            background: white; color: #1f2937; border: none; padding: 14px;
+            border-radius: 12px; font-weight: 700; cursor: pointer; display: flex;
+            align-items: center; justify-content: center; gap: 12px; width: 100%;
+            margin-top: 24px; font-size: 1rem; transition: transform 0.1s;
+        }
+        .google-btn:active { transform: scale(0.98); }
+
+        .subscribe-btn {
+            background: linear-gradient(135deg, var(--accent-cyan), #00a2ff);
+            color: var(--bg-deep); border: none; padding: 16px;
+            border-radius: 14px; font-weight: 800; cursor: pointer; 
+            margin-top: 20px; font-size: 1.1rem; width: 100%;
         }
 
-        /* --- Tabs --- */
-        .tabs {
-            display: flex; background: var(--surface);
-            padding: 4px; border-radius: 12px; margin-bottom: 20px;
-            border: 1px solid var(--border);
+        /* --- ヘッダー --- */
+        header {
+            position: sticky; top: 0; width: 100%; height: 64px;
+            background: var(--glass); backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border-ui);
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0 20px; z-index: 3000;
         }
-        .tab {
-            flex: 1; padding: 12px; text-align: center; border-radius: 8px;
-            font-size: 0.85rem; font-weight: 600; cursor: pointer; color: var(--text-dim);
-            transition: 0.2s;
-        }
-        .tab.active { background: var(--primary); color: var(--bg); }
-
-        /* --- Panels --- */
-        .card {
-            background: var(--surface);
-            border-radius: 16px;
-            padding: 20px;
-            margin-bottom: 20px;
-            border: 1px solid var(--border);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        .brand-logo { 
+            color: var(--accent-cyan); font-weight: 900; letter-spacing: 2px; font-size: 1.1rem;
+            text-shadow: 0 0 10px rgba(0, 242, 255, 0.3);
         }
 
-        /* --- Waveform Section --- */
-        #waveform-wrapper, #rec-waveform-wrapper {
-            background: #000; border-radius: 12px; position: relative;
-            margin: 15px 0; overflow: hidden; border: 1px solid var(--border);
+        /* --- メインコンテナ --- */
+        .container { width: 100%; max-width: 800px; margin: 0 auto; padding: 16px; }
+
+        /* モード切替タブ */
+        .mode-selector {
+            display: flex; background: var(--card-bg); padding: 6px; border-radius: 16px;
+            border: 1px solid var(--border-ui); margin-bottom: 20px;
         }
-        #rec-waveform-wrapper { border-color: var(--recording); display: none; }
-
-        .time-info {
-            display: flex; justify-content: space-between; align-items: baseline;
-            margin-bottom: 10px;
+        .mode-tab {
+            flex: 1; padding: 12px; border: none; background: transparent;
+            color: var(--text-secondary); border-radius: 12px; font-weight: 600;
+            cursor: pointer; transition: 0.2s; font-size: 0.85rem;
         }
-        .current-time { font-size: 1.8rem; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--primary); }
-        .total-time { font-size: 0.9rem; color: var(--text-dim); }
+        .mode-tab.active { background: var(--accent-cyan); color: var(--bg-deep); }
 
-        /* --- Controls & Sliders --- */
-        .control-row { margin-bottom: 15px; }
-        .label-row { display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-dim); margin-bottom: 8px; }
-        .val-badge { color: var(--primary); font-weight: bold; }
+        /* 波形表示エリア */
+        .visualizer-card {
+            background: #000; border: 1px solid var(--border-ui); border-radius: 16px;
+            margin-bottom: 16px; overflow: hidden; position: relative;
+        }
+        #waveform-wrapper { min-height: 140px; padding: 10px 0; }
+        .time-badge {
+            position: absolute; top: 12px; right: 12px;
+            background: rgba(0,0,0,0.6); padding: 4px 10px; border-radius: 8px;
+            font-family: 'Courier New', monospace; color: var(--accent-cyan);
+            font-size: 1.1rem; font-weight: bold; border: 1px solid rgba(0, 242, 255, 0.3);
+        }
 
+        /* 操作パネル */
+        .control-card {
+            background: var(--card-bg); border-radius: 20px; padding: 20px;
+            border: 1px solid var(--border-ui); margin-bottom: 16px;
+        }
+        .control-row { 
+            display: flex; align-items: center; gap: 15px; margin-bottom: 15px; 
+        }
+        .control-row:last-child { margin-bottom: 0; }
+
+        .label-group { min-width: 70px; }
+        .label-text { font-size: 0.7rem; color: var(--text-secondary); font-weight: bold; text-transform: uppercase; }
+        .val-text { font-size: 0.95rem; color: var(--accent-cyan); font-weight: 800; display: block; }
+
+        /* スライダーカスタム */
         input[type="range"] {
-            width: 100%; -webkit-appearance: none; background: var(--surface-light);
-            height: 8px; border-radius: 4px;
+            flex: 1; height: 6px; -webkit-appearance: none; background: #2d2d3a; border-radius: 3px;
         }
         input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none; width: 22px; height: 22px; background: var(--primary);
-            border-radius: 50%; box-shadow: 0 0 10px var(--primary-glow);
+            -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%;
+            background: var(--accent-cyan); box-shadow: 0 0 10px rgba(0, 242, 255, 0.5); cursor: pointer;
         }
 
-        /* --- Buttons --- */
-        .btn {
-            background: var(--surface-light); border: 1px solid var(--border);
-            color: var(--text); padding: 10px 16px; border-radius: 8px;
-            font-size: 0.85rem; cursor: pointer; display: flex; align-items: center; gap: 6px;
-            transition: 0.2s;
-        }
-        .btn:active { transform: scale(0.96); }
-        .btn-primary { background: var(--primary); color: var(--bg); border: none; font-weight: bold; }
-        .btn-outline { border: 1px solid var(--primary); color: var(--primary); background: transparent; }
-        .btn-ai { border-color: var(--ai); color: var(--ai); }
+        /* 録音セクション */
+        .rec-panel { border-color: rgba(255, 77, 77, 0.3); background: rgba(255, 77, 77, 0.02); }
+        #rec-waveform-wrapper { height: 80px; display: none; margin-top: 10px; border-radius: 8px; background: #000; }
 
-        /* --- Floating Transport (Ergonomics) --- */
-        .transport-bar {
+        /* ループリスト */
+        .loop-list { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 10px; margin: 10px 0; }
+        .loop-chip {
+            background: var(--card-bg); border: 1px solid var(--accent-cyan);
+            padding: 8px 16px; border-radius: 20px; color: var(--accent-cyan);
+            font-size: 0.8rem; display: flex; align-items: center; gap: 8px; white-space: nowrap;
+        }
+
+        /* --- 下部固定リモコン (人間工学配置) --- */
+        .bottom-remote {
             position: fixed; bottom: 0; left: 0; width: 100%;
-            background: rgba(26, 26, 26, 0.95);
-            backdrop-filter: blur(20px);
-            padding: 20px 20px calc(20px + var(--safe-bottom));
-            border-top: 1px solid var(--border);
+            background: var(--glass); backdrop-filter: blur(20px);
+            border-top: 1px solid var(--border-ui);
+            padding: 20px 20px 35px 20px; z-index: 5000;
             display: flex; justify-content: space-around; align-items: center;
-            z-index: 1000;
         }
-
-        .play-btn {
-            width: 70px; height: 70px; border-radius: 50%;
-            background: var(--primary); color: var(--bg);
+        .main-play-btn {
+            width: 72px; height: 72px; border-radius: 50%;
+            background: var(--accent-cyan); color: var(--bg-deep);
+            border: none; display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 0 20px rgba(0, 242, 255, 0.4);
+            cursor: pointer; transition: 0.2s;
+        }
+        .main-play-btn:active { transform: scale(0.9); }
+        .sub-btn {
+            width: 48px; height: 48px; border-radius: 50%;
+            background: var(--border-ui); color: white;
+            border: none; display: flex; align-items: center; justify-content: center;
+            cursor: pointer;
+        }
+        .sub-btn.active { color: var(--accent-cyan); border: 1px solid var(--accent-cyan); }
+        .rec-trigger {
+            width: 50px; height: 50px; border-radius: 50%;
+            background: transparent; border: 2px solid var(--danger); color: var(--danger);
             display: flex; align-items: center; justify-content: center;
-            box-shadow: 0 0 20px var(--primary-glow); border: none;
         }
-        .round-btn {
-            width: 45px; height: 45px; border-radius: 50%;
-            background: var(--surface-light); color: var(--text);
-            display: flex; align-items: center; justify-content: center; border: 1px solid var(--border);
-        }
-        .round-btn.active { color: var(--primary); border-color: var(--primary); }
-        .rec-trigger.recording { background: var(--recording); color: white; animation: pulse 1.5s infinite; }
+        .rec-trigger.recording { background: var(--danger); color: white; animation: blink 1s infinite; }
 
-        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }
 
-        /* --- Badges & Lists --- */
-        .loop-list { display: flex; gap: 8px; overflow-x: auto; padding: 5px 0; margin-top: 10px; }
-        .loop-badge {
-            background: var(--surface-light); padding: 8px 12px; border-radius: 20px;
-            border: 1px solid var(--border); display: flex; align-items: center; gap: 8px;
-            white-space: nowrap; font-size: 0.8rem;
-        }
-
-        /* --- YouTube UI --- */
+        /* YouTube用エリア */
         #ytPlayerContainer { 
-            width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 12px; 
-            overflow: hidden; border: 1px solid var(--border);
+            width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 16px; 
+            overflow: hidden; border: 1px solid var(--border-ui);
+        }
+        .yt-input-group {
+            display: flex; gap: 8px; background: var(--card-bg); padding: 10px;
+            border-radius: 12px; margin-bottom: 12px; border: 1px solid var(--border-ui);
+        }
+        .yt-input {
+            flex: 1; background: transparent; border: none; color: white; outline: none; font-size: 0.9rem;
         }
 
-        /* --- Overlay & Modals --- */
-        .modal {
-            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            width: 90%; max-width: 400px; background: var(--surface);
-            border: 1px solid var(--primary); border-radius: 20px; padding: 25px;
-            z-index: 2000; display: none; box-shadow: 0 0 50px rgba(0,0,0,0.8);
+        /* 汎用ボタン */
+        .btn-action {
+            background: var(--border-ui); border: none; color: var(--text-primary);
+            padding: 10px 16px; border-radius: 10px; font-size: 0.8rem; font-weight: 600;
+            display: flex; align-items: center; gap: 6px; cursor: pointer;
+        }
+        .btn-outline {
+            background: transparent; border: 1px solid var(--accent-cyan); color: var(--accent-cyan);
         }
 
-        #countdown-overlay {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            font-size: 100px; font-weight: 900; color: var(--primary);
-            text-shadow: 0 0 30px var(--primary-glow); z-index: 10; pointer-events: none;
+        /* サイドメニュー */
+        .side-drawer {
+            position: fixed; top: 0; right: -300px; width: 280px; height: 100%;
+            background: var(--card-bg); z-index: 8000; transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            padding: 30px 20px; border-left: 1px solid var(--border-ui);
+        }
+        .side-drawer.open { right: 0; }
+        .menu-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 7500; display: none; }
+
+        #countdown-ui {
+            position: absolute; inset: 0; display: none; align-items: center; justify-content: center;
+            font-size: 100px; font-weight: 900; color: var(--accent-cyan); z-index: 100;
+            text-shadow: 0 0 30px rgba(0,242,255,0.8); pointer-events: none;
         }
 
-        /* --- Utils --- */
-        .hidden { display: none !important; }
+        /* --- モバイル対応調整 --- */
+        @media (max-width: 480px) {
+            .container { padding: 12px; }
+            .brand-logo { font-size: 0.9rem; }
+        }
     </style>
 </head>
 <body>
 
+<div id="auth-overlay">
+    <div class="overlay-card">
+        <div class="brand-logo" style="font-size: 1.8rem; margin-bottom: 8px;">AMS PLAYER</div>
+        <p style="color: var(--text-secondary); font-size: 0.85rem;">練習データを同期するために<br>ログインが必要です</p>
+        <button class="google-btn" onclick="loginWithGoogle()">
+            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="20" alt="G">
+            Googleでログイン
+        </button>
+    </div>
+</div>
+
+<div id="subscription-overlay">
+    <div class="overlay-card">
+        <div class="brand-logo" style="color:var(--accent-amber); margin-bottom: 10px;">PREMIUM PLAN</div>
+        <p style="font-size: 0.95rem; line-height: 1.6;">この機能はスクール会員専用です。<br>サブスクリプションの有効化が必要です。</p>
+        <button class="subscribe-btn" onclick="redirectToCheckout()">アップグレードする</button>
+        <button class="btn-action" onclick="closeSubOverlay()" style="margin-top:16px; width:100%; justify-content:center;">閉じる</button>
+    </div>
+</div>
+
 <header>
-    <div class="brand">AMS STUDIO ELITE</div>
-    <div style="display: flex; gap: 10px;">
-        <button class="round-btn" onclick="toggleMenu(true)"><span class="material-icons">settings</span></button>
+    <div class="brand-logo">AMS PLAYER PRO</div>
+    <div style="display:flex; align-items:center; gap:12px;">
+        <div id="userInfoDisplay" style="display:none; font-size: 0.7rem; text-align: right;">
+            <div id="userName" style="color:var(--accent-cyan); font-weight:bold;">Guest</div>
+            <div onclick="logout()" style="text-decoration:underline; cursor:pointer;">Logout</div>
+        </div>
+        <button onclick="toggleMenu(true)" style="background:none; border:none; color:white; cursor:pointer;">
+            <span class="material-icons">menu_open</span>
+        </button>
     </div>
 </header>
 
+<div class="menu-overlay" id="menuOverlay" onclick="toggleMenu(false)"></div>
+<div class="side-drawer" id="sideMenu">
+    <div style="display:flex; justify-content:space-between; margin-bottom:30px;">
+        <span style="font-weight:900; color:var(--accent-cyan);">SETTINGS</span>
+        <span class="material-icons" onclick="toggleMenu(false)" style="cursor:pointer;">close</span>
+    </div>
+    
+    <label class="label-text">Language</label>
+    <select id="langSelect" onchange="changeLanguage()" style="width:100%; background:#2d2d3a; color:white; padding:10px; border-radius:8px; border:none; margin-top:8px;">
+        <option value="ja">日本語 (Japanese)</option>
+        <option value="en">English</option>
+    </select>
+
+    <div style="margin-top:40px;">
+        <label class="label-text">Player Guide</label>
+        <div style="margin-top:10px; display:flex; flex-direction:column; gap:8px;">
+            <button class="btn-action" onclick="showGuide('file')"><span class="material-icons">audio_file</span> File Mode Guide</button>
+            <button class="btn-action" onclick="showGuide('yt')"><span class="material-icons">smart_display</span> YouTube Guide</button>
+        </div>
+    </div>
+</div>
+
 <div class="container">
-    <div class="tabs">
-        <div class="tab active" id="tab-file" onclick="switchMode('file')">AUDIO FILE</div>
-        <div class="tab" id="tab-yt" onclick="switchMode('yt')">YOUTUBE</div>
+    <div class="mode-selector">
+        <button class="mode-tab active" id="tab-file" onclick="switchMode('file')">Audio File</button>
+        <button class="mode-tab" id="tab-yt" onclick="switchMode('yt')">YouTube Sync</button>
     </div>
 
     <div id="file-section">
-        <div class="card">
-            <label for="audioFile" class="btn btn-primary" style="justify-content: center; margin-bottom: 15px;">
-                <span class="material-icons">upload_file</span>
-                <span id="fileSelectBtn">SELECT AUDIO</span>
-            </label>
-            <input type="file" id="audioFile" accept="audio/*" class="hidden">
+        <label for="audioFile" class="btn-action btn-outline" style="justify-content:center; margin-bottom:16px;">
+            <span class="material-icons">add_circle</span> <span id="fileSelectBtn">ファイルを選択</span>
+        </label>
+        <input type="file" id="audioFile" hidden accept="audio/*">
 
-            <div class="time-info">
-                <div class="current-time" id="currentTime">00:00</div>
-                <div class="total-time" id="totalTime">/ 00:00</div>
-            </div>
-
-            <div id="waveform-wrapper">
-                <div id="countdown-overlay"></div>
-                <div id="waveform"></div>
-            </div>
-
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-                <span id="loadStatus" style="font-size:0.7rem; color:var(--text-dim);">READY</span>
-                <div style="display:flex; gap:10px;">
-                    <button class="btn btn-outline" style="padding: 5px 10px; font-size: 0.7rem;" onclick="wsRegions.clearRegions()">CLEAR LOOP</button>
-                    <button class="btn btn-outline" style="padding: 5px 10px; font-size: 0.7rem;" onclick="saveLoop('file')">SAVE LOOP</button>
+        <div class="visualizer-card">
+            <div id="countdown-ui"></div>
+            <div class="time-badge"><span id="currentTime">00:00</span></div>
+            <div id="waveform-wrapper"><div id="waveform"></div></div>
+            <div style="padding:0 10px 10px; display:flex; justify-content:space-between; align-items:center;">
+                <span id="loadStatus" style="font-size:0.65rem; font-weight:bold; color:var(--accent-cyan);">READY</span>
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <span class="material-icons" style="font-size:16px; color:var(--text-secondary);">zoom_in</span>
+                    <input type="range" id="zoomSlider" min="0" max="500" value="100" style="width:100px;">
                 </div>
             </div>
-            <div id="loopListFile" class="loop-list"></div>
         </div>
 
-        <div class="card">
+        <div class="control-card">
             <div class="control-row">
-                <div class="label-row"><span>PLAYBACK SPEED</span><span class="val-badge" id="spTxt">BPM ---</span></div>
+                <div class="label-group"><span class="label-text">Speed</span><span id="spTxt" class="val-text">BPM ---</span></div>
                 <input type="range" id="speed" min="0.5" max="1.5" step="0.01" value="1.0">
+                <button class="sub-btn" style="width:32px; height:32px;" onclick="resetSetting('speed', 1.0)"><span class="material-icons" style="font-size:16px;">refresh</span></button>
             </div>
             <div class="control-row">
-                <div class="label-row"><span>PITCH SHIFT</span><span class="val-badge" id="pitchTxt">±0</span></div>
+                <div class="label-group"><span class="label-text">Pitch</span><span id="pitchTxt" class="val-text">±0</span></div>
                 <input type="range" id="pitch" min="-6" max="6" step="1" value="0">
-            </div>
-            <div class="control-row" style="margin-top: 20px; border-top: 1px solid var(--border); padding-top: 15px;">
-                <div class="label-row"><span>MAIN VOLUME</span><span id="mainVolTxt">80%</span></div>
-                <input type="range" id="mainVolume" min="0" max="1" step="0.05" value="0.8">
+                <button class="sub-btn" style="width:32px; height:32px;" onclick="resetSetting('pitch', 0)"><span class="material-icons" style="font-size:16px;">refresh</span></button>
             </div>
         </div>
 
-        <div class="card" style="border-color: var(--recording);">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-                <span style="color:var(--recording); font-weight:800; font-size:0.75rem; letter-spacing:1px;">SESSION RECORDER</span>
-                <button id="soloBtn" class="btn" style="padding: 4px 10px;" onclick="toggleSolo()">SOLO (S)</button>
+        <div class="control-card rec-panel">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                <span class="label-text" style="color:var(--danger);">Recording Check</span>
+                <div style="display:flex; gap:8px;">
+                    <button id="soloBtn" class="btn-action" style="padding:4px 12px;" onclick="toggleSolo()">Solo S</button>
+                </div>
             </div>
-            
             <div id="rec-waveform-wrapper"><div id="rec-waveform"></div></div>
             
-            <div id="recControls" class="hidden">
+            <div id="recControls" style="display:none; margin-top:15px; flex-direction:column; gap:12px;">
                 <div class="control-row">
-                    <div class="label-row"><span>REC VOLUME</span><span id="recVolTxt">100%</span></div>
+                    <span class="material-icons" style="color:var(--danger); font-size:20px;">volume_up</span>
                     <input type="range" id="recVolume" min="0" max="1.5" step="0.05" value="1.0">
+                    <span id="recVolTxt" class="val-text" style="min-width:40px;">100%</span>
                 </div>
-                <div style="display:flex; gap:10px; margin-top:15px;">
-                    <button class="btn" style="flex:1" onclick="playRecording()" id="playRecBtn"><span class="material-icons">play_circle</span> PLAY REC</button>
-                    <button class="btn btn-ai" style="flex:1" onclick="runAIAdvice()"><span class="material-icons">psychology</span> AI ADVICE</button>
-                    <button class="btn" style="color:var(--recording)" onclick="deleteRecording()"><span class="material-icons">delete</span></button>
+                <div style="display:flex; gap:10px;">
+                    <button class="btn-action" style="flex:1; justify-content:center;" onclick="playRecording()" id="playRecBtn"><span class="material-icons">play_circle</span> 録音再生</button>
+                    <button class="btn-action" style="color:var(--danger);" onclick="deleteRecording()"><span class="material-icons">delete</span></button>
                 </div>
-            </div>
-            <div id="aiResultCard" class="hidden" style="margin-top:15px; padding:15px; background:rgba(130,87,229,0.1); border-radius:12px; border:1px solid var(--ai);">
-                <div style="color:var(--ai); font-weight:bold; font-size:0.8rem; margin-bottom:5px;">AI FEEDBACK</div>
-                <div id="aiAdviceText" style="font-size:0.85rem; line-height:1.4;"></div>
             </div>
         </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <button class="btn-action" onclick="wsRegions.clearRegions()"><span class="material-icons">layers_clear</span> 解除</button>
+            <button class="btn-action btn-outline" onclick="saveLoop('file')"><span class="material-icons">bookmark_add</span> ループ保存</button>
+        </div>
+        <div id="loopListFile" class="loop-list"></div>
     </div>
 
-    <div id="yt-section" class="hidden">
-        <div class="card">
-            <div style="display:flex; gap:8px; margin-bottom:15px;">
-                <input type="text" id="ytUrl" placeholder="Paste YouTube URL..." style="flex:1; background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:12px; color:white;">
-                <button class="btn btn-primary" onclick="loadYouTube()">LOAD</button>
-            </div>
-            <div id="ytPlayerContainer"><div id="player"></div></div>
-            
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-top:20px;">
-                <div style="text-align:center">
-                    <button class="btn btn-outline" style="width:100%; justify-content:center; margin-bottom:8px;" onclick="setLoopPoint('start')">START</button>
-                    <span id="loopStartTxt" class="val-badge">00:00</span>
-                </div>
-                <div style="text-align:center">
-                    <button class="btn btn-outline" style="width:100%; justify-content:center; margin-bottom:8px;" onclick="setLoopPoint('end')">END</button>
-                    <span id="loopEndTxt" class="val-badge">00:00</span>
-                </div>
-            </div>
-
-            <div style="display:flex; gap:10px; margin-top:20px;">
-                <button id="toggleLoopBtn" class="btn" style="flex:1; justify-content:center;" onclick="toggleLoop()">LOOP: OFF</button>
-                <button class="btn btn-primary" onclick="saveLoop('yt')"><span class="material-icons">bookmark</span> SAVE</button>
-            </div>
-            <div id="loopListYT" class="loop-list"></div>
+    <div id="yt-section" style="display:none;">
+        <div class="yt-input-group">
+            <input type="text" id="ytUrl" class="yt-input" placeholder="YouTubeのURLをペースト...">
+            <button class="btn-action btn-outline" onclick="loadYouTube()">LOAD</button>
         </div>
+        
+        <div id="ytHistoryContainer" style="margin-bottom:16px; display:none;">
+            <div id="ytHistoryList" style="display:flex; gap:8px; overflow-x:auto;"></div>
+        </div>
+
+        <div id="ytPlayerContainer"><div id="player"></div></div>
+
+        <div class="control-card" style="margin-top:16px;">
+            <div style="display:flex; flex-direction:column; gap:16px;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <button class="btn-action" style="flex:1; justify-content:center;" onclick="setLoopPoint('start')">SET START</button>
+                    <div style="flex:1; text-align:center; font-family:monospace; font-size:1.2rem; color:var(--accent-cyan);" id="loopStartTxt">00:00</div>
+                    <div style="display:flex; gap:4px;">
+                        <button class="sub-btn" style="width:32px; height:32px;" onclick="adjustTime('start', -1)">-</button>
+                        <button class="sub-btn" style="width:32px; height:32px;" onclick="adjustTime('start', 1)">+</button>
+                    </div>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <button class="btn-action" style="flex:1; justify-content:center;" onclick="setLoopPoint('end')">SET END</button>
+                    <div style="flex:1; text-align:center; font-family:monospace; font-size:1.2rem; color:var(--accent-cyan);" id="loopEndTxt">00:00</div>
+                    <div style="display:flex; gap:4px;">
+                        <button class="sub-btn" style="width:32px; height:32px;" onclick="adjustTime('end', -1)">-</button>
+                        <button class="sub-btn" style="width:32px; height:32px;" onclick="adjustTime('end', 1)">+</button>
+                    </div>
+                </div>
+                <div style="display:flex; gap:10px;">
+                    <button id="toggleLoopBtn" class="btn-action" style="flex:1; justify-content:center;" onclick="toggleLoop()">LOOP OFF</button>
+                    <button class="btn-action btn-outline" onclick="saveLoop('yt')"><span class="material-icons">bookmark_add</span> SAVE</button>
+                </div>
+            </div>
+        </div>
+        <div id="loopListYT" class="loop-list"></div>
     </div>
 </div>
 
-<div class="transport-bar">
-    <button class="round-btn" id="countToggleBtn" onclick="toggleFeature('count')"><span class="material-icons">timer</span></button>
-    <button class="round-btn" onclick="wavesurfer.skip(-5)"><span class="material-icons">replay_5</span></button>
-    
-    <button class="play-btn" id="playBtn">
-        <span class="material-icons" id="playIcon" style="font-size: 40px;">play_arrow</span>
+<div class="bottom-remote">
+    <button class="sub-btn" id="countToggleBtn" onclick="toggleFeature('count')">
+        <span class="material-icons">timer</span>
+    </button>
+    <button class="sub-btn" onclick="skipAudio(-5)">
+        <span class="material-icons">replay_5</span>
     </button>
     
-    <button class="round-btn" onclick="wavesurfer.skip(5)"><span class="material-icons">forward_5</span></button>
-    <button class="round-btn rec-trigger" id="recBtn" onclick="toggleRecording()"><span class="material-icons" id="recIcon">mic</span></button>
-</div>
-
-<div id="settingsMenu" class="modal">
-    <div style="display:flex; justify-content:space-between; margin-bottom:20px;">
-        <span style="font-weight:bold; color:var(--primary);">SETTINGS</span>
-        <span class="material-icons" onclick="toggleMenu(false)" style="cursor:pointer">close</span>
-    </div>
-    <div class="control-row">
-        <div class="label-row">LANGUAGE</div>
-        <select id="langSelect" style="width:100%; padding:10px; background:var(--surface-light); color:white; border:1px solid var(--border); border-radius:8px;" onchange="changeLanguage()">
-            <option value="ja">日本語</option>
-            <option value="en">English</option>
-        </select>
-    </div>
-    <div class="control-row" style="margin-top:20px;">
-        <div class="label-row">FEATURES</div>
-        <button class="btn" style="width:100%; margin-bottom:10px;" id="speedUpToggleBtn" onclick="toggleFeature('speedup')">AUTO SPEED UP (OFF)</button>
-    </div>
+    <button class="main-play-btn" id="playBtn">
+        <span class="material-icons" id="playIcon" style="font-size:40px;">play_arrow</span>
+    </button>
+    
+    <button class="sub-btn" onclick="skipAudio(5)">
+        <span class="material-icons">forward_5</span>
+    </button>
+    
+    <button class="rec-trigger" id="recBtn" onclick="toggleRecording()">
+        <span class="material-icons" id="recIcon">mic</span>
+    </button>
 </div>
 
 <script>
-    // ---------------------------------------------------------
-    // Logic & Core functionality (Maintaining all features)
-    // ---------------------------------------------------------
+    // --- Firebase Setup ---
+    const firebaseConfig = {
+        apiKey: "AIzaSyDI4ReBg15LAaQbd-4slccBHOS9R69sLNU",
+        authDomain: "ams-player-e04bf.firebaseapp.com",
+        projectId: "ams-player-e04bf",
+        storageBucket: "ams-player-e04bf.firebasestorage.app",
+        messagingSenderId: "102274983236",
+        appId: "1:102274983236:web:f4334348391dde42dd6311"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    let isSubscribed = false;
+    let currentMode = 'file';
+
+    // UI Translation
     const translations = {
         ja: {
-            ready: "準備完了", analyzing: "解析中...", loopOff: "ループ: OFF", loopOn: "ループ: ON",
-            fileSelect: "ファイルを選択", recPlay: "録音再生", recStop: "再生停止",
-            speedUpOn: "自動スピードアップ (ON)", speedUpOff: "自動スピードアップ (OFF)"
+            fileSelect: "ファイルを選択", ready: "準備完了", analyzing: "解析中...",
+            loopOff: "ループ OFF", loopOn: "ループ ON", recPlay: "録音再生", recStop: "再生停止"
         },
         en: {
-            ready: "READY", analyzing: "ANALYZING...", loopOff: "LOOP: OFF", loopOn: "LOOP: ON",
-            fileSelect: "SELECT AUDIO", recPlay: "PLAY REC", recStop: "STOP REC",
-            speedUpOn: "AUTO SPEED UP (ON)", speedUpOff: "AUTO SPEED UP (OFF)"
+            fileSelect: "Select File", ready: "READY", analyzing: "ANALYZING...",
+            loopOff: "LOOP OFF", loopOn: "LOOP ON", recPlay: "Play Rec", recStop: "Stop Rec"
         }
     };
 
     let wavesurfer, wsRegions, recWavesurfer, ytPlayer, loopInterval;
-    let loopStart = 0, loopEnd = 0, isLooping = false, currentMode = 'file';
-    let audioCtx, firstSoundTime = 0, originalBpm = 120;
-    let currentObjectURL = null, currentFileName = "";
-    let isCountEnabled = true, isSpeedUpEnabled = false;
-    let mediaRecorder, recordedChunks = [], isRecording = false, isSolo = false;
-    let recObjectURL = null, recordedAudioBuffer = null, lastRecStartPos = 0;
+    let loopStart = 0, loopEnd = 0, isLooping = false;
+    let audioCtx, originalBpm = 120;
+    let currentFileName = "", currentYTId = "";
+    let isCountEnabled = true, isRecording = false, isSolo = false;
+    let mediaRecorder, recordedChunks = [], recObjectURL = null, lastRecStartPos = 0;
 
-    function initWavesurfer() {
-        wavesurfer = WaveSurfer.create({ 
-            container: '#waveform', waveColor: '#333', progressColor: '#d4a373', 
-            height: 100, barWidth: 2, normalize: true, hideScrollbar: true
-        });
-        recWavesurfer = WaveSurfer.create({ 
-            container: '#rec-waveform', waveColor: '#552222', progressColor: '#ff4757', 
-            height: 60, barWidth: 2, normalize: true
-        });
-        
-        wsRegions = wavesurfer.registerPlugin(WaveSurfer.Regions.create());
-        wsRegions.enableDragSelection({ color: 'rgba(212, 163, 115, 0.2)' });
-        
-        wsRegions.on('region-created', r => {
-            if(wsRegions.getRegions().length > 1) wsRegions.getRegions()[0].remove();
-            wavesurfer.setTime(r.start);
-        });
-
-        // Event Handlers
-        wavesurfer.on('ready', () => {
-            document.getElementById('totalTime').innerText = "/ " + fmt(wavesurfer.getDuration());
-            applySettings();
-        });
-        
-        wavesurfer.on('timeupdate', t => {
-            document.getElementById('currentTime').innerText = fmt(t);
-            const r = wsRegions.getRegions()[0];
-            if(r && t >= r.end) { 
-                wavesurfer.setTime(r.start); 
-                if (isSpeedUpEnabled) {
-                    const s = document.getElementById('speed');
-                    s.value = Math.min(1.5, parseFloat(s.value) + 0.05).toFixed(2);
-                    applySettings();
-                }
-                if (isRecording) toggleRecording();
-            }
-        });
-
-        wavesurfer.on('play', () => document.getElementById('playIcon').innerText = 'pause');
-        wavesurfer.on('pause', () => document.getElementById('playIcon').innerText = 'play_arrow');
+    // --- Auth Logic ---
+    function loginWithGoogle() {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        auth.signInWithPopup(provider).catch(e => alert("Login Error: " + e.message));
     }
 
-    const fmt = (s) => `${Math.floor(s/60).toString().padStart(2,'0')}:${Math.floor(s%60).toString().padStart(2,'0')}`;
+    function logout() { auth.signOut(); }
 
-    function applySettings() {
-        if (!wavesurfer) return;
-        const s = parseFloat(document.getElementById('speed').value);
-        const p = parseInt(document.getElementById('pitch').value);
-        const media = wavesurfer.getMediaElement();
-        if (media) {
-            media.preservesPitch = true;
-            if (media.detune !== undefined) {
-                media.detune = p * 100;
-                wavesurfer.setPlaybackRate(s);
-            } else {
-                if (p !== 0) {
-                    media.preservesPitch = false;
-                    wavesurfer.setPlaybackRate(s * Math.pow(2, p / 12));
-                } else wavesurfer.setPlaybackRate(s);
-            }
+    async function checkSubscription(user) {
+        try {
+            const doc = await db.collection('School Member').doc(user.email).get();
+            return doc.exists && doc.data().isSubscribed === true;
+        } catch (e) { return false; }
+    }
+
+    auth.onAuthStateChanged(async user => {
+        if (user) {
+            document.getElementById('auth-overlay').style.display = 'none';
+            isSubscribed = await checkSubscription(user);
+            document.getElementById('userInfoDisplay').style.display = 'block';
+            document.getElementById('userName').innerText = user.displayName;
+            renderLoopList(currentMode);
+        } else {
+            document.getElementById('auth-overlay').style.display = 'flex';
+            isSubscribed = false;
         }
-        document.getElementById('spTxt').innerText = `BPM ${Math.round(originalBpm * s)}`;
-        document.getElementById('pitchTxt').innerText = (p > 0 ? "+" : "") + p;
-        applyVolumes();
+    });
+
+    // --- Core Navigation ---
+    function toggleMenu(isOpen) {
+        document.getElementById('sideMenu').classList.toggle('open', isOpen);
+        document.getElementById('menuOverlay').style.display = isOpen ? 'block' : 'none';
     }
 
-    function applyVolumes() {
-        const mVol = parseFloat(document.getElementById('mainVolume').value);
-        const rVol = parseFloat(document.getElementById('recVolume').value);
-        wavesurfer.setMuted(isSolo);
-        if (!isSolo) wavesurfer.setVolume(mVol);
-        if (recWavesurfer) recWavesurfer.setVolume(rVol);
-        document.getElementById('mainVolTxt').innerText = Math.round(mVol * 100) + "%";
-        document.getElementById('recVolTxt').innerText = Math.round(rVol * 100) + "%";
-    }
-
-    // Toggle Modes
     function switchMode(mode) {
         currentMode = mode;
-        document.getElementById('file-section').classList.toggle('hidden', mode !== 'file');
-        document.getElementById('yt-section').classList.toggle('hidden', mode !== 'yt');
+        document.getElementById('file-section').style.display = mode === 'file' ? 'block' : 'none';
+        document.getElementById('yt-section').style.display = mode === 'yt' ? 'block' : 'none';
         document.getElementById('tab-file').classList.toggle('active', mode === 'file');
         document.getElementById('tab-yt').classList.toggle('active', mode === 'yt');
         if(mode === 'yt' && wavesurfer) wavesurfer.pause();
+        if(mode === 'file' && ytPlayer) ytPlayer.pauseVideo();
+        renderLoopList(mode);
     }
 
-    // --- Recording Core ---
+    // --- Audio Engineering ---
+    function initAudioContext() {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        return audioCtx;
+    }
+
+    async function analyzeAudio(blob) {
+        const statusEl = document.getElementById('loadStatus');
+        statusEl.innerText = translations[document.getElementById('langSelect').value].analyzing;
+        const tempCtx = new AudioContext();
+        try {
+            const buffer = await tempCtx.decodeAudioData(await blob.arrayBuffer());
+            const bpm = detectBPM(buffer);
+            if (bpm > 0) { originalBpm = Math.round(bpm); updateBpmDisplay(); }
+            statusEl.innerText = translations[document.getElementById('langSelect').value].ready;
+        } catch (e) { statusEl.innerText = "READY"; } finally { tempCtx.close(); }
+    }
+
+    function detectBPM(buffer) {
+        const data = buffer.getChannelData(0), step = 200, energy = [];
+        for (let i = 0; i < data.length; i += step) {
+            let sum = 0; for(let j=0; j<step && (i+j)<data.length; j++) sum += data[i+j]**2;
+            energy.push(Math.sqrt(sum/step));
+        }
+        let bestBpm = 0, maxCorr = 0;
+        const minI = Math.floor((60/200)*(buffer.sampleRate/step)), maxI = Math.floor((60/60)*(buffer.sampleRate/step));
+        for (let i = minI; i <= maxI; i++) {
+            let corr = 0; for (let j=0; j<Math.min(energy.length-i, 5000); j++) corr += energy[j]*energy[j+i];
+            if (corr > maxCorr) { maxCorr = corr; bestBpm = 60/(i*step/buffer.sampleRate); }
+        }
+        return (bestBpm < 50 || bestBpm > 250) ? 0 : bestBpm;
+    }
+
+    function updateBpmDisplay() {
+        const speed = parseFloat(document.getElementById('speed').value);
+        document.getElementById('spTxt').innerText = "BPM " + Math.round(originalBpm * speed);
+    }
+
+    async function runCountdown() {
+        if (!isCountEnabled) return;
+        const overlay = document.getElementById('countdown-ui');
+        const interval = 60000 / (originalBpm * parseFloat(document.getElementById('speed').value));
+        overlay.style.display = 'flex';
+        for (let i = 4; i >= 1; i--) {
+            overlay.innerText = i;
+            playBeep(i === 1);
+            await new Promise(r => setTimeout(r, interval));
+        }
+        overlay.style.display = 'none';
+    }
+
+    function playBeep(high) {
+        const ctx = initAudioContext();
+        const osc = ctx.createOscillator(), gain = ctx.createGain();
+        osc.frequency.value = high ? 880 : 440;
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.start(); osc.stop(ctx.currentTime + 0.1);
+    }
+
+    // --- Recording Logic ---
     async function toggleRecording() {
+        if (!isSubscribed) { document.getElementById('subscription-overlay').style.display = 'flex'; return; }
         if (isRecording) {
-            if (mediaRecorder) mediaRecorder.stop();
+            mediaRecorder.stop();
             wavesurfer.pause();
             isRecording = false;
             document.getElementById('recBtn').classList.remove('recording');
@@ -453,130 +572,62 @@
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 mediaRecorder = new MediaRecorder(stream);
                 recordedChunks = [];
-                mediaRecorder.ondataavailable = (e) => recordedChunks.push(e.data);
+                mediaRecorder.ondataavailable = e => recordedChunks.push(e.data);
                 mediaRecorder.onstop = async () => {
                     const blob = new Blob(recordedChunks, { type: 'audio/webm' });
                     recObjectURL = URL.createObjectURL(blob);
-                    const arrayBuffer = await blob.arrayBuffer();
-                    const tempCtx = new AudioContext();
-                    recordedAudioBuffer = await tempCtx.decodeAudioData(arrayBuffer);
-                    tempCtx.close();
-                    
                     document.getElementById('rec-waveform-wrapper').style.display = 'block';
-                    document.getElementById('recControls').classList.remove('hidden');
+                    document.getElementById('recControls').style.display = 'flex';
                     await recWavesurfer.load(recObjectURL);
                 };
-                
-                const startPos = wsRegions.getRegions()[0]?.start || wavesurfer.getCurrentTime();
-                wavesurfer.setTime(startPos);
-                lastRecStartPos = startPos;
-                
+                const r = wsRegions.getRegions()[0];
+                const start = r ? r.start : wavesurfer.getCurrentTime();
+                wavesurfer.setTime(start); lastRecStartPos = start;
                 await runCountdown();
                 mediaRecorder.start();
                 wavesurfer.play();
                 isRecording = true;
                 document.getElementById('recBtn').classList.add('recording');
                 document.getElementById('recIcon').innerText = 'stop';
-            } catch (err) { alert("マイクへのアクセスを許可してください"); }
+            } catch (e) { alert("Microphone access denied"); }
         }
     }
 
-    async function runCountdown() {
-        if (!isCountEnabled) return;
-        const overlay = document.getElementById('countdown-overlay');
-        overlay.style.display = 'block';
-        for (let i = 1; i <= 4; i++) {
-            overlay.innerText = i;
-            // Beep Logic
-            const ctx = new (window.AudioContext || window.webkitAudioContext)();
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
-            osc.frequency.setValueAtTime(i === 4 ? 880 : 440, ctx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
-            osc.connect(gain); gain.connect(ctx.destination);
-            osc.start(); osc.stop(ctx.currentTime + 0.1);
-            await new Promise(r => setTimeout(r, 60000 / (originalBpm * parseFloat(document.getElementById('speed').value))));
-        }
-        overlay.style.display = 'none';
+    function playRecording() {
+        if (recWavesurfer.isPlaying()) { recWavesurfer.pause(); wavesurfer.pause(); }
+        else { wavesurfer.setTime(lastRecStartPos); recWavesurfer.setTime(0); wavesurfer.play(); recWavesurfer.play(); }
     }
 
-    // --- YouTube API ---
-    function loadYouTube() {
-        const url = document.getElementById('ytUrl').value;
-        const videoId = url.match(/(?:https?:\/\/)?(?:www\.)?youtu(?:be\.com\/watch\?v=|\.be\/)([\w\-\_]+)/)?.[1];
-        if (videoId) {
-            currentYTId = videoId;
-            if (!ytPlayer) {
-                ytPlayer = new YT.Player('player', {
-                    videoId: videoId,
-                    events: { 
-                        'onStateChange': (e) => {
-                            if (e.data === YT.PlayerState.PLAYING) {
-                                loopInterval = setInterval(() => {
-                                    if (isLooping && ytPlayer.getCurrentTime() >= loopEnd) ytPlayer.seekTo(loopStart);
-                                }, 200);
-                            } else clearInterval(loopInterval);
-                        }
-                    }
-                });
-            } else ytPlayer.loadVideoById(videoId);
+    function deleteRecording() {
+        if(confirm("Delete recording?")) {
+            document.getElementById('rec-waveform-wrapper').style.display = 'none';
+            document.getElementById('recControls').style.display = 'none';
+            recWavesurfer.empty();
         }
     }
 
-    function setLoopPoint(type) {
-        const now = ytPlayer.getCurrentTime();
-        if (type === 'start') {
-            loopStart = Math.floor(now);
-            document.getElementById('loopStartTxt').innerText = fmt(loopStart);
-        } else {
-            loopEnd = Math.ceil(now);
-            document.getElementById('loopEndTxt').innerText = fmt(loopEnd);
-        }
+    // --- Player Utils ---
+    function skipAudio(sec) {
+        if (currentMode === 'file') wavesurfer.skip(sec);
+        else ytPlayer.seekTo(ytPlayer.getCurrentTime() + sec);
     }
 
-    function toggleLoop() {
-        isLooping = !isLooping;
-        const lang = document.getElementById('langSelect').value;
-        document.getElementById('toggleLoopBtn').innerText = isLooping ? translations[lang].loopOn : translations[lang].loopOff;
-        document.getElementById('toggleLoopBtn').classList.toggle('btn-primary', isLooping);
-    }
-
-    // --- Helpers & UI ---
-    function toggleMenu(show) {
-        document.getElementById('settingsMenu').style.display = show ? 'block' : 'none';
-    }
-
-    function toggleFeature(type) {
-        const lang = document.getElementById('langSelect').value;
-        if (type === 'count') {
-            isCountEnabled = !isCountEnabled;
-            document.getElementById('countToggleBtn').classList.toggle('active', isCountEnabled);
-        } else if (type === 'speedup') {
-            isSpeedUpEnabled = !isSpeedUpEnabled;
-            const btn = document.getElementById('speedUpToggleBtn');
-            btn.innerText = isSpeedUpEnabled ? translations[lang].speedUpOn : translations[lang].speedUpOff;
-            btn.classList.toggle('btn-outline', isSpeedUpEnabled);
-        }
-    }
-
-    function changeLanguage() {
-        const lang = document.getElementById('langSelect').value;
-        document.getElementById('fileSelectBtn').innerText = translations[lang].fileSelect;
-        document.getElementById('loadStatus').innerText = translations[lang].ready;
-        toggleFeature('update'); // Refresh labels
-    }
+    const fmt = s => `${Math.floor(s/60).toString().padStart(2,'0')}:${Math.floor(s%60).toString().padStart(2,'0')}`;
 
     function saveLoop(mode) {
-        const key = mode === 'file' ? currentFileName : currentYTId;
-        if (!key) return;
-        const start = mode === 'file' ? wsRegions.getRegions()[0]?.start : loopStart;
-        const end = mode === 'file' ? wsRegions.getRegions()[0]?.end : loopEnd;
-        
-        let storageKey = mode === 'file' ? 'ams_loops' : 'ams_yt_loops';
-        let allLoops = JSON.parse(localStorage.getItem(storageKey) || "{}");
-        if (!allLoops[key]) allLoops[key] = [];
-        allLoops[key].push({ start, end });
-        localStorage.setItem(storageKey, JSON.stringify(allLoops));
+        if (!isSubscribed) { document.getElementById('subscription-overlay').style.display = 'flex'; return; }
+        let start, end, key;
+        if (mode === 'file') {
+            const r = wsRegions.getRegions()[0]; if(!r) return;
+            start = r.start; end = r.end; key = currentFileName;
+        } else {
+            start = loopStart; end = loopEnd; key = currentYTId;
+        }
+        const storageKey = mode === 'file' ? 'ams_loops' : 'ams_yt_loops';
+        let data = JSON.parse(localStorage.getItem(storageKey) || "{}");
+        if(!data[key]) data[key] = [];
+        data[key].push({start, end});
+        localStorage.setItem(storageKey, JSON.stringify(data));
         renderLoopList(mode);
     }
 
@@ -585,91 +636,149 @@
         const key = mode === 'file' ? currentFileName : currentYTId;
         const storageKey = mode === 'file' ? 'ams_loops' : 'ams_yt_loops';
         container.innerHTML = "";
-        let allLoops = JSON.parse(localStorage.getItem(storageKey) || "{}");
-        (allLoops[key] || []).forEach((loop, index) => {
-            const badge = document.createElement('div');
-            badge.className = 'loop-badge';
-            badge.innerHTML = `<span>#${index+1} ${fmt(loop.start)}-${fmt(loop.end)}</span><span class="material-icons" style="font-size:14px; cursor:pointer;" onclick="deleteLoop('${mode}', ${index})">close</span>`;
-            badge.onclick = (e) => {
-                if(e.target.innerText === 'close') return;
-                if(mode === 'file') {
-                    wsRegions.clearRegions();
-                    wsRegions.addRegion({ start: loop.start, end: loop.end, color: 'rgba(212, 163, 115, 0.2)' });
-                    wavesurfer.setTime(loop.start);
-                } else {
-                    loopStart = loop.start; loopEnd = loop.end;
-                    document.getElementById('loopStartTxt').innerText = fmt(loopStart);
-                    document.getElementById('loopEndTxt').innerText = fmt(loopEnd);
-                    ytPlayer.seekTo(loopStart);
-                }
-            };
-            container.appendChild(badge);
+        const data = JSON.parse(localStorage.getItem(storageKey) || "{}");
+        (data[key] || []).forEach((l, i) => {
+            const chip = document.createElement('div');
+            chip.className = 'loop-chip';
+            chip.innerHTML = `<span>L${i+1}</span> <span class="material-icons" style="font-size:14px;" onclick="deleteLoop('${mode}',${i})">close</span>`;
+            chip.onclick = (e) => { if(e.target.tagName !== 'SPAN' || !e.target.classList.contains('material-icons')) applyLoop(mode, l.start, l.end); };
+            container.appendChild(chip);
         });
     }
 
-    // Initial load
-    window.addEventListener('DOMContentLoaded', () => {
-        initWavesurfer();
-        
+    function applyLoop(mode, s, e) {
+        if (mode === 'file') {
+            wsRegions.clearRegions();
+            wsRegions.addRegion({start: s, end: e, color: 'rgba(0, 242, 255, 0.15)'});
+            wavesurfer.setTime(s);
+        } else {
+            loopStart = s; loopEnd = e;
+            document.getElementById('loopStartTxt').innerText = fmt(s);
+            document.getElementById('loopEndTxt').innerText = fmt(e);
+            ytPlayer.seekTo(s);
+            if(!isLooping) toggleLoop();
+        }
+    }
+
+    // --- YT Integration ---
+    const tag = document.createElement('script'); tag.src = "https://www.youtube.com/iframe_api";
+    document.head.appendChild(tag);
+
+    function onYouTubeIframeAPIReady() { /* Ready */ }
+
+    function loadYouTube() {
+        const url = document.getElementById('ytUrl').value;
+        const id = url.match(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([^& \n]+)/);
+        if (id) {
+            currentYTId = id[1];
+            if (ytPlayer && ytPlayer.loadVideoById) {
+                ytPlayer.loadVideoById(currentYTId);
+            } else {
+                ytPlayer = new YT.Player('player', {
+                    videoId: currentYTId,
+                    events: { 'onStateChange': onYTStateChange }
+                });
+            }
+            renderLoopList('yt');
+        }
+    }
+
+    function onYTStateChange(e) {
+        if (e.data === YT.PlayerState.PLAYING) {
+            loopInterval = setInterval(() => {
+                if (isLooping && ytPlayer.getCurrentTime() >= loopEnd) ytPlayer.seekTo(loopStart);
+            }, 200);
+        } else clearInterval(loopInterval);
+    }
+
+    function setLoopPoint(t) {
+        const now = ytPlayer.getCurrentTime();
+        if (t === 'start') { loopStart = Math.floor(now); document.getElementById('loopStartTxt').innerText = fmt(loopStart); }
+        else { loopEnd = Math.ceil(now); document.getElementById('loopEndTxt').innerText = fmt(loopEnd); }
+    }
+
+    function toggleLoop() {
+        isLooping = !isLooping;
+        document.getElementById('toggleLoopBtn').innerText = isLooping ? "LOOP ON" : "LOOP OFF";
+        document.getElementById('toggleLoopBtn').classList.toggle('btn-outline', isLooping);
+    }
+
+    // --- Main Initializer ---
+    function startApp() {
+        wavesurfer = WaveSurfer.create({ 
+            container: '#waveform', waveColor: '#333', progressColor: '#00f2ff', 
+            height: 120, barWidth: 2, responsive: true 
+        });
+        recWavesurfer = WaveSurfer.create({ 
+            container: '#rec-waveform', waveColor: '#522', progressColor: '#f44', 
+            height: 80, barWidth: 2 
+        });
+        wsRegions = wavesurfer.registerPlugin(WaveSurfer.Regions.create());
+        wsRegions.enableDragSelection({ color: 'rgba(0, 242, 255, 0.15)' });
+
+        // Event Bindings
+        document.getElementById('playBtn').onclick = async () => {
+            if (wavesurfer.isPlaying()) wavesurfer.pause();
+            else {
+                const r = wsRegions.getRegions()[0];
+                if (r && (wavesurfer.getCurrentTime() < r.start || wavesurfer.getCurrentTime() >= r.end)) wavesurfer.setTime(r.start);
+                await runCountdown();
+                wavesurfer.play();
+            }
+        };
+
+        wavesurfer.on('play', () => document.getElementById('playIcon').innerText = 'pause');
+        wavesurfer.on('pause', () => document.getElementById('playIcon').innerText = 'play_arrow');
+        wavesurfer.on('timeupdate', t => {
+            document.getElementById('currentTime').innerText = fmt(t);
+            const r = wsRegions.getRegions()[0];
+            if (r && t >= r.end) wavesurfer.setTime(r.start);
+        });
+
         document.getElementById('audioFile').onchange = e => {
             const file = e.target.files[0];
-            if(file) {
+            if (file) {
                 currentFileName = file.name;
                 document.getElementById('fileSelectBtn').innerText = file.name;
                 const url = URL.createObjectURL(file);
                 wavesurfer.load(url);
+                analyzeAudio(file);
                 renderLoopList('file');
             }
         };
 
-        document.getElementById('playBtn').onclick = () => {
-            if (wavesurfer.isPlaying()) wavesurfer.pause();
-            else wavesurfer.play();
+        const applySettings = () => {
+            const s = parseFloat(document.getElementById('speed').value);
+            const p = parseInt(document.getElementById('pitch').value);
+            const media = wavesurfer.getMediaElement();
+            if (media) {
+                media.preservesPitch = true;
+                if (media.detune !== undefined) {
+                    media.detune = p * 100; wavesurfer.setPlaybackRate(s);
+                } else {
+                    if (p !== 0) { media.preservesPitch = false; wavesurfer.setPlaybackRate(s * Math.pow(2, p/12)); }
+                    else wavesurfer.setPlaybackRate(s);
+                }
+            }
+            updateBpmDisplay();
+            document.getElementById('pitchTxt').innerText = (p > 0 ? "+" : "") + p;
         };
 
         document.getElementById('speed').oninput = applySettings;
         document.getElementById('pitch').oninput = applySettings;
-        document.getElementById('mainVolume').oninput = applyVolumes;
-        document.getElementById('recVolume').oninput = applyVolumes;
+        document.getElementById('zoomSlider').oninput = e => wavesurfer.zoom(Number(e.target.value));
 
-        // YouTube API Load
-        const tag = document.createElement('script');
-        tag.src = "https://www.youtube.com/iframe_api";
-        document.head.appendChild(tag);
-    });
+        // Interaction Restriction
+        document.getElementById('pitch').onmousedown = e => { if(!isSubscribed) { e.preventDefault(); document.getElementById('subscription-overlay').style.display='flex'; } };
+    }
 
-    async function runAIAdvice() {
-        const text = document.getElementById('aiAdviceText');
-        document.getElementById('aiResultCard').classList.remove('hidden');
-        text.innerText = "Analyzing performance...";
-        setTimeout(() => {
-            text.innerHTML = "<b>Rhythm:</b> Stable. Keep the consistency.<br><b>Advice:</b> Try increasing the BPM by 5% to push your technical limit.";
-        }, 1500);
-    }
-    
-    function toggleSolo() {
-        isSolo = !isSolo;
-        document.getElementById('soloBtn').classList.toggle('btn-primary', isSolo);
-        applyVolumes();
-    }
-    
-    function playRecording() {
-        if (recWavesurfer.isPlaying()) recWavesurfer.pause();
-        else {
-            wavesurfer.setTime(lastRecStartPos);
-            recWavesurfer.play();
-            wavesurfer.play();
-        }
-    }
-    
-    function deleteRecording() {
-        if(confirm("Delete recording?")) {
-            document.getElementById('recControls').classList.add('hidden');
-            document.getElementById('rec-waveform-wrapper').style.display = 'none';
-            recWavesurfer.empty();
-        }
-    }
+    window.resetSetting = (id, val) => { document.getElementById(id).value = val; document.getElementById('speed').dispatchEvent(new Event('input')); };
+    function toggleSolo() { isSolo = !isSolo; document.getElementById('soloBtn').classList.toggle('btn-outline', isSolo); wavesurfer.setMuted(isSolo); }
+    function toggleFeature(type) { if(type==='count'){ isCountEnabled = !isCountEnabled; document.getElementById('countToggleBtn').classList.toggle('active', isCountEnabled); } }
+    function closeSubOverlay() { document.getElementById('subscription-overlay').style.display = 'none'; }
+    function adjustTime(t, a) { if(t==='start') { loopStart = Math.max(0, loopStart+a); document.getElementById('loopStartTxt').innerText = fmt(loopStart); } else { loopEnd = Math.max(loopStart+1, loopEnd+a); document.getElementById('loopEndTxt').innerText = fmt(loopEnd); } }
+
+    window.addEventListener('DOMContentLoaded', startApp);
 </script>
-
 </body>
 </html>

@@ -325,6 +325,10 @@
 
     function loginWithGoogle() {
         const provider = new firebase.auth.GoogleAuthProvider();
+        // 修正箇所: ログイン時に必ずアカウント選択を促すパラメータを追加
+        provider.setCustomParameters({
+            prompt: 'select_account'
+        });
         auth.signInWithPopup(provider).catch(e => alert("ログインエラー: " + e.message));
     }
 
@@ -834,4 +838,3 @@
 </script>
 </body>
 </html>
-

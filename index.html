@@ -211,7 +211,7 @@
     </div>
 
     <div id="file-section" class="content-section active">
-        <label for="audioFile" class="custom-file-upload" id="fileSelectBtn">ファイルを選択</label>
+        <label for="audioFile" class="custom-file-upload" id="fileSelectBtn" onclick="initAudioContext()">ファイルを選択</label>
         <input type="file" id="audioFile" accept="audio/*, .mp3, .wav, .m4a, .aac, .mp4, .ogg, .flac, .webma">
 
         <div class="waveform-label">
@@ -346,6 +346,7 @@
     let isSubscribed = false;
 
     function openAuthOverlay() {
+        initAudioContext();
         document.getElementById('auth-overlay').style.display = 'flex';
     }
 
@@ -411,32 +412,27 @@
         }
     }
 
-    // --- サブスク状態確認の修正版（エラー回避・柔軟な判定） ---
     async function checkSubscriptionStatus(user) {
         if (!user || !user.email) return false;
         
         try {
-            // 1. SchoolMember (教室生徒用) を確認
             const schoolDoc = await db.collection('SchoolMember').doc(user.email).get();
             if (schoolDoc.exists) {
                 const data = schoolDoc.data();
                 if (data.isSubscribed === true || data.isStudent === true) return true;
             }
 
-            // 2. Users (一般決済用) を確認
             const userDoc = await db.collection('Users').doc(user.email).get();
             if (userDoc.exists) {
                 const userData = userDoc.data();
                 if (userData.isSubscribed === true) {
-                    // 有効期限チェック
                     if (userData.expirationDate) {
                         const now = new Date();
                         const expiration = userData.expirationDate.toDate();
-                        if (now < expiration) return true; // 期限内
+                        if (now < expiration) return true;
                         console.log("Expired.");
-                        return false; // 期限切れ
+                        return false;
                     }
-                    // 期限データがない（旧データ）場合は移行期間として許可
                     return true; 
                 }
             }
@@ -541,6 +537,7 @@
     }
 
     function toggleMenu(isOpen) {
+        initAudioContext();
         document.getElementById('sideMenu').classList.toggle('open', isOpen);
         document.getElementById('menuOverlay').style.display = isOpen ? 'block' : 'none';
     }
@@ -558,9 +555,19 @@
         document.getElementById('menuOverlay').style.display = 'none';
     }
 
+    // --- 修正箇所: initAudioContext の強化 ---
     function initAudioContext() {
-        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
-        if (audioCtx.state === 'suspended') audioCtx.resume();
+        if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
+        }
+        if (audioCtx.state === 'suspended') {
+            audioCtx.resume();
+        }
+        // WaveSurferの内部AudioContextも同期させる
+        if (wavesurfer && wavesurfer.getActivePlugins().length > 0) {
+            const wsCtx = wavesurfer.getWrapper().parentElement.__wavesurfer?.backend?.getAudioContext();
+            if (wsCtx && wsCtx.state === 'suspended') wsCtx.resume();
+        }
         return audioCtx;
     }
 
@@ -589,6 +596,7 @@
     }
 
     function switchMode(mode) {
+        initAudioContext();
         currentMode = mode;
         document.getElementById('file-section').classList.toggle('active', mode === 'file');
         document.getElementById('yt-section').classList.toggle('active', mode === 'yt');

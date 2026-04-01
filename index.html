@@ -42,7 +42,6 @@
             padding-top: var(--header-height);
         }
 
-        /* Overlays */
         #auth-overlay, #subscription-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: var(--bg-dark); z-index: 5000;
@@ -346,9 +345,7 @@
 
     let isSubscribed = false;
 
-    // --- Overlay UI Helpers ---
     function openAuthOverlay() {
-        initAudioContext(); // ユーザーのアクションでAudioContextを有効化
         document.getElementById('auth-overlay').style.display = 'flex';
     }
 
@@ -360,7 +357,6 @@
         document.getElementById('subscription-overlay').style.display = 'none';
     }
 
-    // --- Auth Actions ---
     function loginWithGoogle() {
         initAudioContext(); 
         const provider = new firebase.auth.GoogleAuthProvider();
@@ -399,7 +395,6 @@
         });
     }
 
-    // --- Subscription / Stripe Link ---
     function redirectToCheckout() {
         const user = auth.currentUser;
         if (user) {
@@ -416,17 +411,14 @@
         }
     }
 
-    // --- Check Subscription Logic ---
     async function checkSubscriptionStatus(user) {
         if (!user || !user.email) return false;
-        
         try {
             const schoolDoc = await db.collection('SchoolMember').doc(user.email).get();
             if (schoolDoc.exists) {
                 const data = schoolDoc.data();
                 if (data.isSubscribed === true || data.isStudent === true) return true;
             }
-
             const userDoc = await db.collection('Users').doc(user.email).get();
             if (userDoc.exists) {
                 const userData = userDoc.data();
@@ -435,7 +427,7 @@
                         const now = new Date();
                         const expiration = userData.expirationDate.toDate();
                         if (now < expiration) return true;
-                        return false; 
+                        return false;
                     }
                     return true; 
                 }
@@ -460,8 +452,11 @@
             userInfo.style.display = 'flex';
             userNameSpan.innerText = user.displayName || user.email.split('@')[0];
             isSubscribed = await checkSubscriptionStatus(user);
-            if (isSubscribed) subOverlay.style.display = 'none';
-            if (currentMode === 'file') renderLoopList('file'); else renderLoopList('yt');
+            if (isSubscribed) {
+                subOverlay.style.display = 'none';
+            }
+            if (currentMode === 'file') renderLoopList('file');
+            else renderLoopList('yt');
         } else {
             userInfo.style.display = 'none';
             authSection.style.display = 'block';
@@ -470,7 +465,6 @@
         }
     });
 
-    // --- Translations ---
     const translations = {
         ja: {
             langTitle: "言語設定", helpTitle: "ヘルプ & ガイド", guideFile: "Audio Fileモード ガイド", guideYT: "YouTubeモード ガイド",
@@ -478,7 +472,7 @@
             setStart: "開始位置", setEnd: "終了位置", loopOff: "ループ OFF", loopOn: "ループ ON",
             fileSelect: "ファイルを選択", saveLoop: "ループ保存",
             recPlay: "録音再生", recStop: "再生停止",
-            guideFileContent: "<b>【Audio File Mode】ガイド</b><ul><li>録音機能: 再生しながら録音できます。客観的チェックに最適。</li><li>音量調整: メイン音源と録音音声を個別に調整可能。</li><li>ソロ(S): 録音音響のみを再生。</li></ul>",
+            guideFileContent: "<b>【Audio File Mode】ガイド</b><ul><li>録音機能: 再生しながら録音できます。範囲指定時は終わりで自動停止します。</li><li>音量調整: メイン音源と録音音声を個別に調整可能。</li><li>ソロ(S): 録音音響のみを再生。</li></ul>",
             guideYTContent: "<b>【YouTube Mode】ガイド</b><ul><li>読み込み: URLを貼り付けてLOAD。</li><li>ループ: SET START/ENDで区間指定。</li><li>SAVE: ループを複数保存。</li></ul>"
         },
         en: {
@@ -487,7 +481,7 @@
             setStart: "SET START", setEnd: "SET END", loopOff: "LOOP OFF", loopOn: "LOOP ON",
             fileSelect: "Select Audio File", saveLoop: "Save Loop",
             recPlay: "Play Rec", recStop: "Stop Rec",
-            guideFileContent: "<b>【Audio File Mode】Guide</b><ul><li>Recording: Record while playing.</li><li>Volume: Adjust Main/Rec levels.</li><li>Solo(S): Listen only to recording.</li></ul>",
+            guideFileContent: "<b>【Audio File Mode】Guide</b><ul><li>Recording: Record while playing. Stops automatically at end of range.</li><li>Volume: Adjust Main/Rec levels.</li><li>Solo(S): Listen only to recording.</li></ul>",
             guideYTContent: "<b>【YouTube Mode】Guide</b><ul><li>Load: Paste URL and LOAD.</li><li>Loop: Press START/END.</li><li>SAVE: Store multiple loops.</li></ul>"
         }
     };
@@ -552,18 +546,12 @@
         document.getElementById('menuOverlay').style.display = 'none';
     }
 
-    // --- Audio Context Lifecycle ---
     function initAudioContext() {
-        if (!audioCtx) {
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
-        }
-        if (audioCtx.state === 'suspended') {
-            audioCtx.resume();
-        }
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
+        if (audioCtx.state === 'suspended') audioCtx.resume();
         return audioCtx;
     }
 
-    // --- Core Player Controls ---
     function toggleSolo() { isSolo = !isSolo; document.getElementById('soloBtn').classList.toggle('active', isSolo); applyVolumes(); }
 
     function applyVolumes() {
@@ -654,15 +642,10 @@
         const interval = 60000 / (originalBpm * currentSpeed);
         const overlay = document.getElementById('countdown-overlay');
         overlay.style.display = 'block';
-        for (let i = 1; i <= 4; i++) { 
-            overlay.innerText = i; 
-            playBeep(i === 4); 
-            await new Promise(r => setTimeout(r, interval)); 
-        }
+        for (let i = 1; i <= 4; i++) { overlay.innerText = i; playBeep(i === 4); await new Promise(r => setTimeout(r, interval)); }
         overlay.style.display = 'none'; return true;
     }
 
-    // --- Recording System ---
     async function toggleRecording() {
         if (!isSubscribed) { document.getElementById('subscription-overlay').style.display = 'flex'; return; }
         initAudioContext();
@@ -689,20 +672,14 @@
                     document.getElementById('rec-waveform-wrapper').style.display = 'block';
                     document.getElementById('recVolControl').style.display = 'flex';
                     document.getElementById('recControls').style.display = 'flex';
-                    await recWavesurfer.load(recObjectURL); 
-                    applyVolumes(); 
-                    updateRecPlayBtnUI();
+                    await recWavesurfer.load(recObjectURL); applyVolumes(); updateRecPlayBtnUI();
                     stream.getTracks().forEach(track => track.stop());
                 };
                 const region = wsRegions.getRegions()[0];
                 const startPos = region ? region.start : wavesurfer.getCurrentTime();
                 wavesurfer.setTime(startPos); lastRecStartPos = startPos;
-                await runCountdown(); 
-                mediaRecorder.start(); 
-                await wavesurfer.play();
-                isRecording = true; 
-                document.getElementById('recBtn').classList.add('recording'); 
-                document.getElementById('recIcon').innerText = 'stop';
+                await runCountdown(); mediaRecorder.start(); await wavesurfer.play();
+                isRecording = true; document.getElementById('recBtn').classList.add('recording'); document.getElementById('recIcon').innerText = 'stop';
             } catch (err) { alert("マイクを許可してください"); }
         }
     }
@@ -711,12 +688,7 @@
         if (!recWavesurfer || !recWavesurfer.getDuration()) return;
         initAudioContext();
         if (recWavesurfer.isPlaying()) { recWavesurfer.pause(); wavesurfer.pause(); } 
-        else { 
-            wavesurfer.setTime(lastRecStartPos); 
-            recWavesurfer.setTime(0); 
-            wavesurfer.play(); 
-            recWavesurfer.play(); 
-        }
+        else { wavesurfer.setTime(lastRecStartPos); recWavesurfer.setTime(0); wavesurfer.play(); recWavesurfer.play(); }
         updateRecPlayBtnUI();
     }
 
@@ -729,7 +701,6 @@
         }
     }
 
-    // --- YouTube Integration ---
     const tag = document.createElement('script'); tag.src = "https://www.youtube.com/iframe_api";
     document.head.appendChild(tag);
 
@@ -817,7 +788,6 @@
         if(b) { b.innerText = isLooping ? translations[lang].loopOn : translations[lang].loopOff; b.classList.toggle('active', isLooping); }
     };
 
-    // --- Loop Storage ---
     function saveLoop(mode) {
         if (!isSubscribed) { document.getElementById('subscription-overlay').style.display = 'flex'; return; }
         let start, end, key;
@@ -863,66 +833,31 @@
         if (allLoops[key]) { allLoops[key].splice(index, 1); localStorage.setItem(storageKey, JSON.stringify(allLoops)); renderLoopList(mode); }
     };
 
-    // --- WaveSurfer Lifecycle & Initialization ---
     function startApp() {
-        // Main WaveSurfer
-        wavesurfer = WaveSurfer.create({ 
-            container: '#waveform', 
-            waveColor: '#333', 
-            progressColor: '#d4a373', 
-            height: 120, 
-            barWidth: 2, 
-            normalize: true,
-            interact: true,
-            cursorColor: '#d4a373'
-        });
-
-        // Recording WaveSurfer
-        recWavesurfer = WaveSurfer.create({ 
-            container: '#rec-waveform', 
-            waveColor: '#552222', 
-            progressColor: '#ff4444', 
-            height: 80, 
-            barWidth: 2, 
-            normalize: true 
-        });
-
+        wavesurfer = WaveSurfer.create({ container: '#waveform', waveColor: '#333', progressColor: '#d4a373', height: 120, barWidth: 2, normalize: true });
+        recWavesurfer = WaveSurfer.create({ container: '#rec-waveform', waveColor: '#552222', progressColor: '#ff4444', height: 80, barWidth: 2, normalize: true });
         wsRegions = wavesurfer.registerPlugin(WaveSurfer.Regions.create());
         wsRegions.enableDragSelection({ color: 'rgba(212, 163, 115, 0.2)' });
+        wsRegions.on('region-created', r => { if(wsRegions.getRegions().length > 1) wsRegions.getRegions()[0].remove(); wavesurfer.setTime(r.start); });
         
-        wsRegions.on('region-created', r => { 
-            if(wsRegions.getRegions().length > 1) wsRegions.getRegions()[0].remove(); 
-            wavesurfer.setTime(r.start); 
-        });
-        
-        // Zoom and Controls
-        document.getElementById('zoomSlider').oninput = (e) => {
-            if(wavesurfer) wavesurfer.zoom(Number(e.target.value));
-        };
-        document.getElementById('resetZoomBtn').onclick = () => { 
-            wavesurfer.zoom(0); 
-            document.getElementById('zoomSlider').value = 100; 
-        };
+        document.getElementById('zoomSlider').oninput = (e) => wavesurfer.zoom(Number(e.target.value));
+        document.getElementById('resetZoomBtn').onclick = () => { wavesurfer.zoom(0); document.getElementById('zoomSlider').value = 100; };
         document.getElementById('mainVolume').oninput = applyVolumes;
         document.getElementById('recVolume').oninput = applyVolumes;
 
-        // File Selection Logic
         document.getElementById('audioFile').onchange = async e => { 
             const file = e.target.files[0];
             if(file) { 
                 initAudioContext();
-                currentFileName = file.name; 
-                document.getElementById('fileSelectBtn').innerText = currentFileName;
-                
+                currentFileName = file.name; document.getElementById('fileSelectBtn').innerText = currentFileName;
                 const reader = new FileReader();
                 reader.onload = async (event) => {
                     const blob = new Blob([event.target.result], { type: file.type });
-                    if(currentObjectURL) URL.revokeObjectURL(currentObjectURL);
                     currentObjectURL = URL.createObjectURL(blob); 
-                    
                     await wavesurfer.load(currentObjectURL); 
                     analyzeAudio(blob); 
                     renderLoopList('file');
+                    requestAnimationFrame(() => wavesurfer.zoom(Number(document.getElementById('zoomSlider').value)));
                 };
                 reader.readAsArrayBuffer(file);
             } 
@@ -933,89 +868,64 @@
             const media = wavesurfer.getMediaElement();
             if (media) {
                 media.preservesPitch = true;
-                if (media.detune !== undefined) { 
-                    media.detune = p * 100; 
-                    wavesurfer.setPlaybackRate(s); 
-                } else { 
-                    if (p !== 0) { 
-                        media.preservesPitch = false; 
-                        wavesurfer.setPlaybackRate(s * Math.pow(2, p / 12)); 
-                    } else wavesurfer.setPlaybackRate(s); 
-                }
+                if (media.detune !== undefined) { media.detune = p * 100; wavesurfer.setPlaybackRate(s); } 
+                else { if (p !== 0) { media.preservesPitch = false; wavesurfer.setPlaybackRate(s * Math.pow(2, p / 12)); } else wavesurfer.setPlaybackRate(s); }
             }
             updateBpmDisplay(); 
             document.getElementById('pitchTxt').innerText = (p > 0 ? "+" : "") + p; 
             applyVolumes();
         };
 
-        // 重要: Readyイベントで再描画とズームを適用
         wavesurfer.on('ready', () => { 
             document.getElementById('totalTime').innerText = fmt(wavesurfer.getDuration()); 
-            applySettings();
-            // 初回起動時の描画不具合を防ぐため遅延実行
-            setTimeout(() => {
-                wavesurfer.zoom(Number(document.getElementById('zoomSlider').value));
-                wavesurfer.drawBuffer(); 
-            }, 100);
+            applySettings(); 
+            requestAnimationFrame(() => { wavesurfer.drawBuffer(); });
         });
-
-        recWavesurfer.on('finish', () => { 
-            wavesurfer.pause(); 
-            updateRecPlayBtnUI(); 
-        });
+        recWavesurfer.on('finish', () => { wavesurfer.pause(); updateRecPlayBtnUI(); });
         
         document.getElementById('speed').oninput = applySettings;
         document.getElementById('pitch').onmousedown = document.getElementById('pitch').ontouchstart = (e) => {
-            if (!isSubscribed) { 
-                e.preventDefault(); 
-                document.getElementById('subscription-overlay').style.display = 'flex'; 
-            }
+            if (!isSubscribed) { e.preventDefault(); document.getElementById('subscription-overlay').style.display = 'flex'; }
         };
         document.getElementById('pitch').oninput = applySettings;
 
-        // Play Button Action
         document.getElementById('playBtn').onclick = async () => {
             initAudioContext(); 
-            if (wavesurfer.isPlaying()) { 
-                wavesurfer.pause(); 
-            } else {
+            if (wavesurfer.isPlaying()) { wavesurfer.pause(); } 
+            else {
                 const current = wavesurfer.getCurrentTime(), region = wsRegions.getRegions()[0];
-                if (isCountEnabled && region && (current < region.start || current >= region.end)) {
-                    wavesurfer.setTime(region.start);
-                }
-                await runCountdown(); 
-                applySettings(); 
-                wavesurfer.play();
+                if (isCountEnabled && region && (current < region.start || current >= region.end)) wavesurfer.setTime(region.start);
+                await runCountdown(); applySettings(); wavesurfer.play();
             }
         };
 
         wavesurfer.on('play', () => document.getElementById('playIcon').innerText = 'pause');
         wavesurfer.on('pause', () => { document.getElementById('playIcon').innerText = 'play_arrow'; });
         
-        // Loop Management
+        // --- 修正箇所: タイムアップデート処理 ---
         wavesurfer.on('timeupdate', t => {
             document.getElementById('currentTime').innerText = fmt(t);
             const r = wsRegions.getRegions()[0];
             if(r && t >= r.end) { 
-                wavesurfer.setTime(r.start); 
-                if (isSpeedUpEnabled) { 
-                    const s = document.getElementById('speed'); 
-                    s.value = Math.min(1.5, parseFloat(s.value) + 0.05).toFixed(2); 
-                    applySettings(); 
+                if (isRecording) {
+                    // 録音中の場合は停止させる（ループさせない）
+                    toggleRecording(); 
+                } else {
+                    // 通常再生時は従来通りループ（またはスピードアップ）
+                    wavesurfer.setTime(r.start); 
+                    if (isSpeedUpEnabled) { 
+                        const s = document.getElementById('speed'); 
+                        s.value = Math.min(1.5, parseFloat(s.value) + 0.05).toFixed(2); 
+                        applySettings(); 
+                    }
                 }
             }
         });
 
-        window.resetSetting = (id, val) => { 
-            document.getElementById(id).value = val; 
-            applySettings(); 
-        };
-        
+        window.resetSetting = (id, val) => { document.getElementById(id).value = val; applySettings(); };
         changeLanguage(); 
         renderYTHistory();
     }
-
-    // Initialize on load
     window.addEventListener('DOMContentLoaded', startApp);
 </script>
 </body>

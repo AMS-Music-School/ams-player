@@ -555,18 +555,12 @@
         document.getElementById('menuOverlay').style.display = 'none';
     }
 
-    // --- 修正箇所: initAudioContext の強化 ---
     function initAudioContext() {
         if (!audioCtx) {
             audioCtx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
         }
         if (audioCtx.state === 'suspended') {
             audioCtx.resume();
-        }
-        // WaveSurferの内部AudioContextも同期させる
-        if (wavesurfer && wavesurfer.getActivePlugins().length > 0) {
-            const wsCtx = wavesurfer.getWrapper().parentElement.__wavesurfer?.backend?.getAudioContext();
-            if (wsCtx && wsCtx.state === 'suspended') wsCtx.resume();
         }
         return audioCtx;
     }
@@ -606,23 +600,39 @@
         if(mode === 'file' && ytPlayer && ytPlayer.pauseVideo) ytPlayer.pauseVideo();
     }
 
+    // --- 修正箇所: analyzeAudio の最適化 (非同期・順序調整) ---
     async function analyzeAudio(blob) {
         const lang = document.getElementById('langSelect').value;
         const statusEl = document.getElementById('loadStatus');
         statusEl.innerText = translations[lang].analyzing;
+        
+        // メインのUI描画を妨げないように少し遅らせる
+        await new Promise(r => setTimeout(r, 100));
+
         const tempCtx = new (window.AudioContext || window.webkitAudioContext)();
         try {
             const arrayBuffer = await blob.arrayBuffer();
             const audioBuffer = await tempCtx.decodeAudioData(arrayBuffer);
             const data = audioBuffer.getChannelData(0);
+            
+            // 無音カット位置の検出
             let skip = 0; const threshold = 0.015;
-            for (let i = 0; i < data.length; i += 100) { if (Math.abs(data[i]) > threshold) { skip = i / audioBuffer.sampleRate; break; } }
+            for (let i = 0; i < data.length; i += 200) { // stepを増やして高速化
+                if (Math.abs(data[i]) > threshold) { skip = i / audioBuffer.sampleRate; break; }
+            }
             firstSoundTime = skip;
+            
+            // BPM解析 (非同期的に実行)
             const bpm = detectBPM(audioBuffer);
             if (bpm > 0) { originalBpm = Math.round(bpm); updateBpmDisplay(); }
+            
             statusEl.innerText = translations[lang].ready;
             if(wavesurfer) wavesurfer.setTime(firstSoundTime);
-        } catch (e) { statusEl.innerText = translations[lang].ready; } finally { tempCtx.close(); }
+        } catch (e) { 
+            statusEl.innerText = translations[lang].ready; 
+        } finally { 
+            tempCtx.close(); 
+        }
     }
 
     function updateBpmDisplay() {
@@ -632,15 +642,17 @@
     }
 
     function detectBPM(buffer) {
-        const data = buffer.getChannelData(0), sampleRate = buffer.sampleRate, step = 200, energy = [];
+        const data = buffer.getChannelData(0), sampleRate = buffer.sampleRate, step = 400, energy = [];
         for (let i = 0; i < data.length; i += step) {
             let sum = 0; for(let j=0; j<step && (i+j)<data.length; j++) sum += data[i+j] * data[i+j];
             energy.push(Math.sqrt(sum/step));
         }
         let bestBpm = 0, maxCorrelation = 0;
-        const minInterval = Math.floor((60 / 200) * (sampleRate / step)), maxInterval = Math.floor((60 / 60) * (sampleRate / step));
+        const minInterval = Math.floor((60 / 220) * (sampleRate / step)), maxInterval = Math.floor((60 / 60) * (sampleRate / step));
         for (let interval = minInterval; interval <= maxInterval; interval++) {
-            let correlation = 0; for (let i = 0; i < Math.min(energy.length - interval, 10000); i++) correlation += energy[i] * energy[i + interval];
+            let correlation = 0; 
+            const limit = Math.min(energy.length - interval, 5000); // 範囲を絞って高速化
+            for (let i = 0; i < limit; i++) correlation += energy[i] * energy[i + interval];
             if (correlation > maxCorrelation) { maxCorrelation = correlation; bestBpm = 60 / (interval * step / sampleRate); }
         }
         return (bestBpm < 50 || bestBpm > 250) ? 0 : bestBpm;
@@ -854,7 +866,15 @@
     };
 
     function startApp() {
-        wavesurfer = WaveSurfer.create({ container: '#waveform', waveColor: '#333', progressColor: '#d4a373', height: 120, barWidth: 2, normalize: true });
+        // WaveSurferの初期化設定を軽量化
+        wavesurfer = WaveSurfer.create({ 
+            container: '#waveform', waveColor: '#333', progressColor: '#d4a373', 
+            height: 120, barWidth: 2, normalize: true,
+            fetchParams: { cache: 'default' },
+            hideScrollbar: false,
+            autoCenter: true
+        });
+
         recWavesurfer = WaveSurfer.create({ container: '#rec-waveform', waveColor: '#552222', progressColor: '#ff4444', height: 80, barWidth: 2, normalize: true });
         wsRegions = wavesurfer.registerPlugin(WaveSurfer.Regions.create());
         wsRegions.enableDragSelection({ color: 'rgba(212, 163, 115, 0.2)' });
@@ -865,21 +885,26 @@
         document.getElementById('mainVolume').oninput = applyVolumes;
         document.getElementById('recVolume').oninput = applyVolumes;
 
+        // --- 修正箇所: ファイル読み込みをスムーズに ---
         document.getElementById('audioFile').onchange = async e => { 
             const file = e.target.files[0];
             if(file) { 
                 initAudioContext();
-                currentFileName = file.name; document.getElementById('fileSelectBtn').innerText = currentFileName;
-                const reader = new FileReader();
-                reader.onload = async (event) => {
-                    const blob = new Blob([event.target.result], { type: file.type });
-                    currentObjectURL = URL.createObjectURL(blob); 
-                    await wavesurfer.load(currentObjectURL); 
-                    analyzeAudio(blob); 
-                    renderLoopList('file');
-                    requestAnimationFrame(() => wavesurfer.zoom(Number(document.getElementById('zoomSlider').value)));
-                };
-                reader.readAsArrayBuffer(file);
+                currentFileName = file.name; 
+                document.getElementById('fileSelectBtn').innerText = currentFileName;
+                
+                // 古いオブジェクトURLを解放してメモリを空ける
+                if (currentObjectURL) URL.revokeObjectURL(currentObjectURL);
+                
+                // 1. まずBlobとして読み込み、即座にWaveSurferに渡す (描画開始)
+                currentObjectURL = URL.createObjectURL(file);
+                await wavesurfer.load(currentObjectURL);
+                
+                // 2. その後、バックグラウンドでBPM解析を開始する
+                analyzeAudio(file);
+                
+                renderLoopList('file');
+                requestAnimationFrame(() => wavesurfer.zoom(Number(document.getElementById('zoomSlider').value)));
             } 
         };
 
@@ -899,7 +924,8 @@
         wavesurfer.on('ready', () => { 
             document.getElementById('totalTime').innerText = fmt(wavesurfer.getDuration()); 
             applySettings(); 
-            requestAnimationFrame(() => { wavesurfer.drawBuffer(); });
+            // 描画バッファの強制更新
+            setTimeout(() => { wavesurfer.drawBuffer(); }, 50);
         });
         recWavesurfer.on('finish', () => { wavesurfer.pause(); updateRecPlayBtnUI(); });
         

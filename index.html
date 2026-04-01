@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AMS Practice Player v1.3.6 - Subscription Edition</title>
+    <title>AMS Practice Player v1.3.7 - Subscription Edition</title>
     
     <meta name="apple-mobile-web-app-title" content="AMS Player">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -881,6 +881,16 @@
             applySettings(); 
             requestAnimationFrame(() => { wavesurfer.drawBuffer(); });
         });
+
+        // --- 録音波形のクリック連動修正 ---
+        recWavesurfer.on('interaction', (newTime) => {
+            // 録音波形のシーク位置に合わせてメイン音源をジャンプさせる
+            // 録音は lastRecStartPos から開始されているため
+            if (lastRecStartPos !== undefined) {
+                wavesurfer.setTime(lastRecStartPos + newTime);
+            }
+        });
+
         recWavesurfer.on('finish', () => { wavesurfer.pause(); updateRecPlayBtnUI(); });
         
         document.getElementById('speed').oninput = applySettings;
@@ -902,16 +912,13 @@
         wavesurfer.on('play', () => document.getElementById('playIcon').innerText = 'pause');
         wavesurfer.on('pause', () => { document.getElementById('playIcon').innerText = 'play_arrow'; });
         
-        // --- 修正箇所: タイムアップデート処理 ---
         wavesurfer.on('timeupdate', t => {
             document.getElementById('currentTime').innerText = fmt(t);
             const r = wsRegions.getRegions()[0];
             if(r && t >= r.end) { 
                 if (isRecording) {
-                    // 録音中の場合は停止させる（ループさせない）
                     toggleRecording(); 
                 } else {
-                    // 通常再生時は従来通りループ（またはスピードアップ）
                     wavesurfer.setTime(r.start); 
                     if (isSpeedUpEnabled) { 
                         const s = document.getElementById('speed'); 

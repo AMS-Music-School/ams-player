@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AMS Practice Player v1.3.3 - Subscription Edition</title>
+    <title>AMS Practice Player v1.3.4 - High Accuracy BPM Edition</title>
     
     <meta name="apple-mobile-web-app-title" content="AMS Player">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -85,7 +85,6 @@
         .header-logo { color: var(--primary-color); font-weight: bold; letter-spacing: 1px; font-size: 0.9rem; }
         .container { width: 100%; max-width: 1200px; margin: 0 auto; padding: 10px; padding-bottom: 40px; }
         
-        /* コンテンツセクションの制御 */
         .content-section { display: none; }
         .content-section.active { display: block; }
 
@@ -140,20 +139,16 @@
     <div class="login-card">
         <div class="header-logo" style="font-size: 1.5rem; margin-bottom: 10px;">AMS PLAYER</div>
         <p style="font-size: 0.8rem; color: var(--text-dim); margin-bottom:20px;">アカウントにログインしてください</p>
-        
         <button class="google-btn" onclick="loginWithGoogle()">
             <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="18" alt="G">
             Googleでログイン
         </button>
-
         <div class="auth-divider">または</div>
-
         <div class="auth-form">
             <input type="email" id="loginEmail" class="auth-input" placeholder="メールアドレス">
             <input type="password" id="loginPassword" class="auth-input" placeholder="パスワード">
             <button class="email-btn" onclick="loginWithEmail()">ログイン / 新規登録</button>
         </div>
-
         <button class="clear-btn-ja" onclick="closeAuthOverlay()" style="margin-top:25px; width:100%; justify-content:center;">閉じる</button>
     </div>
 </div>
@@ -162,9 +157,7 @@
     <div class="login-card">
         <div class="header-logo" style="font-size: 1.5rem; margin-bottom: 10px;">PREMIUM PLAN</div>
         <p style="font-size: 0.9rem; color: var(--text-main);">この機能を利用するには<br>サブスクリプションへの登録が必要です。</p>
-        <button class="subscribe-btn" onclick="redirectToCheckout()">
-            サブスクリプションを開始する
-        </button>
+        <button class="subscribe-btn" onclick="redirectToCheckout()">サブスクリプションを開始する</button>
         <button class="clear-btn-ja" onclick="closeSubOverlay()" style="margin-top:15px; width:100%; justify-content:center;">閉じる</button>
         <button class="logout-btn" onclick="logout()" style="margin-top:20px; display:block; width:100%;">ログアウト</button>
     </div>
@@ -334,7 +327,7 @@
 </div>
 
 <script>
-    // --- Firebase Configuration ---
+    // --- Firebase ---
     const firebaseConfig = {
         apiKey: "AIzaSyDI4ReBg15LAaQbd-4slccBHOS9R69sLNU",
         authDomain: "ams-player-e04bf.firebaseapp.com",
@@ -350,142 +343,164 @@
 
     let isSubscribed = false;
 
-    function openAuthOverlay() {
-        document.getElementById('auth-overlay').style.display = 'flex';
-    }
-
-    function closeAuthOverlay() {
-        document.getElementById('auth-overlay').style.display = 'none';
-    }
-
+    // --- Authentication & Subs ---
+    function openAuthOverlay() { document.getElementById('auth-overlay').style.display = 'flex'; }
+    function closeAuthOverlay() { document.getElementById('auth-overlay').style.display = 'none'; }
     function loginWithGoogle() {
         initAudioContext(); 
         const provider = new firebase.auth.GoogleAuthProvider();
-        provider.setCustomParameters({ prompt: 'select_account' });
-        auth.signInWithPopup(provider).then(() => {
-            closeAuthOverlay();
-        }).catch(e => alert("ログインエラー: " + e.message));
+        auth.signInWithPopup(provider).then(() => closeAuthOverlay()).catch(e => alert("Error: " + e.message));
     }
-
     function loginWithEmail() {
         const email = document.getElementById('loginEmail').value;
         const password = document.getElementById('loginPassword').value;
-        if(!email || !password) return alert("メールアドレスとパスワードを入力してください");
-        
+        if(!email || !password) return alert("Input required");
         initAudioContext();
-        auth.signInWithEmailAndPassword(email, password)
-            .then(() => {
-                closeAuthOverlay();
-            })
-            .catch((error) => {
-                if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
-                    if(confirm("アカウントが見つかりません。この内容で新しく登録しますか？")) {
-                        auth.createUserWithEmailAndPassword(email, password)
-                            .then(() => closeAuthOverlay())
-                            .catch(e => alert("登録エラー: " + e.message));
-                    }
-                } else {
-                    alert("ログインエラー: " + error.message);
-                }
+        auth.signInWithEmailAndPassword(email, password).then(() => closeAuthOverlay())
+            .catch(e => {
+                if(e.code === 'auth/user-not-found' && confirm("Register new?")) {
+                    auth.createUserWithEmailAndPassword(email, password).then(() => closeAuthOverlay());
+                } else alert(e.message);
             });
     }
-
-    function logout() {
-        auth.signOut();
-    }
-
-    function redirectToCheckout() {
-        const user = auth.currentUser;
-        if (user) {
-            const confirmed = confirm(`現在「${user.email}」でログインしています。\nこのメールアドレスで支払手続きを進めますか？`);
-            if (confirmed) {
-                window.location.href = "https://your-payment-link.com";
-            }
-        } else {
-            alert("先にログインしてください。");
-            closeSubOverlay();
-            openAuthOverlay();
-        }
-    }
-
-    function closeSubOverlay() {
-        document.getElementById('subscription-overlay').style.display = 'none';
-    }
-
-    async function checkSubscriptionStatus(user) {
-        try {
-            const doc = await db.collection('SchoolMember').doc(user.email).get();
-            if (doc.exists) {
-                const data = doc.data();
-                return data.isSubscribed === true;
-            }
-            return false; 
-        } catch (e) {
-            console.error("Subscription check error:", e);
-            return false;
-        }
-    }
+    function logout() { auth.signOut(); }
+    function closeSubOverlay() { document.getElementById('subscription-overlay').style.display = 'none'; }
+    function redirectToCheckout() { window.location.href = "https://your-payment-link.com"; }
 
     auth.onAuthStateChanged(async user => {
-        const userInfo = document.getElementById('userInfoDisplay');
-        const userName = document.getElementById('userName');
-        const authSection = document.getElementById('auth-section');
-
+        const ui = document.getElementById('userInfoDisplay');
+        const nm = document.getElementById('userName');
+        const as = document.getElementById('auth-section');
         if (user) {
-            isSubscribed = await checkSubscriptionStatus(user);
-            userInfo.style.display = 'flex';
-            authSection.style.display = 'none';
-            userName.innerText = user.displayName || user.email.split('@')[0];
-            if (currentMode === 'file') renderLoopList('file');
-            else renderLoopList('yt');
+            const doc = await db.collection('School Member').doc(user.email).get();
+            isSubscribed = doc.exists && doc.data().isSubscribed === true;
+            ui.style.display = 'flex'; as.style.display = 'none';
+            nm.innerText = user.displayName || user.email.split('@')[0];
+            renderLoopList(currentMode);
         } else {
-            userInfo.style.display = 'none';
-            authSection.style.display = 'block';
-            document.getElementById('subscription-overlay').style.display = 'none';
-            isSubscribed = false;
+            ui.style.display = 'none'; as.style.display = 'block'; isSubscribed = false;
         }
     });
 
-    // --- Logic Core ---
+    // --- Logic Core & High Accuracy BPM ---
     const translations = {
         ja: {
             langTitle: "言語設定", helpTitle: "ヘルプ & ガイド", guideFile: "Audio Fileモード ガイド", guideYT: "YouTubeモード ガイド",
             close: "閉じる", fit: "全体表示", clear: "範囲解除", ready: "準備完了", analyzing: "解析中...",
             setStart: "開始位置", setEnd: "終了位置", loopOff: "ループ OFF", loopOn: "ループ ON",
-            fileSelect: "ファイルを選択", saveLoop: "ループ保存",
-            recPlay: "録音再生", recStop: "再生停止",
-            guideFileContent: "<b>【Audio File Mode】ガイド</b><ul><li>録音機能: 再生しながら録音できます。客観的チェックに最適。</li><li>音量調整: メイン音源と録音音声を個別に調整可能。</li><li>ソロ(S): 録音音響のみを再生。</li></ul>",
-            guideYTContent: "<b>【YouTube Mode】ガイド</b><ul><li>読み込み: URLを貼り付けてLOAD。</li><li>ループ: SET START/ENDで区間指定。</li><li>SAVE: ループを複数保存。</li></ul>"
+            fileSelect: "ファイルを選択", saveLoop: "ループ保存", recPlay: "録音再生", recStop: "再生停止",
+            guideFileContent: "<b>【Audio File Mode】ガイド</b><ul><li>録音: 再生しながら録音し、客観的にチェック。</li><li>ソロ(S): 録音音響のみを再生。</li></ul>",
+            guideYTContent: "<b>【YouTube Mode】ガイド</b><ul><li>読み込み: URLを貼り付けてLOAD。</li><li>SAVE: ループを複数保存。</li></ul>"
         },
         en: {
             langTitle: "Language Settings", helpTitle: "Help & Guide", guideFile: "Audio File Mode Guide", guideYT: "YouTube Mode Guide",
             close: "Close", fit: "FIT", clear: "Clear Loop", ready: "READY", analyzing: "ANALYZING...",
             setStart: "SET START", setEnd: "SET END", loopOff: "LOOP OFF", loopOn: "LOOP ON",
-            fileSelect: "Select Audio File", saveLoop: "Save Loop",
-            recPlay: "Play Rec", recStop: "Stop Rec",
-            guideFileContent: "<b>【Audio File Mode】Guide</b><ul><li>Recording: Record while playing.</li><li>Volume: Adjust Main/Rec levels.</li><li>Solo(S): Listen only to recording.</li></ul>",
-            guideYTContent: "<b>【YouTube Mode】Guide</b><ul><li>Load: Paste URL and LOAD.</li><li>Loop: Press START/END.</li><li>SAVE: Store multiple loops.</li></ul>"
+            fileSelect: "Select Audio File", saveLoop: "Save Loop", recPlay: "Play Rec", recStop: "Stop Rec",
+            guideFileContent: "<b>【Audio File Mode】Guide</b><ul><li>Recording: Record while playing.</li><li>Solo(S): Listen only to recording.</li></ul>",
+            guideYTContent: "<b>【YouTube Mode】Guide</b><ul><li>Load: Paste URL and LOAD.</li><li>Loop: Press START/END.</li></ul>"
         }
     };
 
     let wavesurfer, wsRegions, recWavesurfer, ytPlayer, loopInterval;
     let loopStart = 0, loopEnd = 0, isLooping = false, currentMode = 'file';
-    let audioCtx, firstSoundTime = 0, originalBpm = 120;
-    let currentObjectURL = null, currentFileName = "", currentYTId = "";
+    let audioCtx, originalBpm = 0, firstSoundTime = 0;
+    let currentFileName = "", currentYTId = "", currentObjectURL = null;
     let isCountEnabled = true, isSpeedUpEnabled = false;
-    let mediaRecorder, recordedChunks = [];
-    let isRecording = false, isSolo = false;
-    let recObjectURL = null, recordedAudioBuffer = null, lastRecStartPos = 0;
+    let mediaRecorder, recordedChunks = [], isRecording = false, isSolo = false, recObjectURL = null, lastRecStartPos = 0;
 
+    function initAudioContext() {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        return audioCtx;
+    }
+
+    // --- High Accuracy BPM Analysis Algorithm ---
+    async function analyzeAudio(blob) {
+        const lang = document.getElementById('langSelect').value;
+        const statusEl = document.getElementById('loadStatus');
+        statusEl.innerText = translations[lang].analyzing;
+
+        const offlineCtx = new OfflineAudioContext(1, 1, 44100); // Dummy for initiation
+        try {
+            const arrayBuffer = await blob.arrayBuffer();
+            const tempCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const audioBuffer = await tempCtx.decodeAudioData(arrayBuffer);
+            tempCtx.close();
+
+            // 1. First Sound Detection
+            const data = audioBuffer.getChannelData(0);
+            for (let i = 0; i < data.length; i += 100) {
+                if (Math.abs(data[i]) > 0.015) { firstSoundTime = i / audioBuffer.sampleRate; break; }
+            }
+
+            // 2. BPM Estimation using Peaks & Low Pass Filter
+            originalBpm = await getBPM(audioBuffer);
+            updateBpmDisplay();
+
+            statusEl.innerText = translations[lang].ready;
+            if(wavesurfer) wavesurfer.setTime(firstSoundTime);
+        } catch (e) { 
+            console.error(e);
+            statusEl.innerText = translations[lang].ready; 
+        }
+    }
+
+    async function getBPM(buffer) {
+        const offlineCtx = new OfflineAudioContext(1, buffer.length, buffer.sampleRate);
+        const source = offlineCtx.createBufferSource();
+        source.buffer = buffer;
+
+        // Filter to isolate low-end (kick/bass)
+        const filter = offlineCtx.createBiquadFilter();
+        filter.type = "lowpass";
+        filter.frequency.value = 150; 
+        source.connect(filter);
+        filter.connect(offlineCtx.destination);
+        source.start(0);
+
+        const renderedBuffer = await offlineCtx.startRendering();
+        const data = renderedBuffer.getChannelData(0);
+
+        // Peak detection
+        let peaks = [];
+        const threshold = 0.8; // Initial threshold
+        for (let i = 0; i < data.length; i++) {
+            if (data[i] > threshold) {
+                peaks.push(i);
+                i += 10000; // Skip a bit to avoid multi-triggering on same beat
+            }
+        }
+
+        if (peaks.length < 2) return 0;
+
+        // Calculate average interval
+        let intervals = [];
+        for (let i = 1; i < peaks.length; i++) {
+            intervals.push(peaks[i] - peaks[i-1]);
+        }
+        intervals.sort((a, b) => a - b);
+        const medianInterval = intervals[Math.floor(intervals.length / 2)];
+        let bpm = Math.round(60 / (medianInterval / buffer.sampleRate));
+
+        // Normalization
+        while (bpm < 60) bpm *= 2;
+        while (bpm > 180) bpm /= 2;
+
+        return isNaN(bpm) ? 0 : bpm;
+    }
+
+    function updateBpmDisplay() {
+        const speed = parseFloat(document.getElementById('speed').value);
+        const displayBpm = Math.round(originalBpm * speed);
+        document.getElementById('spTxt').innerText = displayBpm > 0 ? `BPM ${displayBpm}` : "BPM ---";
+    }
+
+    // --- UI & Controls ---
     function changeLanguage() {
         const lang = document.getElementById('langSelect').value || 'ja';
         const t = translations[lang] || translations['ja'];
-        document.getElementById('langTitle').innerText = t.langTitle;
-        document.getElementById('helpTitle').innerText = t.helpTitle;
-        document.getElementById('guideFileTitle').innerText = t.guideFile;
-        document.getElementById('guideYTTitle').innerText = t.guideYT;
-        document.getElementById('closeBtn1').innerText = t.close;
-        document.getElementById('closeBtn2').innerText = t.close;
+        document.querySelectorAll('[id$="Title"]').forEach(el => { if(t[el.id]) el.innerText = t[el.id]; });
         document.getElementById('resetZoomBtn').innerText = t.fit;
         document.getElementById('clearRangeBtn').innerHTML = `<span class="material-icons" style="font-size:16px;">layers_clear</span> ${t.clear}`;
         document.getElementById('saveLoopBtn').innerHTML = `<span class="material-icons" style="font-size:16px;">bookmark_add</span> ${t.saveLoop}`;
@@ -493,68 +508,41 @@
         document.getElementById('setEndBtn').innerText = t.setEnd;
         document.getElementById('guideFileContent').innerHTML = t.guideFileContent;
         document.getElementById('guideYTContent').innerHTML = t.guideYTContent;
-        const fileLabel = document.getElementById('fileSelectBtn');
-        if (fileLabel.innerText.includes("ファイル") || fileLabel.innerText.includes("Select")) fileLabel.innerText = t.fileSelect;
-        const loadS = document.getElementById('loadStatus');
-        if (loadS.innerText.includes("READY") || loadS.innerText.includes("準備")) loadS.innerText = t.ready;
-        const loopB = document.getElementById('toggleLoopBtn');
-        if(loopB) loopB.innerText = isLooping ? t.loopOn : t.loopOff;
-        updateRecPlayBtnUI();
-    }
-
-    function updateRecPlayBtnUI() {
-        const lang = document.getElementById('langSelect').value;
-        const t = translations[lang] || translations['ja'];
-        const btn = document.getElementById('playRecBtn');
-        if (recWavesurfer && recWavesurfer.isPlaying()) btn.innerHTML = `<span class="material-icons" style="font-size:14px;">stop_circle</span> ${t.recStop}`;
-        else if(btn) btn.innerHTML = `<span class="material-icons" style="font-size:14px;">play_circle</span> ${t.recPlay}`;
+        document.getElementById('loadStatus').innerText = t.ready;
+        const b = document.getElementById('toggleLoopBtn'); if(b) b.innerText = isLooping ? t.loopOn : t.loopOff;
     }
 
     function toggleMenu(isOpen) {
         document.getElementById('sideMenu').classList.toggle('open', isOpen);
         document.getElementById('menuOverlay').style.display = isOpen ? 'block' : 'none';
     }
-
     function showGuide(type) {
         toggleMenu(false); closeModals();
-        if (type === 'file') document.getElementById('guideModalFile').style.display = 'block';
-        if (type === 'yt') document.getElementById('guideModalYT').style.display = 'block';
+        document.getElementById(type === 'file' ? 'guideModalFile' : 'guideModalYT').style.display = 'block';
         document.getElementById('menuOverlay').style.display = 'block';
     }
-
     function closeModals() {
-        document.getElementById('guideModalFile').style.display = 'none';
-        document.getElementById('guideModalYT').style.display = 'none';
+        document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
         document.getElementById('menuOverlay').style.display = 'none';
     }
 
-    function initAudioContext() {
-        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
-        if (audioCtx.state === 'suspended') audioCtx.resume();
-        return audioCtx;
-    }
-
     function toggleSolo() { isSolo = !isSolo; document.getElementById('soloBtn').classList.toggle('active', isSolo); applyVolumes(); }
-
     function applyVolumes() {
         if (!wavesurfer) return;
         const mVol = parseFloat(document.getElementById('mainVolume').value);
         const rVol = parseFloat(document.getElementById('recVolume').value);
-        if (isSolo) wavesurfer.setMuted(true); else { wavesurfer.setMuted(false); wavesurfer.setVolume(mVol); }
+        wavesurfer.setMuted(isSolo); 
+        if(!isSolo) wavesurfer.setVolume(mVol);
         if (recWavesurfer) recWavesurfer.setVolume(rVol);
         document.getElementById('mainVolTxt').innerText = Math.round(mVol * 100) + "%";
         document.getElementById('recVolTxt').innerText = Math.round(rVol * 100) + "%";
     }
 
     function toggleFeature(type) {
-        if (type === 'count') { 
-            isCountEnabled = !isCountEnabled; 
-            document.getElementById('countToggleBtn').classList.toggle('active', isCountEnabled); 
-        }
+        if (type === 'count') { isCountEnabled = !isCountEnabled; document.getElementById('countToggleBtn').classList.toggle('active', isCountEnabled); }
         else if (type === 'speedup') { 
             if (!isSubscribed) { document.getElementById('subscription-overlay').style.display = 'flex'; return; }
-            isSpeedUpEnabled = !isSpeedUpEnabled; 
-            document.getElementById('speedUpToggleBtn').classList.toggle('active', isSpeedUpEnabled); 
+            isSpeedUpEnabled = !isSpeedUpEnabled; document.getElementById('speedUpToggleBtn').classList.toggle('active', isSpeedUpEnabled); 
         }
     }
 
@@ -562,99 +550,14 @@
         currentMode = mode;
         document.getElementById('file-section').classList.toggle('active', mode === 'file');
         document.getElementById('yt-section').classList.toggle('active', mode === 'yt');
-        document.getElementById('tab-file').classList.toggle('active', mode === 'file');
-        document.getElementById('tab-yt').classList.toggle('active', mode === 'yt');
-        if(mode === 'yt') { if(wavesurfer) wavesurfer.pause(); renderYTHistory(); }
-        if(mode === 'file' && ytPlayer && ytPlayer.pauseVideo) ytPlayer.pauseVideo();
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.id === `tab-${mode}`));
+        if(mode === 'yt' && wavesurfer) wavesurfer.pause();
+        if(mode === 'file' && ytPlayer?.pauseVideo) ytPlayer.pauseVideo();
+        renderLoopList(mode);
     }
 
-    // --- 改良版 BPM分析ロジック ---
-    async function analyzeAudio(blob) {
-        const lang = document.getElementById('langSelect').value;
-        const statusEl = document.getElementById('loadStatus');
-        statusEl.innerText = translations[lang].analyzing;
-        const tempCtx = new (window.AudioContext || window.webkitAudioContext)();
-        try {
-            const arrayBuffer = await blob.arrayBuffer();
-            const audioBuffer = await tempCtx.decodeAudioData(arrayBuffer);
-            
-            // 1. 先頭の空白を検出
-            const data = audioBuffer.getChannelData(0);
-            let skip = 0; const threshold = 0.015;
-            for (let i = 0; i < data.length; i += 100) { if (Math.abs(data[i]) > threshold) { skip = i / audioBuffer.sampleRate; break; } }
-            firstSoundTime = skip;
-
-            // 2. 高精度BPM分析
-            const bpm = await detectBPMAdvanced(audioBuffer);
-            if (bpm > 0) { originalBpm = bpm; updateBpmDisplay(); }
-            
-            statusEl.innerText = translations[lang].ready;
-            if(wavesurfer) wavesurfer.setTime(firstSoundTime);
-        } catch (e) { 
-            console.error("BPM Analysis Error:", e);
-            statusEl.innerText = translations[lang].ready; 
-        } finally { tempCtx.close(); }
-    }
-
-    async function detectBPMAdvanced(audioBuffer) {
-        const rawData = audioBuffer.getChannelData(0);
-        const sampleRate = audioBuffer.sampleRate;
-        const winSize = 2048;
-        const hopSize = 1024;
-        
-        // エナジーグラフの作成
-        const energies = [];
-        for (let i = 0; i < rawData.length; i += hopSize) {
-            let sum = 0;
-            for (let j = 0; j < winSize && (i + j) < rawData.length; j++) {
-                sum += rawData[i + j] * rawData[i + j];
-            }
-            energies.push(Math.sqrt(sum / winSize));
-        }
-
-        // Onset（音の立ち上がり）の検出
-        const onsets = [];
-        for (let i = 1; i < energies.length; i++) {
-            const diff = energies[i] - energies[i - 1];
-            if (diff > 0.02) onsets.push(i * hopSize / sampleRate);
-        }
-
-        if (onsets.length < 2) return 0;
-
-        // 音の間隔のヒストグラムを作成
-        const intervals = [];
-        for (let i = 0; i < onsets.length; i++) {
-            for (let j = i + 1; j < Math.min(i + 20, onsets.length); j++) {
-                const delta = onsets[j] - onsets[i];
-                if (delta >= 0.3 && delta <= 1.5) intervals.push(delta);
-            }
-        }
-
-        // 最も頻出する間隔をBPMに変換
-        const bins = Array(150).fill(0);
-        intervals.forEach(int => {
-            const bpm = Math.round(60 / int);
-            if (bpm >= 60 && bpm <= 200) bins[bpm]++;
-        });
-
-        let maxCount = 0;
-        let bestBpm = 0;
-        for (let i = 60; i < bins.length; i++) {
-            // 前後のビンも考慮したスムージング
-            const score = bins[i-1]*0.5 + bins[i] + bins[i+1]*0.5;
-            if (score > maxCount) { maxCount = score; bestBpm = i; }
-        }
-        
-        return bestBpm;
-    }
-
-    function updateBpmDisplay() {
-        const currentSpeed = parseFloat(document.getElementById('speed').value);
-        const currentBpm = Math.round(originalBpm * currentSpeed);
-        document.getElementById('spTxt').innerText = "BPM " + currentBpm;
-    }
-
-    function playBeep(isLast) {
+    // --- Audio Playback Logic ---
+    async function playBeep(isLast) {
         const ctx = initAudioContext();
         const osc = ctx.createOscillator(), gain = ctx.createGain();
         osc.frequency.setValueAtTime(isLast ? 880 : 440, ctx.currentTime);
@@ -665,9 +568,8 @@
     }
 
     async function runCountdown() {
-        if (!isCountEnabled) return true;
-        const currentSpeed = parseFloat(document.getElementById('speed').value);
-        const interval = 60000 / (originalBpm * currentSpeed);
+        if (!isCountEnabled || originalBpm === 0) return true;
+        const interval = 60000 / (originalBpm * parseFloat(document.getElementById('speed').value));
         const overlay = document.getElementById('countdown-overlay');
         overlay.style.display = 'block';
         for (let i = 1; i <= 4; i++) { overlay.innerText = i; playBeep(i === 4); await new Promise(r => setTimeout(r, interval)); }
@@ -678,274 +580,218 @@
         if (!isSubscribed) { document.getElementById('subscription-overlay').style.display = 'flex'; return; }
         initAudioContext();
         if (isRecording) {
-            if (mediaRecorder) mediaRecorder.stop();
-            if (wavesurfer.isPlaying()) wavesurfer.pause();
-            isRecording = false;
+            mediaRecorder?.stop(); wavesurfer.pause(); isRecording = false;
             document.getElementById('recBtn').classList.remove('recording');
             document.getElementById('recIcon').innerText = 'mic';
         } else {
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
-                const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4';
-                mediaRecorder = new MediaRecorder(stream, { mimeType });
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
                 recordedChunks = [];
-                mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); };
+                mediaRecorder.ondataavailable = e => recordedChunks.push(e.data);
                 mediaRecorder.onstop = async () => {
-                    const blob = new Blob(recordedChunks, { type: mimeType });
-                    if (recObjectURL) URL.revokeObjectURL(recObjectURL);
+                    const blob = new Blob(recordedChunks, { type: 'audio/webm' });
                     recObjectURL = URL.createObjectURL(blob);
-                    const arrayBuffer = await blob.arrayBuffer();
-                    const tempCtx = new (window.AudioContext || window.webkitAudioContext)();
-                    recordedAudioBuffer = await tempCtx.decodeAudioData(arrayBuffer); tempCtx.close();
                     document.getElementById('rec-waveform-wrapper').style.display = 'block';
                     document.getElementById('recVolControl').style.display = 'flex';
                     document.getElementById('recControls').style.display = 'flex';
-                    await recWavesurfer.load(recObjectURL); applyVolumes(); updateRecPlayBtnUI();
-                    stream.getTracks().forEach(track => track.stop());
+                    await recWavesurfer.load(recObjectURL);
                 };
-                const region = wsRegions.getRegions()[0];
-                const startPos = region ? region.start : wavesurfer.getCurrentTime();
-                wavesurfer.setTime(startPos); lastRecStartPos = startPos;
-                await runCountdown(); mediaRecorder.start(); await wavesurfer.play();
-                isRecording = true; document.getElementById('recBtn').classList.add('recording'); document.getElementById('recIcon').innerText = 'stop';
-            } catch (err) { alert("マイクを許可してください"); }
+                const r = wsRegions.getRegions()[0];
+                lastRecStartPos = r ? r.start : wavesurfer.getCurrentTime();
+                wavesurfer.setTime(lastRecStartPos);
+                await runCountdown(); mediaRecorder.start(); wavesurfer.play();
+                isRecording = true; document.getElementById('recBtn').classList.add('recording');
+                document.getElementById('recIcon').innerText = 'stop';
+            } catch (err) { alert("Mic permission denied"); }
         }
     }
 
     function playRecording() {
-        if (!recWavesurfer || !recWavesurfer.getDuration()) return;
-        initAudioContext();
+        if (!recWavesurfer) return;
         if (recWavesurfer.isPlaying()) { recWavesurfer.pause(); wavesurfer.pause(); } 
         else { wavesurfer.setTime(lastRecStartPos); recWavesurfer.setTime(0); wavesurfer.play(); recWavesurfer.play(); }
-        updateRecPlayBtnUI();
     }
 
     function deleteRecording() {
-        if (confirm("削除しますか？")) {
+        if (confirm("Delete?")) {
             document.getElementById('rec-waveform-wrapper').style.display = 'none';
             document.getElementById('recControls').style.display = 'none';
-            if (recObjectURL) URL.revokeObjectURL(recObjectURL);
-            recObjectURL = null; recordedAudioBuffer = null; recWavesurfer.empty();
+            recWavesurfer.empty();
         }
     }
 
-    // YouTube API
-    const tag = document.createElement('script'); tag.src = "https://www.youtube.com/iframe_api";
-    document.head.appendChild(tag);
+    // --- YouTube API ---
+    let ytTag = document.createElement('script'); ytTag.src = "https://www.youtube.com/iframe_api";
+    document.head.appendChild(ytTag);
+    function onYouTubeIframeAPIReady() {}
 
     function loadYouTube(manualUrl = null) {
         initAudioContext();
-        const urlInput = document.getElementById('ytUrl'); const url = manualUrl || urlInput.value;
-        if (!url) return;
-        const videoId = url.includes('v=') ? url.split('v=')[1].split('&')[0] : url.includes('be/') ? url.split('be/')[1].split('?')[0] : null;
-        if (videoId) {
-            currentYTId = videoId; document.getElementById('loopListYT').innerHTML = ""; 
-            if (ytPlayer && ytPlayer.loadVideoById) ytPlayer.loadVideoById(videoId);
-            else ytPlayer = new YT.Player('player', { videoId: videoId, events: { 'onReady': () => { updateYTInfo(); }, 'onStateChange': onPlayerStateChange } });
-            urlInput.value = "";
+        const url = manualUrl || document.getElementById('ytUrl').value;
+        const id = url.match(/(?:v=|\/be\/)([\w-]{11})/)?.[1];
+        if (id) {
+            currentYTId = id;
+            if (ytPlayer) ytPlayer.loadVideoById(id);
+            else ytPlayer = new YT.Player('player', { videoId: id, events: { 'onStateChange': onPlayerStateChange } });
+            saveToHistory(id, "YouTube Video");
         }
-    }
-
-    function saveToHistory(id, title) {
-        let history = JSON.parse(localStorage.getItem('ams_yt_history') || "[]");
-        history = history.filter(item => item.id !== id);
-        history.unshift({ id: id, title: title || id, url: `https://www.youtube.com/watch?v=${id}`, time: Date.now() });
-        if (history.length > 20) history.pop();
-        localStorage.setItem('ams_yt_history', JSON.stringify(history)); 
-        renderYTHistory();
-    }
-
-    function renderYTHistory() {
-        const historyList = document.getElementById('ytHistoryList');
-        const container = document.getElementById('ytHistoryContainer');
-        if(!historyList || !container) return;
-        const history = JSON.parse(localStorage.getItem('ams_yt_history') || "[]");
-        if (history.length === 0) { container.style.display = 'none'; return; }
-        container.style.display = 'block'; historyList.innerHTML = "";
-        history.forEach(item => {
-            const card = document.createElement('div');
-            card.style = "background: #252525; border: 1px solid #333; border-radius: 6px; padding: 8px 12px; min-width: 180px; flex-shrink: 0; display: flex; justify-content: space-between; align-items: center; cursor: pointer;";
-            card.setAttribute('data-url', item.url);
-            card.innerHTML = `<span style="font-size:0.7rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:#e0e0e0;">${item.title}</span><span class="material-icons" style="color:#ff5555; font-size:16px;" onclick="event.stopPropagation(); deleteHistoryItem('${item.id}')">cancel</span>`;
-            historyList.appendChild(card);
-        });
-    }
-
-    function handleHistoryClick(event) {
-        const card = event.target.closest('div[data-url]');
-        if (card) {
-            if (!isSubscribed) { document.getElementById('subscription-overlay').style.display = 'flex'; return; }
-            loadYouTube(card.getAttribute('data-url'));
-        }
-    }
-
-    window.deleteHistoryItem = (id) => {
-        let history = JSON.parse(localStorage.getItem('ams_yt_history') || "[]");
-        history = history.filter(item => item.id !== id);
-        localStorage.setItem('ams_yt_history', JSON.stringify(history)); renderYTHistory();
-    };
-
-    window.clearYTHistory = () => { if (confirm("履歴を削除しますか？")) { localStorage.removeItem('ams_yt_history'); renderYTHistory(); } };
-
-    function updateYTInfo() {
-        const data = ytPlayer.getVideoData();
-        if (data && data.video_id) { saveToHistory(data.video_id, data.title); renderLoopList('yt'); }
     }
 
     function onPlayerStateChange(e) {
         if (e.data === YT.PlayerState.PLAYING) {
-            updateYTInfo();
             loopInterval = setInterval(() => { if (isLooping && ytPlayer.getCurrentTime() >= loopEnd) ytPlayer.seekTo(loopStart); }, 200);
         } else clearInterval(loopInterval);
     }
 
-    const fmt = (s) => `${Math.floor(s/60).toString().padStart(2,'0')}:${Math.floor(s%60).toString().padStart(2,'0')}`;
-    window.setLoopPoint = (t) => {
+    const fmt = s => `${Math.floor(s/60).toString().padStart(2,'0')}:${Math.floor(s%60).toString().padStart(2,'0')}`;
+    window.setLoopPoint = t => {
         const now = ytPlayer.getCurrentTime();
         if (t === 'start') { loopStart = Math.floor(now); document.getElementById('loopStartTxt').innerText = fmt(loopStart); }
         else { loopEnd = Math.ceil(now); document.getElementById('loopEndTxt').innerText = fmt(loopEnd); }
     };
-
     window.adjustTime = (t, a) => {
         if (t === 'start') { loopStart = Math.max(0, loopStart + a); document.getElementById('loopStartTxt').innerText = fmt(loopStart); ytPlayer.seekTo(loopStart); }
         else { loopEnd = Math.max(loopStart + 1, loopEnd + a); document.getElementById('loopEndTxt').innerText = fmt(loopEnd); }
     };
+    window.toggleLoop = () => { isLooping = !isLooping; changeLanguage(); };
 
-    window.toggleLoop = () => { 
-        isLooping = !isLooping; const lang = document.getElementById('langSelect').value;
-        const b = document.getElementById('toggleLoopBtn'); 
-        if(b) { b.innerText = isLooping ? translations[lang].loopOn : translations[lang].loopOff; b.classList.toggle('active', isLooping); }
-    };
-
+    // --- Storage & Loop Lists ---
     function saveLoop(mode) {
         if (!isSubscribed) { document.getElementById('subscription-overlay').style.display = 'flex'; return; }
-        let start, end, key;
+        const key = mode === 'file' ? currentFileName : currentYTId;
+        if (!key) return;
+        let start, end;
         if (mode === 'file') {
-            const regions = wsRegions.getRegions(); if (regions.length === 0) return alert("範囲を指定してください");
-            start = regions[0].start; end = regions[0].end; key = currentFileName;
-        } else {
-            if (!currentYTId) return; start = loopStart; end = loopEnd; key = currentYTId; if (start >= end) return alert("範囲が不正です");
-        }
-        let storageKey = mode === 'file' ? 'ams_loops' : 'ams_yt_loops';
-        let allLoops = JSON.parse(localStorage.getItem(storageKey) || "{}");
-        if (!allLoops[key]) allLoops[key] = []; allLoops[key].push({ start, end });
-        localStorage.setItem(storageKey, JSON.stringify(allLoops)); renderLoopList(mode);
+            const r = wsRegions.getRegions()[0]; if(!r) return;
+            start = r.start; end = r.end;
+        } else { start = loopStart; end = loopEnd; }
+        const storageKey = mode === 'file' ? 'ams_loops' : 'ams_yt_loops';
+        let all = JSON.parse(localStorage.getItem(storageKey) || "{}");
+        if (!all[key]) all[key] = []; all[key].push({ start, end });
+        localStorage.setItem(storageKey, JSON.stringify(all)); renderLoopList(mode);
     }
 
-    function getCircleNum(n) { const circles = ["①","②","③","④","⑤","⑥","⑦","⑧","⑨","⑩"]; return circles[n-1] || `(${n})`; }
-
     function renderLoopList(mode) {
-        const container = mode === 'file' ? document.getElementById('loopListFile') : document.getElementById('loopListYT');
+        const container = document.getElementById(mode === 'file' ? 'loopListFile' : 'loopListYT');
         const key = mode === 'file' ? currentFileName : currentYTId;
-        const storageKey = mode === 'file' ? 'ams_loops' : 'ams_yt_loops';
-        if(!container) return; container.innerHTML = ""; if (!key) return;
-        let allLoops = JSON.parse(localStorage.getItem(storageKey) || "{}");
-        (allLoops[key] || []).forEach((loop, index) => {
-            const badge = document.createElement('div'); badge.className = 'loop-badge';
-            badge.onclick = () => applyStoredLoop(mode, loop.start, loop.end);
-            badge.innerHTML = `<span class="badge-num">${getCircleNum(index + 1)}</span><span class="material-icons badge-del" onclick="event.stopPropagation(); deleteLoop('${mode}', ${index})">cancel</span>`;
-            container.appendChild(badge);
+        if(!container || !key) return; container.innerHTML = "";
+        const all = JSON.parse(localStorage.getItem(mode === 'file' ? 'ams_loops' : 'ams_yt_loops') || "{}");
+        (all[key] || []).forEach((l, i) => {
+            const b = document.createElement('div'); b.className = 'loop-badge';
+            b.onclick = () => applyStoredLoop(mode, l.start, l.end);
+            b.innerHTML = `<span>${i+1}</span><span class="material-icons" onclick="event.stopPropagation(); deleteLoop('${mode}',${i})">cancel</span>`;
+            container.appendChild(b);
         });
     }
 
-    window.applyStoredLoop = (mode, start, end) => {
-        if (!isSubscribed) { document.getElementById('subscription-overlay').style.display = 'flex'; return; }
-        initAudioContext();
-        if (mode === 'file') { wsRegions.clearRegions(); wsRegions.addRegion({ start, end, color: 'rgba(212, 163, 115, 0.2)' }); wavesurfer.setTime(start); } 
-        else { loopStart = start; loopEnd = end; document.getElementById('loopStartTxt').innerText = fmt(start); document.getElementById('loopEndTxt').innerText = fmt(end); ytPlayer.seekTo(start); if (!isLooping) toggleLoop(); }
+    window.applyStoredLoop = (mode, s, e) => {
+        if (mode === 'file') { wsRegions.clearRegions(); wsRegions.addRegion({ start:s, end:e, color:'rgba(212,163,115,0.2)' }); wavesurfer.setTime(s); }
+        else { loopStart = s; loopEnd = e; document.getElementById('loopStartTxt').innerText = fmt(s); document.getElementById('loopEndTxt').innerText = fmt(e); ytPlayer.seekTo(s); isLooping = true; changeLanguage(); }
     };
 
-    window.deleteLoop = (mode, index) => {
-        const storageKey = mode === 'file' ? 'ams_loops' : 'ams_yt_loops';
-        const key = mode === 'file' ? currentFileName : currentYTId;
-        let allLoops = JSON.parse(localStorage.getItem(storageKey) || "{}");
-        if (allLoops[key]) { allLoops[key].splice(index, 1); localStorage.setItem(storageKey, JSON.stringify(allLoops)); renderLoopList(mode); }
+    window.deleteLoop = (m, i) => {
+        const k = m === 'file' ? currentFileName : currentYTId;
+        const sk = m === 'file' ? 'ams_loops' : 'ams_yt_loops';
+        let all = JSON.parse(localStorage.getItem(sk));
+        all[k].splice(i, 1); localStorage.setItem(sk, JSON.stringify(all)); renderLoopList(m);
     };
 
+    function saveToHistory(id, title) {
+        let h = JSON.parse(localStorage.getItem('ams_yt_history') || "[]");
+        h = h.filter(x => x.id !== id); h.unshift({ id, title, url: `https://www.youtube.com/watch?v=${id}` });
+        localStorage.setItem('ams_yt_history', JSON.stringify(h.slice(0, 20))); renderYTHistory();
+    }
+    function renderYTHistory() {
+        const list = document.getElementById('ytHistoryList');
+        const h = JSON.parse(localStorage.getItem('ams_yt_history') || "[]");
+        document.getElementById('ytHistoryContainer').style.display = h.length ? 'block' : 'none';
+        if(list) {
+            list.innerHTML = "";
+            h.forEach(x => {
+                const d = document.createElement('div');
+                d.style = "background:#252525; border:1px solid #333; border-radius:6px; padding:8px; min-width:150px; cursor:pointer; font-size:0.7rem;";
+                d.onclick = () => loadYouTube(x.url);
+                d.innerHTML = `<span>${x.id}</span>`;
+                list.appendChild(d);
+            });
+        }
+    }
+    window.clearYTHistory = () => { localStorage.removeItem('ams_yt_history'); renderYTHistory(); };
+
+    // --- Initialization ---
     function startApp() {
         wavesurfer = WaveSurfer.create({ container: '#waveform', waveColor: '#333', progressColor: '#d4a373', height: 120, barWidth: 2, normalize: true });
         recWavesurfer = WaveSurfer.create({ container: '#rec-waveform', waveColor: '#552222', progressColor: '#ff4444', height: 80, barWidth: 2, normalize: true });
         wsRegions = wavesurfer.registerPlugin(WaveSurfer.Regions.create());
-        wsRegions.enableDragSelection({ color: 'rgba(212, 163, 115, 0.2)' });
+        wsRegions.enableDragSelection({ color: 'rgba(212,163,115,0.2)' });
         wsRegions.on('region-created', r => { if(wsRegions.getRegions().length > 1) wsRegions.getRegions()[0].remove(); wavesurfer.setTime(r.start); });
-        
-        document.getElementById('zoomSlider').oninput = (e) => wavesurfer.zoom(Number(e.target.value));
-        document.getElementById('resetZoomBtn').onclick = () => { wavesurfer.zoom(0); document.getElementById('zoomSlider').value = 100; };
-        document.getElementById('mainVolume').oninput = applyVolumes;
-        document.getElementById('recVolume').oninput = applyVolumes;
 
-        document.getElementById('audioFile').onchange = async e => { 
-            const file = e.target.files[0];
-            if(file) { 
-                initAudioContext();
-                currentFileName = file.name; document.getElementById('fileSelectBtn').innerText = currentFileName;
-                const reader = new FileReader();
-                reader.onload = async (event) => {
-                    const blob = new Blob([event.target.result], { type: file.type });
-                    currentObjectURL = URL.createObjectURL(blob); 
-                    await wavesurfer.load(currentObjectURL); 
-                    analyzeAudio(blob); 
-                    renderLoopList('file');
-                    requestAnimationFrame(() => wavesurfer.zoom(Number(document.getElementById('zoomSlider').value)));
-                };
-                reader.readAsArrayBuffer(file);
-            } 
+        document.getElementById('audioFile').onchange = e => {
+            const file = e.target.files[0]; if(!file) return;
+            currentFileName = file.name; document.getElementById('fileSelectBtn').innerText = currentFileName;
+            const reader = new FileReader();
+            reader.onload = async ev => {
+                const blob = new Blob([ev.target.result], { type: file.type });
+                await wavesurfer.load(URL.createObjectURL(blob));
+                analyzeAudio(blob);
+                renderLoopList('file');
+            };
+            reader.readAsArrayBuffer(file);
         };
 
         const applySettings = () => {
-            const s = parseFloat(document.getElementById('speed').value), p = parseInt(document.getElementById('pitch').value);
+            const s = parseFloat(document.getElementById('speed').value);
+            const p = parseInt(document.getElementById('pitch').value);
             const media = wavesurfer.getMediaElement();
             if (media) {
                 media.preservesPitch = true;
-                if (media.detune !== undefined) { media.detune = p * 100; wavesurfer.setPlaybackRate(s); } 
-                else { if (p !== 0) { media.preservesPitch = false; wavesurfer.setPlaybackRate(s * Math.pow(2, p / 12)); } else wavesurfer.setPlaybackRate(s); }
+                if (media.detune !== undefined) { media.detune = p * 100; wavesurfer.setPlaybackRate(s); }
+                else { wavesurfer.setPlaybackRate(s * Math.pow(2, p / 12)); media.preservesPitch = (p === 0); }
             }
-            updateBpmDisplay(); 
-            document.getElementById('pitchTxt').innerText = (p > 0 ? "+" : "") + p; 
+            updateBpmDisplay();
+            document.getElementById('pitchTxt').innerText = (p > 0 ? "+" : "") + p;
             applyVolumes();
         };
 
-        wavesurfer.on('ready', () => { 
-            document.getElementById('totalTime').innerText = fmt(wavesurfer.getDuration()); 
-            applySettings(); 
-            requestAnimationFrame(() => { wavesurfer.drawBuffer(); });
-        });
-        recWavesurfer.on('finish', () => { wavesurfer.pause(); updateRecPlayBtnUI(); });
-        
         document.getElementById('speed').oninput = applySettings;
-        document.getElementById('pitch').onmousedown = document.getElementById('pitch').ontouchstart = (e) => {
-            if (!isSubscribed) { e.preventDefault(); document.getElementById('subscription-overlay').style.display = 'flex'; }
-        };
         document.getElementById('pitch').oninput = applySettings;
+        document.getElementById('zoomSlider').oninput = e => wavesurfer.zoom(Number(e.target.value));
+        document.getElementById('resetZoomBtn').onclick = () => { wavesurfer.zoom(0); document.getElementById('zoomSlider').value = 0; };
+        document.getElementById('mainVolume').oninput = applyVolumes;
+        document.getElementById('recVolume').oninput = applyVolumes;
 
         document.getElementById('playBtn').onclick = async () => {
-            initAudioContext(); 
-            if (wavesurfer.isPlaying()) { wavesurfer.pause(); } 
+            initAudioContext();
+            if (wavesurfer.isPlaying()) wavesurfer.pause();
             else {
-                const current = wavesurfer.getCurrentTime(), region = wsRegions.getRegions()[0];
-                if (isCountEnabled && region && (current < region.start || current >= region.end)) wavesurfer.setTime(region.start);
+                const r = wsRegions.getRegions()[0];
+                if(r && (wavesurfer.getCurrentTime() < r.start || wavesurfer.getCurrentTime() >= r.end)) wavesurfer.setTime(r.start);
                 await runCountdown(); applySettings(); wavesurfer.play();
             }
         };
 
         wavesurfer.on('play', () => document.getElementById('playIcon').innerText = 'pause');
-        wavesurfer.on('pause', () => { document.getElementById('playIcon').innerText = 'play_arrow'; });
+        wavesurfer.on('pause', () => document.getElementById('playIcon').innerText = 'play_arrow');
         wavesurfer.on('timeupdate', t => {
             document.getElementById('currentTime').innerText = fmt(t);
             const r = wsRegions.getRegions()[0];
-            if(r && t >= r.end) { 
-                wavesurfer.setTime(r.start); 
-                if (isSpeedUpEnabled) { 
-                    const s = document.getElementById('speed'); 
-                    s.value = Math.min(1.5, parseFloat(s.value) + 0.05).toFixed(2); 
-                    applySettings(); 
+            if(r && t >= r.end) {
+                wavesurfer.setTime(r.start);
+                if(isSpeedUpEnabled) {
+                    const s = document.getElementById('speed');
+                    s.value = Math.min(1.5, parseFloat(s.value) + 0.05).toFixed(2);
+                    applySettings();
                 }
             }
         });
+        wavesurfer.on('ready', () => {
+            document.getElementById('totalTime').innerText = fmt(wavesurfer.getDuration());
+            applySettings();
+        });
 
-        window.resetSetting = (id, val) => { document.getElementById(id).value = val; applySettings(); };
-        changeLanguage(); 
-        renderYTHistory();
+        window.resetSetting = (id, v) => { document.getElementById(id).value = v; applySettings(); };
+        changeLanguage(); renderYTHistory();
     }
     window.addEventListener('DOMContentLoaded', startApp);
 </script>

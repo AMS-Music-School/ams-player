@@ -398,7 +398,10 @@
         if (user) {
             const confirmed = confirm(`現在「${user.email}」でログインしています。\nこのメールアドレスで支払手続きを進めますか？\n（決済完了後、自動的にプレミアム機能が有効になります）`);
             if (confirmed) {
-                window.location.href = "https://square.link/u/B13lqKnj"; 
+                // Squareの決済URLにログイン中のメールアドレスを自動付与 (ステップ1の実装)
+                const baseUrl = "https://square.link/u/B13lqKnj";
+                const checkoutUrl = `${baseUrl}?checkout_user_email=${encodeURIComponent(user.email)}`;
+                window.location.href = checkoutUrl;
             }
         } else {
             alert("先にログインしてください。");
@@ -410,14 +413,11 @@
     async function checkSubscriptionStatus(user) {
         if (!user) return false;
         try {
-            // コレクション名をルールに合わせ「SchoolMember」に変更
             const doc = await db.collection('SchoolMember').doc(user.email).get();
             if (doc.exists) {
                 const data = doc.data();
-                // 型が Boolean であることを厳密にチェック
                 return data.isSubscribed === true || data.isStudent === true;
             } else {
-                // ドキュメントが存在しない場合は作成（ルールで許可が必要）
                 await db.collection('SchoolMember').doc(user.email).set({
                     email: user.email,
                     isSubscribed: false,

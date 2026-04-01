@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AMS Practice Player v1.3.4 - Mobile Optimized</title>
+    <title>AMS Practice Player v1.3.5 - Ultra Mobile Optimized</title>
     
     <meta name="apple-mobile-web-app-title" content="AMS Player">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -385,7 +385,7 @@
 
     let wavesurfer, wsRegions, recWavesurfer, ytPlayer, loopInterval;
     let loopStart = 0, loopEnd = 0, isLooping = false, currentMode = 'file';
-    let audioCtx, firstSoundTime = 0, originalBpm = 120;
+    let audioCtx = null, firstSoundTime = 0, originalBpm = 120;
     let currentObjectURL = null, currentFileName = "", currentYTId = "";
     let isCountEnabled = true, isSpeedUpEnabled = false;
     let mediaRecorder, recordedChunks = [];
@@ -443,9 +443,14 @@
         document.getElementById('menuOverlay').style.display = 'none';
     }
 
+    // --- MOBILE FIX: 音声コンテキストの初期化 ---
     function initAudioContext() {
-        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
-        if (audioCtx.state === 'suspended') audioCtx.resume();
+        if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
+        }
+        if (audioCtx.state === 'suspended') {
+            audioCtx.resume();
+        }
         return audioCtx;
     }
 
@@ -487,6 +492,7 @@
         const lang = document.getElementById('langSelect').value;
         const statusEl = document.getElementById('loadStatus');
         statusEl.innerText = translations[lang].analyzing;
+        
         const tempCtx = new (window.AudioContext || window.webkitAudioContext)();
         try {
             const arrayBuffer = await blob.arrayBuffer();
@@ -743,7 +749,17 @@
     function startApp() {
         if (!document.getElementById('waveform')) return;
         
-        wavesurfer = WaveSurfer.create({ container: '#waveform', waveColor: '#333', progressColor: '#d4a373', height: 120, barWidth: 2, normalize: true });
+        // --- MOBILE FIX: WaveSurferの初期設定 ---
+        wavesurfer = WaveSurfer.create({ 
+            container: '#waveform', 
+            waveColor: '#333', 
+            progressColor: '#d4a373', 
+            height: 120, 
+            barWidth: 2, 
+            normalize: true,
+            backend: 'WebAudio' // 強制的にWebAudioを使用
+        });
+
         recWavesurfer = WaveSurfer.create({ container: '#rec-waveform', waveColor: '#552222', progressColor: '#ff4444', height: 80, barWidth: 2, normalize: true });
         wsRegions = wavesurfer.registerPlugin(WaveSurfer.Regions.create());
         wsRegions.enableDragSelection({ color: 'rgba(212, 163, 115, 0.2)' });
@@ -784,7 +800,10 @@
             applyVolumes();
         };
 
-        wavesurfer.on('ready', () => { document.getElementById('totalTime').innerText = fmt(wavesurfer.getDuration()); applySettings(); });
+        wavesurfer.on('ready', () => { 
+            document.getElementById('totalTime').innerText = fmt(wavesurfer.getDuration()); 
+            applySettings(); 
+        });
         
         recWavesurfer.on('interaction', () => {
             if (recWavesurfer.getDuration() > 0) {
@@ -804,13 +823,25 @@
         };
         document.getElementById('pitch').oninput = applySettings;
 
+        // --- MOBILE FIX: 再生ボタンでの明示的な初期化 ---
         document.getElementById('playBtn').onclick = async () => {
+            // ここでAudioContextをアクティブ化（iOS/Androidの必須処理）
             initAudioContext();
-            if (wavesurfer.isPlaying()) { wavesurfer.pause(); } 
+            
+            if (wavesurfer.isPlaying()) { 
+                wavesurfer.pause(); 
+            } 
             else {
                 const current = wavesurfer.getCurrentTime(), region = wsRegions.getRegions()[0];
                 if (isCountEnabled && region && (current < region.start || current >= region.end)) wavesurfer.setTime(region.start);
-                await runCountdown(); applySettings(); wavesurfer.play();
+                
+                await runCountdown(); 
+                applySettings(); 
+                wavesurfer.play().catch(e => {
+                    console.error("Play failed:", e);
+                    // 万が一失敗した場合は再試行
+                    wavesurfer.play();
+                });
             }
         };
 
@@ -820,6 +851,7 @@
             if(recWavesurfer.isPlaying()) recWavesurfer.pause();
             updateRecPlayBtnUI();
         });
+        
         wavesurfer.on('timeupdate', t => {
             document.getElementById('currentTime').innerText = fmt(t);
             const r = wsRegions.getRegions()[0];
@@ -842,7 +874,7 @@
         renderYTHistory();
     }
 
-    // ページの読み込み完了後に実行
+    // ドキュメント読み込み完了時に実行
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', startApp);
     } else {

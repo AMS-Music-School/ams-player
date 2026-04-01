@@ -411,49 +411,38 @@
         }
     }
 
-    // --- サブスク状態確認の修正版（32日間の期限チェック付き） ---
+    // --- サブスク状態確認の修正版（エラー回避・柔軟な判定） ---
     async function checkSubscriptionStatus(user) {
         if (!user || !user.email) return false;
         
         try {
-            // 1. まず SchoolMember (教室生徒用) を確認（手動設定のため期限なし）
-            const schoolRef = db.collection('SchoolMember').doc(user.email);
-            const schoolDoc = await schoolRef.get();
-            
+            // 1. SchoolMember (教室生徒用) を確認
+            const schoolDoc = await db.collection('SchoolMember').doc(user.email).get();
             if (schoolDoc.exists) {
                 const data = schoolDoc.data();
-                if (data.isSubscribed === true || data.isStudent === true) {
-                    console.log("Access granted via SchoolMember");
-                    return true;
-                }
+                if (data.isSubscribed === true || data.isStudent === true) return true;
             }
 
-            // 2. 次に Users (一般決済用) を確認
-            const userRef = db.collection('Users').doc(user.email);
-            const userDoc = await userRef.get();
-            
+            // 2. Users (一般決済用) を確認
+            const userDoc = await db.collection('Users').doc(user.email).get();
             if (userDoc.exists) {
                 const userData = userDoc.data();
-                
-                // 有効期限のチェック
-                if (userData.isSubscribed === true && userData.expirationDate) {
-                    const now = new Date();
-                    const expiration = userData.expirationDate.toDate(); // TimestampをDateに変換
-
-                    if (now < expiration) {
-                        console.log("Subscription active until:", expiration);
-                        return true;
-                    } else {
-                        console.log("Subscription expired on:", expiration);
-                        return false;
+                if (userData.isSubscribed === true) {
+                    // 有効期限チェック
+                    if (userData.expirationDate) {
+                        const now = new Date();
+                        const expiration = userData.expirationDate.toDate();
+                        if (now < expiration) return true; // 期限内
+                        console.log("Expired.");
+                        return false; // 期限切れ
                     }
+                    // 期限データがない（旧データ）場合は移行期間として許可
+                    return true; 
                 }
             }
-
-            console.log("No active subscription found for:", user.email);
             return false;
         } catch (e) {
-            console.error("Subscription check error:", e);
+            console.error("Check error:", e);
             return false;
         }
     }

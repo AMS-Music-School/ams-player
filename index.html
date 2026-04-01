@@ -398,7 +398,6 @@
         if (user) {
             const confirmed = confirm(`現在「${user.email}」でログインしています。\nこのメールアドレスで支払手続きを進めますか？\n（決済完了後、自動的にプレミアム機能が有効になります）`);
             if (confirmed) {
-                // Squareの決済URLにログイン中のメールアドレスを自動付与 (ステップ1の実装)
                 const baseUrl = "https://square.link/u/B13lqKnj";
                 const checkoutUrl = `${baseUrl}?checkout_user_email=${encodeURIComponent(user.email)}`;
                 window.location.href = checkoutUrl;
@@ -438,6 +437,21 @@
         const authSection = document.getElementById('auth-section');
 
         if (user) {
+            // --- 追加：新規ユーザー登録処理 ---
+            const userRef = db.collection('Users').doc(user.uid);
+            const userDoc = await userRef.get();
+            if (!userDoc.exists) {
+                await userRef.set({
+                    email: user.email,
+                    displayName: user.displayName || "ゲストユーザー",
+                    isSubscribed: false,
+                    role: 'general',
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                console.log("一般ユーザーとしてUsersコレクションに登録しました");
+            }
+            // -----------------------------
+
             isSubscribed = await checkSubscriptionStatus(user);
             userInfo.style.display = 'flex';
             authSection.style.display = 'none';

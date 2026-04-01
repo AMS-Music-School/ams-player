@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AMS Practice Player v1.3.6 - Stable Edition</title>
+    <title>AMS Practice Player v1.3.7 - Stable Edition</title>
     
     <meta name="apple-mobile-web-app-title" content="AMS Player">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -586,13 +586,11 @@
         if(mode === 'file' && ytPlayer && ytPlayer.pauseVideo) ytPlayer.pauseVideo();
     }
 
-    // --- analyzeAudio: 重いデコード作業を完全に非同期化し、描画を優先 ---
     async function analyzeAudio(blob) {
         const lang = document.getElementById('langSelect').value;
         const statusEl = document.getElementById('loadStatus');
         statusEl.innerText = translations[lang].analyzing;
         
-        // メインスレッドを解放
         await new Promise(r => requestAnimationFrame(r));
 
         const tempCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -601,14 +599,12 @@
             const audioBuffer = await tempCtx.decodeAudioData(arrayBuffer);
             const data = audioBuffer.getChannelData(0);
             
-            // 無音検出
             let skip = 0; const threshold = 0.015;
             for (let i = 0; i < data.length; i += 400) { 
                 if (Math.abs(data[i]) > threshold) { skip = i / audioBuffer.sampleRate; break; }
             }
             firstSoundTime = skip;
             
-            // BPM解析
             const bpm = detectBPM(audioBuffer);
             if (bpm > 0) { originalBpm = Math.round(bpm); updateBpmDisplay(); }
             
@@ -869,22 +865,25 @@
         document.getElementById('mainVolume').oninput = applyVolumes;
         document.getElementById('recVolume').oninput = applyVolumes;
 
-        // --- 修正: ファイル選択アクションを即時完了させる ---
+        // --- 修正: ファイル変更時に前の曲を完全にリセットする ---
         document.getElementById('audioFile').onchange = async e => { 
             const file = e.target.files[0];
             if(file) { 
                 initAudioContext();
+                
+                // 再生停止・表示クリア
+                wavesurfer.stop();
+                wavesurfer.empty();
+                wsRegions.clearRegions();
+                
                 currentFileName = file.name; 
                 document.getElementById('fileSelectBtn').innerText = currentFileName;
                 if (currentObjectURL) URL.revokeObjectURL(currentObjectURL);
                 
-                // 描画を最優先
                 currentObjectURL = URL.createObjectURL(file);
                 wavesurfer.load(currentObjectURL);
                 
-                // 解析は裏側で行う（awaitしない）
                 analyzeAudio(file);
-                
                 renderLoopList('file');
             } 
         };

@@ -414,7 +414,7 @@
 
     async function checkSubscriptionStatus(user) {
         try {
-            const doc = await db.collection('School Member').doc(user.email).get();
+            const doc = await db.collection('SchoolMember').doc(user.email).get();
             if (doc.exists) {
                 const data = doc.data();
                 return data.isSubscribed === true;
@@ -603,7 +603,7 @@
         const minInterval = Math.floor((60 / 200) * (sampleRate / step)), maxInterval = Math.floor((60 / 60) * (sampleRate / step));
         for (let interval = minInterval; interval <= maxInterval; interval++) {
             let correlation = 0; for (let i = 0; i < Math.min(energy.length - interval, 10000); i++) correlation += energy[i] * energy[i + interval];
-            if (correlation > maxCorrelation) { maxCorrelation = correlation; bestBpm = 60 / (interval * step / sampleRate); }
+            if (correlation > maxCorrelation) { correlation = correlation; bestBpm = 60 / (interval * step / sampleRate); }
         }
         return (bestBpm < 50 || bestBpm > 250) ? 0 : bestBpm;
     }

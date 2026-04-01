@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AMS Practice Player v1.3.4 - Subscription Edition</title>
+    <title>AMS Practice Player v1.3.5 - Subscription Edition</title>
     
     <meta name="apple-mobile-web-app-title" content="AMS Player">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -353,7 +353,6 @@
         document.getElementById('auth-overlay').style.display = 'none';
     }
     
-    // サブスク案内用オーバーレイを閉じる
     function closeSubOverlay() {
         document.getElementById('subscription-overlay').style.display = 'none';
     }
@@ -411,12 +410,15 @@
     async function checkSubscriptionStatus(user) {
         if (!user) return false;
         try {
-            const doc = await db.collection('School Member').doc(user.email).get();
+            // コレクション名をルールに合わせ「SchoolMember」に変更
+            const doc = await db.collection('SchoolMember').doc(user.email).get();
             if (doc.exists) {
                 const data = doc.data();
+                // 型が Boolean であることを厳密にチェック
                 return data.isSubscribed === true || data.isStudent === true;
             } else {
-                await db.collection('School Member').doc(user.email).set({
+                // ドキュメントが存在しない場合は作成（ルールで許可が必要）
+                await db.collection('SchoolMember').doc(user.email).set({
                     email: user.email,
                     isSubscribed: false,
                     isStudent: false,

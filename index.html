@@ -96,7 +96,7 @@
         .panel-rec { padding: 10px 15px; gap: 8px; border-color: rgba(255, 68, 68, 0.4); }
         .row { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
         input[type="range"] { flex-grow: 1; accent-color: var(--primary-color); height: 6px; min-width: 50px; -webkit-appearance: none; background: #333; border-radius: 5px; }
-        input[type=\"range\"]::-webkit-slider-thumb { -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%; background: var(--primary-color); cursor: pointer; border: none; }
+        input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%; background: var(--primary-color); cursor: pointer; border: none; }
         .val-display { color: var(--primary-color); font-weight: bold; min-width: 70px; text-align: right; font-size: 0.95rem; }
         .transport-controls { display: flex; justify-content: center; align-items: center; gap: 10px; margin: 15px 0; }
         .btn-ctrl { background: var(--panel-bg); color: var(--text-dim); border: 1px solid var(--border-color); border-radius: 50%; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; }
@@ -161,7 +161,7 @@
             サブスクリプションを開始する
         </button>
         <button class="clear-btn-ja" onclick="closeSubOverlay()" style="margin-top:15px; width:100%; justify-content:center;">閉じる</button>
-        <button class="logout-btn" onclick="logout()" style="margin-top:20px; display:block; width:100%;">ログアウト</button>
+        <button class="logout-btn" onclick="logout()" style="margin-top:20px; display:block; width:100%;">別のカウントでログイン</button>
     </div>
 </div>
 
@@ -390,7 +390,9 @@
     }
 
     function logout() {
-        auth.signOut();
+        auth.signOut().then(() => {
+            location.reload(); // ログアウト時は確実に状態をリセット
+        });
     }
 
     function redirectToCheckout() {
@@ -409,66 +411,65 @@
         }
     }
 
-    // --- 修正：Usersコレクションを優先的にチェックするロジック ---
     async function checkSubscriptionStatus(user) {
         if (!user) return false;
         try {
-            // 1. Usersコレクションを確認（Square決済/Cloud Functionsで更新される場所）
-            const userDoc = await db.collection('Users').doc(user.uid).get();
-            if (userDoc.exists) {
-                const userData = userDoc.data();
-                if (userData.isSubscribed === true) return true;
+            // FirestoreのSchoolMemberコレクションからユーザー情報を取得
+            const doc = await db.collection('SchoolMember').doc(user.email).get();
+            if (doc.exists) {
+                const data = doc.data();
+                // サブスク中か生徒フラグが立っていればOK
+                return data.isSubscribed === true || data.isStudent === true;
+            } else {
+                // ドキュメントがない場合は新規作成（未購読状態）
+                await db.collection('SchoolMember').doc(user.email).set({
+                    email: user.email,
+                    isSubscribed: false,
+                    isStudent: false,
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                }, { merge: true });
+                return false;
             }
-
-            // 2. SchoolMember（スクール生）もチェック
-            const memberDoc = await db.collection('SchoolMember').doc(user.email).get();
-            if (memberDoc.exists) {
-                const memberData = memberDoc.data();
-                return memberData.isSubscribed === true || memberData.isStudent === true;
-            }
-
-            return false;
         } catch (e) {
             console.error("Subscription check error:", e);
             return false;
         }
     }
 
+    // --- 認証状態の監視 (修正箇所) ---
     auth.onAuthStateChanged(async user => {
         const userInfo = document.getElementById('userInfoDisplay');
-        const userName = document.getElementById('userName');
+        const userNameSpan = document.getElementById('userName');
         const authSection = document.getElementById('auth-section');
+        const authOverlay = document.getElementById('auth-overlay');
+        const subOverlay = document.getElementById('subscription-overlay');
 
         if (user) {
-            // ログイン成功時の Users 登録処理
-            const userRef = db.collection('Users').doc(user.uid);
-            const userDoc = await userRef.get();
-            if (!userDoc.exists) {
-                await userRef.set({
-                    email: user.email,
-                    displayName: user.displayName || "ゲストユーザー",
-                    isSubscribed: false,
-                    role: 'general',
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                });
-                console.log("一般ユーザーとしてUsersコレクションに登録しました");
-            }
-
-            isSubscribed = await checkSubscriptionStatus(user);
-            userInfo.style.display = 'flex';
+            // ログイン中：UIを即座に更新
+            authOverlay.style.display = 'none'; // ログインしていればログイン画面は隠す
             authSection.style.display = 'none';
-            userName.innerText = user.displayName || user.email.split('@')[0];
+            userInfo.style.display = 'flex';
+            userNameSpan.innerText = user.displayName || user.email.split('@')[0];
+
+            // サブスク状態を確認
+            isSubscribed = await checkSubscriptionStatus(user);
             
             if (isSubscribed) {
-                document.getElementById('subscription-overlay').style.display = 'none';
+                subOverlay.style.display = 'none'; // 購読済みなら制限画面を隠す
+            } else {
+                // ログインしているが未購読の場合は、必要に応じて制限画面を出す
+                // ただし勝手に出すと操作の邪魔なので、特定機能クリック時に判定するのが一般的
             }
             
+            // ループリストの再読み込み
             if (currentMode === 'file') renderLoopList('file');
             else renderLoopList('yt');
+            
         } else {
+            // 未ログイン状態
             userInfo.style.display = 'none';
             authSection.style.display = 'block';
-            document.getElementById('subscription-overlay').style.display = 'none';
+            subOverlay.style.display = 'none';
             isSubscribed = false;
         }
     });

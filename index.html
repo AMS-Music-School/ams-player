@@ -352,6 +352,11 @@
     function closeAuthOverlay() {
         document.getElementById('auth-overlay').style.display = 'none';
     }
+    
+    // サブスク案内用オーバーレイを閉じる
+    function closeSubOverlay() {
+        document.getElementById('subscription-overlay').style.display = 'none';
+    }
 
     function loginWithGoogle() {
         initAudioContext(); 
@@ -389,16 +394,12 @@
         auth.signOut();
     }
 
-    // --- STEP 2: Square Checkout & Firestore Logic ---
     function redirectToCheckout() {
         const user = auth.currentUser;
         if (user) {
-            // Squareの決済完了後にこのURLに戻るように設定し、
-            // 戻ってきた際に決済成功を確認してFirestoreを更新するフローを想定
             const confirmed = confirm(`現在「${user.email}」でログインしています。\nこのメールアドレスで支払手続きを進めますか？\n（決済完了後、自動的にプレミアム機能が有効になります）`);
             if (confirmed) {
-                // Square チェックアウトリンクへリダイレクト
-                window.location.href = "https://square.link/u/XXXXXX"; // ←ここに作成したSquareのリンクを貼る
+                window.location.href = "https://square.link/u/XXXXXX"; 
             }
         } else {
             alert("先にログインしてください。");
@@ -410,14 +411,11 @@
     async function checkSubscriptionStatus(user) {
         if (!user) return false;
         try {
-            // ステップ2：Firestoreの「School Member」コレクションから自身のメールアドレスのドキュメントを取得
             const doc = await db.collection('School Member').doc(user.email).get();
             if (doc.exists) {
                 const data = doc.data();
-                // 購読者(isSubscribed)またはスクール生(isStudent)であればOK
                 return data.isSubscribed === true || data.isStudent === true;
             } else {
-                // ドキュメントが存在しない場合は新規作成（初期状態は未購読）
                 await db.collection('School Member').doc(user.email).set({
                     email: user.email,
                     isSubscribed: false,
@@ -443,7 +441,6 @@
             authSection.style.display = 'none';
             userName.innerText = user.displayName || user.email.split('@')[0];
             
-            // 購読状態が確認できたらオーバーレイを閉じる
             if (isSubscribed) {
                 document.getElementById('subscription-overlay').style.display = 'none';
             }
@@ -458,7 +455,6 @@
         }
     });
 
-    // --- Logic Core & UI Logic (維持) ---
     const translations = {
         ja: {
             langTitle: "言語設定", helpTitle: "ヘルプ & ガイド", guideFile: "Audio Fileモード ガイド", guideYT: "YouTubeモード ガイド",
@@ -695,7 +691,6 @@
         }
     }
 
-    // YouTube API
     const tag = document.createElement('script'); tag.src = "https://www.youtube.com/iframe_api";
     document.head.appendChild(tag);
 

@@ -3,10 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AMS Practice Player v1.3.3 - Subscription Edition</title>
+    <title>AMS Practice Player v1.3.4 - Mobile Optimized</title>
     
     <meta name="apple-mobile-web-app-title" content="AMS Player">
     <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     
     <link rel="icon" href="icon.png?v=1.2.1" type="image/png">
     <link rel="apple-touch-icon" href="icon.png?v=1.2.1">
@@ -15,8 +16,8 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 
-    <script src="https://unpkg.com/wavesurfer.js@7/dist/wavesurfer.min.js"></script>
-    <script src="https://unpkg.com/wavesurfer.js@7/dist/plugins/regions.min.js"></script>
+    <script src="https://unpkg.com/wavesurfer.js@7.7.3/dist/wavesurfer.min.js"></script>
+    <script src="https://unpkg.com/wavesurfer.js@7.7.3/dist/plugins/regions.min.js"></script>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     
     <style>
@@ -42,7 +43,6 @@
             padding-top: var(--header-height);
         }
 
-        /* 認証・サブスク関連オーバーレイ */
         #auth-overlay, #subscription-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: var(--bg-dark); z-index: 5000;
@@ -325,37 +325,20 @@
 
     function loginWithGoogle() {
         const provider = new firebase.auth.GoogleAuthProvider();
-        // 修正箇所: ログイン時に必ずアカウント選択を促すパラメータを追加
-        provider.setCustomParameters({
-            prompt: 'select_account'
-        });
+        provider.setCustomParameters({ prompt: 'select_account' });
         auth.signInWithPopup(provider).catch(e => alert("ログインエラー: " + e.message));
     }
 
-    function logout() {
-        auth.signOut();
-    }
-
-    function redirectToCheckout() {
-        window.location.href = "https://your-payment-link.com";
-    }
-
-    function closeSubOverlay() {
-        document.getElementById('subscription-overlay').style.display = 'none';
-    }
+    function logout() { auth.signOut(); }
+    function redirectToCheckout() { window.location.href = "https://your-payment-link.com"; }
+    function closeSubOverlay() { document.getElementById('subscription-overlay').style.display = 'none'; }
 
     async function checkSubscriptionStatus(user) {
         try {
             const doc = await db.collection('School Member').doc(user.email).get();
-            if (doc.exists) {
-                const data = doc.data();
-                return data.isSubscribed === true;
-            }
+            if (doc.exists) { return doc.data().isSubscribed === true; }
             return false; 
-        } catch (e) {
-            console.error("Subscription check error:", e);
-            return false;
-        }
+        } catch (e) { console.error("Subscription check error:", e); return false; }
     }
 
     auth.onAuthStateChanged(async user => {
@@ -484,7 +467,6 @@
             document.getElementById('countToggleBtn').classList.toggle('active', isCountEnabled); 
         }
         else if (type === 'speedup') { 
-            // サブスク制限：スピードアップ（タイマーボタン）
             if (!isSubscribed) { document.getElementById('subscription-overlay').style.display = 'flex'; return; }
             isSpeedUpEnabled = !isSpeedUpEnabled; 
             document.getElementById('speedUpToggleBtn').classList.toggle('active', isSpeedUpEnabled); 
@@ -505,7 +487,7 @@
         const lang = document.getElementById('langSelect').value;
         const statusEl = document.getElementById('loadStatus');
         statusEl.innerText = translations[lang].analyzing;
-        const tempCtx = new AudioContext();
+        const tempCtx = new (window.AudioContext || window.webkitAudioContext)();
         try {
             const arrayBuffer = await blob.arrayBuffer();
             const audioBuffer = await tempCtx.decodeAudioData(arrayBuffer);
@@ -562,9 +544,7 @@
     }
 
     async function toggleRecording() {
-        // サブスク制限：録音機能
         if (!isSubscribed) { document.getElementById('subscription-overlay').style.display = 'flex'; return; }
-        
         initAudioContext();
         if (isRecording) {
             if (mediaRecorder) mediaRecorder.stop();
@@ -584,7 +564,7 @@
                     if (recObjectURL) URL.revokeObjectURL(recObjectURL);
                     recObjectURL = URL.createObjectURL(blob);
                     const arrayBuffer = await blob.arrayBuffer();
-                    const tempCtx = new AudioContext();
+                    const tempCtx = new (window.AudioContext || window.webkitAudioContext)();
                     recordedAudioBuffer = await tempCtx.decodeAudioData(arrayBuffer); tempCtx.close();
                     document.getElementById('rec-waveform-wrapper').style.display = 'block';
                     document.getElementById('recVolControl').style.display = 'flex';
@@ -595,7 +575,11 @@
                 const region = wsRegions.getRegions()[0];
                 const startPos = region ? region.start : wavesurfer.getCurrentTime();
                 wavesurfer.setTime(startPos); lastRecStartPos = startPos;
-                await runCountdown(); mediaRecorder.start(); await wavesurfer.play();
+                await runCountdown();
+                
+                await wavesurfer.play();
+                mediaRecorder.start();
+                
                 isRecording = true; document.getElementById('recBtn').classList.add('recording'); document.getElementById('recIcon').innerText = 'stop';
             } catch (err) { alert("マイクを許可してください"); }
         }
@@ -603,8 +587,17 @@
 
     function playRecording() {
         if (!recWavesurfer || !recWavesurfer.getDuration()) return;
-        if (recWavesurfer.isPlaying()) { recWavesurfer.pause(); wavesurfer.pause(); } 
-        else { wavesurfer.setTime(lastRecStartPos); recWavesurfer.setTime(0); wavesurfer.play(); recWavesurfer.play(); }
+        initAudioContext();
+        if (recWavesurfer.isPlaying()) { 
+            recWavesurfer.pause(); 
+            wavesurfer.pause(); 
+        } 
+        else {
+            const currentRecTime = recWavesurfer.getCurrentTime();
+            wavesurfer.setTime(lastRecStartPos + currentRecTime);
+            recWavesurfer.play(); 
+            wavesurfer.play(); 
+        }
         updateRecPlayBtnUI();
     }
 
@@ -628,7 +621,7 @@
         if (videoId) {
             currentYTId = videoId; document.getElementById('loopListYT').innerHTML = ""; 
             if (ytPlayer && ytPlayer.loadVideoById) ytPlayer.loadVideoById(videoId);
-            else ytPlayer = new YT.Player('player', { videoId: videoId, events: { 'onReady': () => { updateYTInfo(); }, 'onStateChange': onPlayerStateChange } });
+            else ytPlayer = new YT.Player('player', { videoId: videoId, playerVars: { playsinline: 1 }, events: { 'onReady': () => { updateYTInfo(); }, 'onStateChange': onPlayerStateChange } });
             urlInput.value = "";
         }
     }
@@ -657,7 +650,6 @@
         });
     }
 
-    // サブスク制限：YouTube履歴クリック
     function handleHistoryClick(event) {
         const card = event.target.closest('div[data-url]');
         if (card) {
@@ -705,9 +697,7 @@
     };
 
     function saveLoop(mode) {
-        // サブスク制限：ループ保存
         if (!isSubscribed) { document.getElementById('subscription-overlay').style.display = 'flex'; return; }
-        
         let start, end, key;
         if (mode === 'file') {
             const regions = wsRegions.getRegions(); if (regions.length === 0) return alert("範囲を指定してください");
@@ -738,9 +728,7 @@
     }
 
     window.applyStoredLoop = (mode, start, end) => {
-        // サブスク制限：保存されたループの適用
         if (!isSubscribed) { document.getElementById('subscription-overlay').style.display = 'flex'; return; }
-        
         if (mode === 'file') { wsRegions.clearRegions(); wsRegions.addRegion({ start, end, color: 'rgba(212, 163, 115, 0.2)' }); wavesurfer.setTime(start); } 
         else { loopStart = start; loopEnd = end; document.getElementById('loopStartTxt').innerText = fmt(start); document.getElementById('loopEndTxt').innerText = fmt(end); ytPlayer.seekTo(start); if (!isLooping) toggleLoop(); }
     };
@@ -753,6 +741,8 @@
     };
 
     function startApp() {
+        if (!document.getElementById('waveform')) return;
+        
         wavesurfer = WaveSurfer.create({ container: '#waveform', waveColor: '#333', progressColor: '#d4a373', height: 120, barWidth: 2, normalize: true });
         recWavesurfer = WaveSurfer.create({ container: '#rec-waveform', waveColor: '#552222', progressColor: '#ff4444', height: 80, barWidth: 2, normalize: true });
         wsRegions = wavesurfer.registerPlugin(WaveSurfer.Regions.create());
@@ -771,7 +761,11 @@
                 const reader = new FileReader();
                 reader.onload = async (event) => {
                     const blob = new Blob([event.target.result], { type: file.type });
-                    currentObjectURL = URL.createObjectURL(blob); wavesurfer.load(currentObjectURL); analyzeAudio(blob); renderLoopList('file');
+                    if (currentObjectURL) URL.revokeObjectURL(currentObjectURL);
+                    currentObjectURL = URL.createObjectURL(blob); 
+                    wavesurfer.load(currentObjectURL); 
+                    analyzeAudio(blob); 
+                    renderLoopList('file');
                 };
                 reader.readAsArrayBuffer(file);
             } 
@@ -791,16 +785,22 @@
         };
 
         wavesurfer.on('ready', () => { document.getElementById('totalTime').innerText = fmt(wavesurfer.getDuration()); applySettings(); });
-        recWavesurfer.on('finish', () => { wavesurfer.pause(); updateRecPlayBtnUI(); });
+        
+        recWavesurfer.on('interaction', () => {
+            if (recWavesurfer.getDuration() > 0) {
+                const seekTime = recWavesurfer.getCurrentTime();
+                wavesurfer.setTime(lastRecStartPos + seekTime);
+            }
+        });
+
+        recWavesurfer.on('finish', () => { 
+            wavesurfer.pause(); 
+            updateRecPlayBtnUI(); 
+        });
         
         document.getElementById('speed').oninput = applySettings;
-        
-        // サブスク制限：Pitch調整
         document.getElementById('pitch').onmousedown = document.getElementById('pitch').ontouchstart = (e) => {
-            if (!isSubscribed) { 
-                e.preventDefault(); 
-                document.getElementById('subscription-overlay').style.display = 'flex'; 
-            }
+            if (!isSubscribed) { e.preventDefault(); document.getElementById('subscription-overlay').style.display = 'flex'; }
         };
         document.getElementById('pitch').oninput = applySettings;
 
@@ -815,17 +815,24 @@
         };
 
         wavesurfer.on('play', () => document.getElementById('playIcon').innerText = 'pause');
-        wavesurfer.on('pause', () => { document.getElementById('playIcon').innerText = 'play_arrow'; });
+        wavesurfer.on('pause', () => { 
+            document.getElementById('playIcon').innerText = 'play_arrow'; 
+            if(recWavesurfer.isPlaying()) recWavesurfer.pause();
+            updateRecPlayBtnUI();
+        });
         wavesurfer.on('timeupdate', t => {
             document.getElementById('currentTime').innerText = fmt(t);
             const r = wsRegions.getRegions()[0];
             if(r && t >= r.end) { 
-                wavesurfer.setTime(r.start); 
-                // タイマーボタン連動のスピードアップ機能
-                if (isSpeedUpEnabled) { 
-                    const s = document.getElementById('speed'); 
-                    s.value = Math.min(1.5, parseFloat(s.value) + 0.05).toFixed(2); 
-                    applySettings(); 
+                if (isRecording) {
+                    toggleRecording(); 
+                } else {
+                    wavesurfer.setTime(r.start); 
+                    if (isSpeedUpEnabled) { 
+                        const s = document.getElementById('speed'); 
+                        s.value = Math.min(1.5, parseFloat(s.value) + 0.05).toFixed(2); 
+                        applySettings(); 
+                    }
                 }
             }
         });
@@ -834,7 +841,13 @@
         changeLanguage(); 
         renderYTHistory();
     }
-    window.addEventListener('DOMContentLoaded', startApp);
+
+    // ページの読み込み完了後に実行
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', startApp);
+    } else {
+        startApp();
+    }
 </script>
 </body>
 </html>

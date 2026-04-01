@@ -49,18 +49,26 @@
             display: flex; flex-direction: column; align-items: center; justify-content: center;
             text-align: center; padding: 20px;
         }
-        #auth-overlay { display: none; } /* 初回非表示に変更 */
+        #auth-overlay { display: none; }
         #subscription-overlay { background: rgba(0,0,0,0.95); z-index: 6000; display: none; }
         
         .login-card {
-            background: var(--panel-bg); padding: 40px 30px; border-radius: 20px;
+            background: var(--panel-bg); padding: 30px 25px; border-radius: 20px;
             border: 1px solid var(--primary-color); max-width: 350px; width: 100%;
         }
+        
+        /* メールログインフォームのスタイル */
+        .auth-form { margin-top: 20px; display: flex; flex-direction: column; gap: 10px; border-top: 1px solid var(--border-color); pt: 20px; }
+        .auth-input { background: #000; border: 1px solid var(--border-color); color: #fff; padding: 12px; border-radius: 8px; font-size: 0.9rem; }
+        .email-btn { background: var(--primary-color); color: #121212; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 5px; }
+        .auth-divider { margin: 15px 0; font-size: 0.7rem; color: var(--text-dim); display: flex; align-items: center; gap: 10px; }
+        .auth-divider::before, .auth-divider::after { content: ""; flex: 1; height: 1px; background: var(--border-color); }
+
         .google-btn {
             background: white; color: #757575; border: none; padding: 12px 20px;
-            border-radius: 5px; font-weight: bold; cursor: pointer; display: flex;
+            border-radius: 8px; font-weight: bold; cursor: pointer; display: flex;
             align-items: center; justify-content: center; gap: 10px; width: 100%;
-            margin-top: 20px; font-size: 1rem;
+            font-size: 0.9rem;
         }
         .subscribe-btn {
             background: var(--primary-color); color: #121212; border: none; padding: 15px 30px;
@@ -114,8 +122,6 @@
         .mode-tabs { display: flex; justify-content: center; gap: 4px; margin-bottom: 15px; background: var(--panel-bg); padding: 4px; border-radius: 10px; border: 1px solid var(--border-color); }
         .tab-btn { background: transparent; border: none; color: var(--text-dim); padding: 8px; cursor: pointer; border-radius: 6px; font-size: 0.75rem; flex: 1; transition: all 0.3s ease; position: relative; }
         .tab-btn.active { background: var(--primary-color); color: #121212; font-weight: bold; }
-        .content-section { display: none; }
-        .content-section.active { display: block; }
         .clear-btn-ja { background: #333; border: none; color: var(--text-main); padding: 6px 15px; border-radius: 20px; font-size: 0.75rem; cursor: pointer; display: flex; align-items: center; gap: 5px; }
         #ytPlayerContainer { position: relative; width: 100%; aspect-ratio: 16 / 9; border-radius: 8px; overflow: hidden; border: 1px solid var(--border-color); background: #000; }
         #ytPlayerContainer iframe { position: absolute; top: 0; left: 0; width: 100% !important; height: 100% !important; }
@@ -130,12 +136,22 @@
 <div id="auth-overlay">
     <div class="login-card">
         <div class="header-logo" style="font-size: 1.5rem; margin-bottom: 10px;">AMS PLAYER</div>
-        <p style="font-size: 0.8rem; color: var(--text-dim);">練習を同期するためにログインしてください</p>
+        <p style="font-size: 0.8rem; color: var(--text-dim); margin-bottom:20px;">アカウントにログインしてください</p>
+        
         <button class="google-btn" onclick="loginWithGoogle()">
             <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="18" alt="G">
             Googleでログイン
         </button>
-        <button class="clear-btn-ja" onclick="closeAuthOverlay()" style="margin-top:15px; width:100%; justify-content:center;">閉じる</button>
+
+        <div class="auth-divider">または</div>
+
+        <div class="auth-form">
+            <input type="email" id="loginEmail" class="auth-input" placeholder="メールアドレス">
+            <input type="password" id="loginPassword" class="auth-input" placeholder="パスワード">
+            <button class="email-btn" onclick="loginWithEmail()">ログイン / 新規登録</button>
+        </div>
+
+        <button class="clear-btn-ja" onclick="closeAuthOverlay()" style="margin-top:25px; width:100%; justify-content:center;">閉じる</button>
     </div>
 </div>
 
@@ -339,6 +355,7 @@
         document.getElementById('auth-overlay').style.display = 'none';
     }
 
+    // Googleログイン
     function loginWithGoogle() {
         initAudioContext(); 
         const provider = new firebase.auth.GoogleAuthProvider();
@@ -346,6 +363,31 @@
         auth.signInWithPopup(provider).then(() => {
             closeAuthOverlay();
         }).catch(e => alert("ログインエラー: " + e.message));
+    }
+
+    // メール/パスワードログイン (新規登録兼用)
+    function loginWithEmail() {
+        const email = document.getElementById('loginEmail').value;
+        const password = document.getElementById('loginPassword').value;
+        if(!email || !password) return alert("メールアドレスとパスワードを入力してください");
+        
+        initAudioContext();
+        auth.signInWithEmailAndPassword(email, password)
+            .then(() => {
+                closeAuthOverlay();
+            })
+            .catch((error) => {
+                // ユーザーが見つからない場合は新規作成を試みる
+                if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
+                    if(confirm("アカウントが見つかりません。この内容で新しく登録しますか？")) {
+                        auth.createUserWithEmailAndPassword(email, password)
+                            .then(() => closeAuthOverlay())
+                            .catch(e => alert("登録エラー: " + e.message));
+                    }
+                } else {
+                    alert("ログインエラー: " + error.message);
+                }
+            });
     }
 
     function logout() {
@@ -393,7 +435,7 @@
             isSubscribed = await checkSubscriptionStatus(user);
             userInfo.style.display = 'flex';
             authSection.style.display = 'none';
-            userName.innerText = user.displayName;
+            userName.innerText = user.displayName || user.email.split('@')[0];
             if (currentMode === 'file') renderLoopList('file');
             else renderLoopList('yt');
         } else {

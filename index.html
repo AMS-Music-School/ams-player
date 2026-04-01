@@ -391,7 +391,7 @@
 
     function logout() {
         auth.signOut().then(() => {
-            location.reload(); // ログアウト時は確実に状態をリセット
+            location.reload();
         });
     }
 
@@ -411,32 +411,32 @@
         }
     }
 
+    // --- サブスク状態確認の修正版 ---
     async function checkSubscriptionStatus(user) {
         if (!user) return false;
         try {
-            // FirestoreのSchoolMemberコレクションからユーザー情報を取得
-            const doc = await db.collection('SchoolMember').doc(user.email).get();
-            if (doc.exists) {
-                const data = doc.data();
-                // サブスク中か生徒フラグが立っていればOK
-                return data.isSubscribed === true || data.isStudent === true;
-            } else {
-                // ドキュメントがない場合は新規作成（未購読状態）
-                await db.collection('SchoolMember').doc(user.email).set({
-                    email: user.email,
-                    isSubscribed: false,
-                    isStudent: false,
-                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-                }, { merge: true });
-                return false;
+            // 1. まず SchoolMember (教室生徒用) を確認
+            const schoolDoc = await db.collection('SchoolMember').doc(user.email).get();
+            if (schoolDoc.exists) {
+                const data = schoolDoc.data();
+                if (data.isSubscribed === true || data.isStudent === true) return true;
             }
+
+            // 2. 次に Users (一般決済用) を確認
+            const userDoc = await db.collection('Users').doc(user.email).get();
+            if (userDoc.exists) {
+                const userData = userDoc.data();
+                if (userData.isSubscribed === true) return true;
+            }
+
+            // どちらにも該当しない場合、未購読
+            return false;
         } catch (e) {
             console.error("Subscription check error:", e);
             return false;
         }
     }
 
-    // --- 認証状態の監視 (修正箇所) ---
     auth.onAuthStateChanged(async user => {
         const userInfo = document.getElementById('userInfoDisplay');
         const userNameSpan = document.getElementById('userName');
@@ -445,28 +445,21 @@
         const subOverlay = document.getElementById('subscription-overlay');
 
         if (user) {
-            // ログイン中：UIを即座に更新
-            authOverlay.style.display = 'none'; // ログインしていればログイン画面は隠す
+            authOverlay.style.display = 'none';
             authSection.style.display = 'none';
             userInfo.style.display = 'flex';
             userNameSpan.innerText = user.displayName || user.email.split('@')[0];
 
-            // サブスク状態を確認
             isSubscribed = await checkSubscriptionStatus(user);
             
             if (isSubscribed) {
-                subOverlay.style.display = 'none'; // 購読済みなら制限画面を隠す
-            } else {
-                // ログインしているが未購読の場合は、必要に応じて制限画面を出す
-                // ただし勝手に出すと操作の邪魔なので、特定機能クリック時に判定するのが一般的
+                subOverlay.style.display = 'none';
             }
             
-            // ループリストの再読み込み
             if (currentMode === 'file') renderLoopList('file');
             else renderLoopList('yt');
             
         } else {
-            // 未ログイン状態
             userInfo.style.display = 'none';
             authSection.style.display = 'block';
             subOverlay.style.display = 'none';

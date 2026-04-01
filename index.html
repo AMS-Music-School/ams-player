@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AMS Practice Player v1.3.3 - Subscription Edition</title>
+    <title>AMS Practice Player v1.3.4 - Subscription Edition</title>
     
     <meta name="apple-mobile-web-app-title" content="AMS Player">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -85,7 +85,6 @@
         .header-logo { color: var(--primary-color); font-weight: bold; letter-spacing: 1px; font-size: 0.9rem; }
         .container { width: 100%; max-width: 1200px; margin: 0 auto; padding: 10px; padding-bottom: 40px; }
         
-        /* コンテンツセクションの制御 */
         .content-section { display: none; }
         .content-section.active { display: block; }
 
@@ -140,20 +139,16 @@
     <div class="login-card">
         <div class="header-logo" style="font-size: 1.5rem; margin-bottom: 10px;">AMS PLAYER</div>
         <p style="font-size: 0.8rem; color: var(--text-dim); margin-bottom:20px;">アカウントにログインしてください</p>
-        
         <button class="google-btn" onclick="loginWithGoogle()">
             <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="18" alt="G">
             Googleでログイン
         </button>
-
         <div class="auth-divider">または</div>
-
         <div class="auth-form">
             <input type="email" id="loginEmail" class="auth-input" placeholder="メールアドレス">
             <input type="password" id="loginPassword" class="auth-input" placeholder="パスワード">
             <button class="email-btn" onclick="loginWithEmail()">ログイン / 新規登録</button>
         </div>
-
         <button class="clear-btn-ja" onclick="closeAuthOverlay()" style="margin-top:25px; width:100%; justify-content:center;">閉じる</button>
     </div>
 </div>
@@ -394,12 +389,16 @@
         auth.signOut();
     }
 
+    // --- STEP 2: Square Checkout & Firestore Logic ---
     function redirectToCheckout() {
         const user = auth.currentUser;
         if (user) {
-            const confirmed = confirm(`現在「${user.email}」でログインしています。\nこのメールアドレスで支払手続きを進めますか？`);
+            // Squareの決済完了後にこのURLに戻るように設定し、
+            // 戻ってきた際に決済成功を確認してFirestoreを更新するフローを想定
+            const confirmed = confirm(`現在「${user.email}」でログインしています。\nこのメールアドレスで支払手続きを進めますか？\n（決済完了後、自動的にプレミアム機能が有効になります）`);
             if (confirmed) {
-                window.location.href = "https://your-payment-link.com";
+                // Square チェックアウトリンクへリダイレクト
+                window.location.href = "https://square.link/u/XXXXXX"; // ←ここに作成したSquareのリンクを貼る
             }
         } else {
             alert("先にログインしてください。");
@@ -408,18 +407,25 @@
         }
     }
 
-    function closeSubOverlay() {
-        document.getElementById('subscription-overlay').style.display = 'none';
-    }
-
     async function checkSubscriptionStatus(user) {
+        if (!user) return false;
         try {
+            // ステップ2：Firestoreの「School Member」コレクションから自身のメールアドレスのドキュメントを取得
             const doc = await db.collection('School Member').doc(user.email).get();
             if (doc.exists) {
                 const data = doc.data();
-                return data.isSubscribed === true;
+                // 購読者(isSubscribed)またはスクール生(isStudent)であればOK
+                return data.isSubscribed === true || data.isStudent === true;
+            } else {
+                // ドキュメントが存在しない場合は新規作成（初期状態は未購読）
+                await db.collection('School Member').doc(user.email).set({
+                    email: user.email,
+                    isSubscribed: false,
+                    isStudent: false,
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                }, { merge: true });
+                return false;
             }
-            return false; 
         } catch (e) {
             console.error("Subscription check error:", e);
             return false;
@@ -436,6 +442,12 @@
             userInfo.style.display = 'flex';
             authSection.style.display = 'none';
             userName.innerText = user.displayName || user.email.split('@')[0];
+            
+            // 購読状態が確認できたらオーバーレイを閉じる
+            if (isSubscribed) {
+                document.getElementById('subscription-overlay').style.display = 'none';
+            }
+            
             if (currentMode === 'file') renderLoopList('file');
             else renderLoopList('yt');
         } else {
@@ -446,7 +458,7 @@
         }
     });
 
-    // --- Logic Core ---
+    // --- Logic Core & UI Logic (維持) ---
     const translations = {
         ja: {
             langTitle: "言語設定", helpTitle: "ヘルプ & ガイド", guideFile: "Audio Fileモード ガイド", guideYT: "YouTubeモード ガイド",

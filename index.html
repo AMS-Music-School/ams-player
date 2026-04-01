@@ -353,7 +353,17 @@
     }
 
     function redirectToCheckout() {
-        window.location.href = "https://your-payment-link.com";
+        const user = auth.currentUser;
+        if (user) {
+            const confirmed = confirm(`現在「${user.email}」でログインしています。\nこのメールアドレスで支払手続きを進めますか？`);
+            if (confirmed) {
+                window.location.href = "https://your-payment-link.com";
+            }
+        } else {
+            alert("先にログインしてください。");
+            closeSubOverlay();
+            openAuthOverlay();
+        }
     }
 
     function closeSubOverlay() {

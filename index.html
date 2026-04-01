@@ -49,6 +49,7 @@
             display: flex; flex-direction: column; align-items: center; justify-content: center;
             text-align: center; padding: 20px;
         }
+        #auth-overlay { display: none; } /* 初回非表示に変更 */
         #subscription-overlay { background: rgba(0,0,0,0.95); z-index: 6000; display: none; }
         
         .login-card {
@@ -66,7 +67,8 @@
             border-radius: 30px; font-weight: bold; cursor: pointer; margin-top: 20px; font-size: 1.1rem; width: 100%;
         }
         .user-info { font-size: 0.7rem; color: var(--text-dim); display: flex; align-items: center; gap: 10px; }
-        .logout-btn { background: none; border: 1px solid var(--border-color); color: var(--text-dim); padding: 4px 8px; border-radius: 4px; font-size: 0.6rem; cursor: pointer; }
+        .logout-btn { background: none; border: 1px solid var(--border-color); color: var(--text-dim); padding: 4px 8px; border-radius: 4px; font-size: 0.65rem; cursor: pointer; }
+        .header-login-btn { background: var(--primary-color); color: #121212; border: none; padding: 6px 12px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; cursor: pointer; }
 
         header {
             position: fixed; top: 0; left: 0; width: 100%; height: var(--header-height);
@@ -133,6 +135,7 @@
             <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="18" alt="G">
             Googleでログイン
         </button>
+        <button class="clear-btn-ja" onclick="closeAuthOverlay()" style="margin-top:15px; width:100%; justify-content:center;">閉じる</button>
     </div>
 </div>
 
@@ -150,13 +153,18 @@
 
 <header>
     <div class="header-logo">AMS PLAYER</div>
-    <div class="user-info" id="userInfoDisplay" style="display:none;">
-        <span id="userName">Guest</span>
-        <button class="logout-btn" onclick="logout()">Logout</button>
+    <div style="display: flex; align-items: center; gap: 10px;">
+        <div id="auth-section">
+            <button id="headerLoginBtn" class="header-login-btn" onclick="openAuthOverlay()">LOGIN</button>
+        </div>
+        <div class="user-info" id="userInfoDisplay" style="display:none;">
+            <span id="userName">Guest</span>
+            <button class="logout-btn" onclick="logout()">Logout</button>
+        </div>
+        <button class="menu-trigger" onclick="toggleMenu(true)">
+            <span class="material-icons">menu</span>
+        </button>
     </div>
-    <button class="menu-trigger" onclick="toggleMenu(true)">
-        <span class="material-icons">menu</span>
-    </button>
 </header>
 
 <div class="menu-overlay" id="menuOverlay" onclick="toggleMenu(false)"></div>
@@ -323,11 +331,21 @@
 
     let isSubscribed = false;
 
+    function openAuthOverlay() {
+        document.getElementById('auth-overlay').style.display = 'flex';
+    }
+
+    function closeAuthOverlay() {
+        document.getElementById('auth-overlay').style.display = 'none';
+    }
+
     function loginWithGoogle() {
-        initAudioContext(); // モバイルでの音声活性化をログイン時に予約
+        initAudioContext(); 
         const provider = new firebase.auth.GoogleAuthProvider();
         provider.setCustomParameters({ prompt: 'select_account' });
-        auth.signInWithPopup(provider).catch(e => alert("ログインエラー: " + e.message));
+        auth.signInWithPopup(provider).then(() => {
+            closeAuthOverlay();
+        }).catch(e => alert("ログインエラー: " + e.message));
     }
 
     function logout() {
@@ -357,21 +375,21 @@
     }
 
     auth.onAuthStateChanged(async user => {
-        const authOverlay = document.getElementById('auth-overlay');
         const userInfo = document.getElementById('userInfoDisplay');
         const userName = document.getElementById('userName');
+        const authSection = document.getElementById('auth-section');
 
         if (user) {
-            authOverlay.style.display = 'none';
             isSubscribed = await checkSubscriptionStatus(user);
             userInfo.style.display = 'flex';
+            authSection.style.display = 'none';
             userName.innerText = user.displayName;
             if (currentMode === 'file') renderLoopList('file');
             else renderLoopList('yt');
         } else {
-            authOverlay.style.display = 'flex';
-            document.getElementById('subscription-overlay').style.display = 'none';
             userInfo.style.display = 'none';
+            authSection.style.display = 'block';
+            document.getElementById('subscription-overlay').style.display = 'none';
             isSubscribed = false;
         }
     });
@@ -771,7 +789,6 @@
                     await wavesurfer.load(currentObjectURL); 
                     analyzeAudio(blob); 
                     renderLoopList('file');
-                    // モバイルでの描画不具合対策：ロード後に強制リサイズ
                     requestAnimationFrame(() => wavesurfer.zoom(Number(document.getElementById('zoomSlider').value)));
                 };
                 reader.readAsArrayBuffer(file);
@@ -794,7 +811,7 @@
         wavesurfer.on('ready', () => { 
             document.getElementById('totalTime').innerText = fmt(wavesurfer.getDuration()); 
             applySettings(); 
-            requestAnimationFrame(() => { wavesurfer.drawBuffer(); }); // モバイルでの描画強制
+            requestAnimationFrame(() => { wavesurfer.drawBuffer(); });
         });
         recWavesurfer.on('finish', () => { wavesurfer.pause(); updateRecPlayBtnUI(); });
         
@@ -809,7 +826,7 @@
         document.getElementById('pitch').oninput = applySettings;
 
         document.getElementById('playBtn').onclick = async () => {
-            initAudioContext(); // 再生時に確実にContextを活性化
+            initAudioContext(); 
             if (wavesurfer.isPlaying()) { wavesurfer.pause(); } 
             else {
                 const current = wavesurfer.getCurrentTime(), region = wsRegions.getRegions()[0];

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AMS Practice Player v1.3.5 - Subscription Edition</title>
+    <title>AMS Practice Player v1.3.6 - Stable Edition</title>
     
     <meta name="apple-mobile-web-app-title" content="AMS Player">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -414,14 +414,12 @@
 
     async function checkSubscriptionStatus(user) {
         if (!user || !user.email) return false;
-        
         try {
             const schoolDoc = await db.collection('SchoolMember').doc(user.email).get();
             if (schoolDoc.exists) {
                 const data = schoolDoc.data();
                 if (data.isSubscribed === true || data.isStudent === true) return true;
             }
-
             const userDoc = await db.collection('Users').doc(user.email).get();
             if (userDoc.exists) {
                 const userData = userDoc.data();
@@ -430,7 +428,6 @@
                         const now = new Date();
                         const expiration = userData.expirationDate.toDate();
                         if (now < expiration) return true;
-                        console.log("Expired.");
                         return false;
                     }
                     return true; 
@@ -449,22 +446,15 @@
         const authSection = document.getElementById('auth-section');
         const authOverlay = document.getElementById('auth-overlay');
         const subOverlay = document.getElementById('subscription-overlay');
-
         if (user) {
             authOverlay.style.display = 'none';
             authSection.style.display = 'none';
             userInfo.style.display = 'flex';
             userNameSpan.innerText = user.displayName || user.email.split('@')[0];
-
             isSubscribed = await checkSubscriptionStatus(user);
-            
-            if (isSubscribed) {
-                subOverlay.style.display = 'none';
-            }
-            
+            if (isSubscribed) subOverlay.style.display = 'none';
             if (currentMode === 'file') renderLoopList('file');
             else renderLoopList('yt');
-            
         } else {
             userInfo.style.display = 'none';
             authSection.style.display = 'block';
@@ -556,12 +546,8 @@
     }
 
     function initAudioContext() {
-        if (!audioCtx) {
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
-        }
-        if (audioCtx.state === 'suspended') {
-            audioCtx.resume();
-        }
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
+        if (audioCtx.state === 'suspended') audioCtx.resume();
         return audioCtx;
     }
 
@@ -600,14 +586,14 @@
         if(mode === 'file' && ytPlayer && ytPlayer.pauseVideo) ytPlayer.pauseVideo();
     }
 
-    // --- 修正箇所: analyzeAudio の最適化 (非同期・順序調整) ---
+    // --- analyzeAudio: 重いデコード作業を完全に非同期化し、描画を優先 ---
     async function analyzeAudio(blob) {
         const lang = document.getElementById('langSelect').value;
         const statusEl = document.getElementById('loadStatus');
         statusEl.innerText = translations[lang].analyzing;
         
-        // メインのUI描画を妨げないように少し遅らせる
-        await new Promise(r => setTimeout(r, 100));
+        // メインスレッドを解放
+        await new Promise(r => requestAnimationFrame(r));
 
         const tempCtx = new (window.AudioContext || window.webkitAudioContext)();
         try {
@@ -615,14 +601,14 @@
             const audioBuffer = await tempCtx.decodeAudioData(arrayBuffer);
             const data = audioBuffer.getChannelData(0);
             
-            // 無音カット位置の検出
+            // 無音検出
             let skip = 0; const threshold = 0.015;
-            for (let i = 0; i < data.length; i += 200) { // stepを増やして高速化
+            for (let i = 0; i < data.length; i += 400) { 
                 if (Math.abs(data[i]) > threshold) { skip = i / audioBuffer.sampleRate; break; }
             }
             firstSoundTime = skip;
             
-            // BPM解析 (非同期的に実行)
+            // BPM解析
             const bpm = detectBPM(audioBuffer);
             if (bpm > 0) { originalBpm = Math.round(bpm); updateBpmDisplay(); }
             
@@ -650,8 +636,7 @@
         let bestBpm = 0, maxCorrelation = 0;
         const minInterval = Math.floor((60 / 220) * (sampleRate / step)), maxInterval = Math.floor((60 / 60) * (sampleRate / step));
         for (let interval = minInterval; interval <= maxInterval; interval++) {
-            let correlation = 0; 
-            const limit = Math.min(energy.length - interval, 5000); // 範囲を絞って高速化
+            let correlation = 0; const limit = Math.min(energy.length - interval, 5000);
             for (let i = 0; i < limit; i++) correlation += energy[i] * energy[i + interval];
             if (correlation > maxCorrelation) { maxCorrelation = correlation; bestBpm = 60 / (interval * step / sampleRate); }
         }
@@ -866,7 +851,6 @@
     };
 
     function startApp() {
-        // WaveSurferの初期化設定を軽量化
         wavesurfer = WaveSurfer.create({ 
             container: '#waveform', waveColor: '#333', progressColor: '#d4a373', 
             height: 120, barWidth: 2, normalize: true,
@@ -885,26 +869,23 @@
         document.getElementById('mainVolume').oninput = applyVolumes;
         document.getElementById('recVolume').oninput = applyVolumes;
 
-        // --- 修正箇所: ファイル読み込みをスムーズに ---
+        // --- 修正: ファイル選択アクションを即時完了させる ---
         document.getElementById('audioFile').onchange = async e => { 
             const file = e.target.files[0];
             if(file) { 
                 initAudioContext();
                 currentFileName = file.name; 
                 document.getElementById('fileSelectBtn').innerText = currentFileName;
-                
-                // 古いオブジェクトURLを解放してメモリを空ける
                 if (currentObjectURL) URL.revokeObjectURL(currentObjectURL);
                 
-                // 1. まずBlobとして読み込み、即座にWaveSurferに渡す (描画開始)
+                // 描画を最優先
                 currentObjectURL = URL.createObjectURL(file);
-                await wavesurfer.load(currentObjectURL);
+                wavesurfer.load(currentObjectURL);
                 
-                // 2. その後、バックグラウンドでBPM解析を開始する
+                // 解析は裏側で行う（awaitしない）
                 analyzeAudio(file);
                 
                 renderLoopList('file');
-                requestAnimationFrame(() => wavesurfer.zoom(Number(document.getElementById('zoomSlider').value)));
             } 
         };
 
@@ -924,8 +905,6 @@
         wavesurfer.on('ready', () => { 
             document.getElementById('totalTime').innerText = fmt(wavesurfer.getDuration()); 
             applySettings(); 
-            // 描画バッファの強制更新
-            setTimeout(() => { wavesurfer.drawBuffer(); }, 50);
         });
         recWavesurfer.on('finish', () => { wavesurfer.pause(); updateRecPlayBtnUI(); });
         

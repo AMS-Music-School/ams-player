@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AMS Practice Player v1.3.7 - Subscription Edition</title>
+    <title>AMS Practice Player v1.3.8 - Subscription Edition</title>
     
     <meta name="apple-mobile-web-app-title" content="AMS Player">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -857,7 +857,11 @@
                     await wavesurfer.load(currentObjectURL); 
                     analyzeAudio(blob); 
                     renderLoopList('file');
-                    requestAnimationFrame(() => wavesurfer.zoom(Number(document.getElementById('zoomSlider').value)));
+                    // 初回ロード時の波形描画バグ対策: 確実に描画を走らせる
+                    setTimeout(() => {
+                        wavesurfer.drawBuffer();
+                        wavesurfer.zoom(Number(document.getElementById('zoomSlider').value));
+                    }, 100);
                 };
                 reader.readAsArrayBuffer(file);
             } 
@@ -879,13 +883,11 @@
         wavesurfer.on('ready', () => { 
             document.getElementById('totalTime').innerText = fmt(wavesurfer.getDuration()); 
             applySettings(); 
-            requestAnimationFrame(() => { wavesurfer.drawBuffer(); });
+            // 描画を強制
+            wavesurfer.drawBuffer();
         });
 
-        // --- 録音波形のクリック連動修正 ---
         recWavesurfer.on('interaction', (newTime) => {
-            // 録音波形のシーク位置に合わせてメイン音源をジャンプさせる
-            // 録音は lastRecStartPos から開始されているため
             if (lastRecStartPos !== undefined) {
                 wavesurfer.setTime(lastRecStartPos + newTime);
             }

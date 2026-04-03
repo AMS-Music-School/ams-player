@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AMS Practice Player v1.5.4 - CUSTOM COLOR EDITION</title>
+    <title>AMS Practice Player v1.5.5 - CUSTOM COLOR EDITION</title>
     
     <meta name="apple-mobile-web-app-title" content="AMS Player">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -116,7 +116,7 @@
         
         .side-menu { position: fixed; top: 0; right: -320px; width: 320px; height: 100%; background: var(--panel-bg); z-index: 3000; transition: right 0.3s ease; box-shadow: -5px 0 15px rgba(0,0,0,0.5); padding: 20px; overflow-y: auto; }
         .side-menu.open { right: 0; }
-        .menu-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 2500; display: none; }
+        .menu-overlay { fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 2500; display: none; }
         .menu-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 15px; margin-bottom: 20px; }
         .menu-section-title { font-size: 0.75rem; color: var(--primary-color); text-transform: uppercase; letter-spacing: 1px; margin: 15px 0 10px; display: block; }
         .menu-item { display: flex; align-items: center; gap: 12px; color: var(--text-main); padding: 10px; text-decoration: none; border-radius: 8px; margin-bottom: 5px; cursor: pointer; transition: background 0.2s; font-size: 0.9rem; }
@@ -522,6 +522,7 @@
     const db = firebase.firestore();
 
     let isSubscribed = false;
+    let lastTime = 0; // シーク判定用のグローバル変数
 
     async function syncToCloud() {
         const user = auth.currentUser;
@@ -800,6 +801,8 @@
     window.deleteLoop = (mode, index) => { const storageKey = mode === 'file' ? 'ams_loops' : 'ams_yt_loops'; const key = mode === 'file' ? currentFileName : currentYTId; let allLoops = JSON.parse(localStorage.getItem(storageKey) || "{}"); if (allLoops[key]) { allLoops[key].splice(index, 1); localStorage.setItem(storageKey, JSON.stringify(allLoops)); renderLoopList(mode); syncToCloud(); } };
     
     function startApp() { 
+        let lastTime = 0; // シーク判定用の追跡タイム
+
         const initColor = localStorage.getItem('ams_theme_color') || '#d4a373';
         wavesurfer = WaveSurfer.create({ container: '#waveform', waveColor: '#333', progressColor: initColor, height: 120, barWidth: 2, normalize: true }); 
         recWavesurfer = WaveSurfer.create({ container: '#rec-waveform', waveColor: '#552222', progressColor: '#ff4444', height: 80, barWidth: 2, normalize: true }); 
@@ -807,16 +810,18 @@
         wsRegions = wavesurfer.registerPlugin(WaveSurfer.Regions.create()); 
         wsRegions.enableDragSelection({ color: getRegionColor(initColor) }); 
         
+        // --- ループ範囲に関する修正 ---
         wsRegions.on('region-created', r => { 
             if(wsRegions.getRegions().length > 1) {
                 wsRegions.getRegions()[0].remove(); 
             }
-            if(!wavesurfer.isPlaying()) wavesurfer.setTime(r.start);
             currentLoopCount = 0; 
         }); 
 
+        // ドラッグが終わった瞬間に無条件でスタート位置へ飛ぶ（ここで再生していればそのまま再生される）
         wsRegions.on('region-update-end', r => {
-            if(!wavesurfer.isPlaying()) wavesurfer.setTime(r.start);
+            wavesurfer.setTime(r.start);
+            lastTime = r.start; // 無限ループバグを防ぐため即座に更新
             currentLoopCount = 0;
         });
 
@@ -907,6 +912,7 @@
             
             if (isCountEnabled && region && current >= region.end - 0.1 && current < region.end + 0.1) {
                 wavesurfer.setTime(region.start); 
+                lastTime = region.start;
             }
             
             if (isCountEnabled) {
@@ -915,6 +921,7 @@
             
             applySettings();
             
+            // 少しだけ待機してモバイルのブロックを回避
             setTimeout(() => {
                 wavesurfer.play().catch(e => console.error("Play interrupted:", e)); 
             }, 10);
@@ -930,6 +937,11 @@
 
         wavesurfer.on('pause', () => { document.getElementById('playIcon').innerText = 'play_arrow'; if (recWavesurfer) recWavesurfer.pause(); }); 
         
+        // 波形をタップ・シークした時は「lastTime」を更新してループをスキップさせる
+        wavesurfer.on('seeking', () => {
+            lastTime = wavesurfer.getCurrentTime();
+        });
+
         wavesurfer.on('interaction', () => { 
             if (recObjectURL && recWavesurfer) { 
                 const currentTime = wavesurfer.getCurrentTime(); 
@@ -938,10 +950,12 @@
                 if (wavesurfer.isPlaying()) recWavesurfer.play(); 
             } 
             currentLoopCount = 0; 
+            lastTime = wavesurfer.getCurrentTime();
         }); 
 
         recWavesurfer.on('interaction', () => { if (!recObjectURL) return; const recTime = recWavesurfer.getCurrentTime(); const targetMainTime = lastRecStartPos + recTime; if (targetMainTime <= wavesurfer.getDuration()) wavesurfer.setTime(targetMainTime); if (wavesurfer.isPlaying()) wavesurfer.play(); }); 
         
+        // --- 自然再生ループの核心処理 ---
         wavesurfer.on('timeupdate', t => { 
             document.getElementById('currentTime').innerText = fmt(t); 
             if (wavesurfer.isPlaying() && recObjectURL && recWavesurfer && recWavesurfer.isPlaying()) { 
@@ -953,11 +967,17 @@
             } 
             const r = wsRegions.getRegions()[0]; 
             
-            if(r && t >= r.end && t < r.end + 0.4) { 
+            // 「前回から0.5秒以内の進み方」をしている時だけ自然な再生とみなす（タップによるシークと区別）
+            const isNaturalPlay = (t - lastTime) >= 0 && (t - lastTime) < 0.5;
+
+            // 自然に再生していて、かつループの終端をまたいだ瞬間だけループ処理を行う
+            if(r && isNaturalPlay && lastTime < r.end && t >= r.end) { 
                 if (isRecording) { 
                     toggleRecording(); 
                 } else { 
                     wavesurfer.setTime(r.start); 
+                    t = r.start; // ローカル変数tを即座に更新して二重発火を防ぐ
+                    
                     if (recObjectURL && recWavesurfer) { 
                         const loopOffset = r.start - lastRecStartPos; 
                         if (loopOffset >= 0 && loopOffset < recWavesurfer.getDuration()) recWavesurfer.setTime(loopOffset); 
@@ -977,7 +997,9 @@
                     } 
                 } 
             } 
+            lastTime = t; 
         }); 
+
         window.resetSetting = (id, val) => { document.getElementById(id).value = val; applySettings(); }; 
         changeLanguage(); 
         renderYTHistory(); 

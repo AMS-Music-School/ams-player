@@ -120,7 +120,6 @@
         .menu-item { display: flex; align-items: center; gap: 12px; color: var(--text-main); padding: 10px; text-decoration: none; border-radius: 8px; margin-bottom: 5px; cursor: pointer; transition: background 0.2s; font-size: 0.9rem; }
         .menu-item:hover { background: #2c2c2c; }
         
-        /* アカウント情報モーダル */
         .account-modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 95%; max-width: 420px; background: var(--panel-bg); border: 1px solid var(--primary-color); border-radius: 20px; z-index: 7000; padding: 24px 20px; box-shadow: 0 0 50px rgba(0,0,0,0.9); }
         .account-info-card { background: #0a0a0a; border-radius: 16px; padding: 16px; margin: 8px 0 16px; border: 1px solid var(--border-color); }
         .account-info-row { display: flex; justify-content: space-between; margin-bottom: 12px; word-break: break-all; gap: 12px; align-items: baseline; }
@@ -446,7 +445,7 @@
 </div>
 
 <script>
-    // ==================== Firebase & 全機能維持 + クラウド同期 ====================
+    // ==================== Firebase Configuration ====================
     const firebaseConfig = {
         apiKey: "AIzaSyDI4ReBg15LAaQbd-4slccBHOS9R69sLNU",
         authDomain: "ams-player-e04bf.firebaseapp.com",
@@ -492,23 +491,28 @@
     function logout() { auth.signOut().then(() => location.reload()); }
     function redirectToCheckout() { const user = auth.currentUser; if (user) { const confirmed = confirm(`現在「${user.email}」でログインしています。\nこのメールアドレスで支払手続きを進めますか？\n（決済完了後、自動的にプレミアム機能が有効になります）`); if (confirmed) { const baseUrl = "https://square.link/u/B13lqKnj"; const checkoutUrl = `${baseUrl}?checkout_user_email=${encodeURIComponent(user.email)}`; window.location.href = checkoutUrl; } } else { alert("先にログインしてください。"); closeSubOverlay(); openAuthOverlay(); } }
 
+    /**
+     * サブスクリプション状態のチェック (Users または SchoolMember)
+     */
     async function checkSubscriptionStatus(user) { 
         if (!user) return false; 
         try { 
             const userDocRef = db.collection('Users').doc(user.uid);
             const memberDocRef = db.collection('SchoolMember').doc(user.uid);
 
+            // 並列で両方のコレクションを確認
             const [userDoc, memberDoc] = await Promise.all([
                 userDocRef.get(),
                 memberDocRef.get()
             ]);
 
-            if ((userDoc.exists && userDoc.data().isSubscribed === true) || memberDoc.exists) {
-                return true;
-            }
-            return false; 
+            // いずれかの条件を満たせばプレミアム
+            const isSub = (userDoc.exists && userDoc.data().isSubscribed === true);
+            const isSchool = memberDoc.exists;
+
+            return (isSub || isSchool);
         } catch (e) { 
-            console.error("Check error:", e); 
+            console.error("Firestore Check error:", e); 
             return false; 
         } 
     }
@@ -516,16 +520,42 @@
     function openAccountModal() { const user = auth.currentUser; if (!user) { alert("ログインしていません。先にログインしてください。"); toggleMenu(false); openAuthOverlay(); return; } updateAccountModalUI(user); document.getElementById('accountModal').style.display = 'block'; toggleMenu(false); }
     function closeAccountModal() { document.getElementById('accountModal').style.display = 'none'; }
     
-    async function updateAccountModalUI(user) { if (!user) return; document.getElementById('accountDisplayName').innerText = user.displayName || user.email?.split('@')[0] || "No Name"; document.getElementById('accountEmail').innerText = user.email || "No Email"; document.getElementById('accountUid').innerText = user.uid; const subStatus = await checkSubscriptionStatus(user); document.getElementById('accountPlan').innerHTML = subStatus ? '<span style="color:#d4a373;">PREMIUM</span>' : 'FREE'; const lang = document.getElementById('langSelect').value; const t = translations[lang] || translations['ja']; document.getElementById('deleteAccText').innerText = lang === 'ja' ? 'アカウント削除' : 'Delete Account'; document.getElementById('accNameLabel').innerText = lang === 'ja' ? 'アカウント名' : 'Display Name'; document.getElementById('accEmailLabel').innerText = lang === 'ja' ? 'メールアドレス' : 'Email'; document.getElementById('accUidLabel').innerText = 'UID'; document.getElementById('accPlanLabel').innerText = lang === 'ja' ? 'プラン' : 'Plan'; document.getElementById('accountModalTitle').innerText = lang === 'ja' ? 'アカウント情報' : 'Account Info'; document.getElementById('accountCloseBtn').innerText = lang === 'ja' ? '閉じる' : 'Close'; document.getElementById('accountMenuItem').innerText = lang === 'ja' ? 'アカウント情報' : 'Account Info'; }
+    async function updateAccountModalUI(user) { 
+        if (!user) return; 
+        document.getElementById('accountDisplayName').innerText = user.displayName || user.email?.split('@')[0] || "No Name"; 
+        document.getElementById('accountEmail').innerText = user.email || "No Email"; 
+        document.getElementById('accountUid').innerText = user.uid; 
+        
+        // 再チェックして確実に反映
+        isSubscribed = await checkSubscriptionStatus(user);
+        document.getElementById('accountPlan').innerHTML = isSubscribed ? '<span style="color:#d4a373;">PREMIUM</span>' : 'FREE'; 
+        
+        const lang = document.getElementById('langSelect').value; 
+        const t = translations[lang] || translations['ja']; 
+        document.getElementById('deleteAccText').innerText = lang === 'ja' ? 'アカウント削除' : 'Delete Account'; 
+        document.getElementById('accNameLabel').innerText = lang === 'ja' ? 'アカウント名' : 'Display Name'; 
+        document.getElementById('accEmailLabel').innerText = lang === 'ja' ? 'メールアドレス' : 'Email'; 
+        document.getElementById('accUidLabel').innerText = 'UID'; 
+        document.getElementById('accPlanLabel').innerText = lang === 'ja' ? 'プラン' : 'Plan'; 
+        document.getElementById('accountModalTitle').innerText = lang === 'ja' ? 'アカウント情報' : 'Account Info'; 
+        document.getElementById('accountCloseBtn').innerText = lang === 'ja' ? '閉じる' : 'Close'; 
+        document.getElementById('accountMenuItem').innerText = lang === 'ja' ? 'アカウント情報' : 'Account Info'; 
+    }
 
     async function deleteUserAccount() { const user = auth.currentUser; if (!user) return alert("ログインしていません"); const confirmed = confirm("アカウントを完全に削除します。すべての保存データ（ループ、履歴など）が消去され、元に戻せません。本当に削除しますか？"); if (!confirmed) return; try { await db.collection('Users').doc(user.uid).delete(); await user.delete(); alert("アカウントを削除しました。ページをリロードします。"); location.reload(); } catch (error) { alert("削除エラー: " + error.message + "\n再度ログインしてからお試しください。"); } }
 
+    /**
+     * Auth状態監視
+     */
     auth.onAuthStateChanged(async user => {
         const userInfo = document.getElementById('userInfoDisplay'), userNameSpan = document.getElementById('userName'), authSection = document.getElementById('auth-section'), authOverlay = document.getElementById('auth-overlay'), subOverlay = document.getElementById('subscription-overlay');
         if (user) {
             authOverlay.style.display = 'none'; authSection.style.display = 'none'; userInfo.style.display = 'flex';
             userNameSpan.innerText = user.displayName || user.email.split('@')[0];
+            
+            // 重要：ここで確実に状態を待機する
             isSubscribed = await checkSubscriptionStatus(user);
+            
             if (isSubscribed) subOverlay.style.display = 'none';
             await syncFromCloud(user);
             if (currentMode === 'file') renderLoopList('file'); else renderLoopList('yt');
@@ -549,7 +579,7 @@
         }
     };
     
-    // ========== 以下、全ての既存機能 (WaveSurfer, YouTube, 録音, ループ等) 完全維持 ==========
+    // ========== プレイヤー・波形・YouTube・録音等の全機能ロジック ==========
     let wavesurfer, wsRegions, recWavesurfer, ytPlayer, loopInterval;
     let loopStart = 0, loopEnd = 0, isLooping = false, currentMode = 'file';
     let audioCtx, firstSoundTime = 0, originalBpm = 120;
@@ -560,7 +590,7 @@
     let recObjectURL = null, recordedAudioBuffer = null, lastRecStartPos = 0;
     let currentLoopCount = 0;
 
-    function changeLanguage() { const lang = document.getElementById('langSelect').value || 'ja'; const t = translations[lang] || translations['ja']; document.getElementById('langTitle').innerText = t.langTitle; document.getElementById('helpTitle').innerText = t.helpTitle; document.getElementById('guideFileTitle').innerText = t.guideFile; document.getElementById('guideYTTitle').innerText = t.guideYT; document.getElementById('privacyMenu').innerText = t.privacyMenu; document.getElementById('legalMenu').innerText = t.legalMenu; document.getElementById('closeBtn1').innerText = t.close; document.getElementById('closeBtn2').innerText = t.close; document.getElementById('resetZoomBtn').innerText = t.fit; document.getElementById('clearRangeBtn').innerHTML = `<span class="material-icons" style="font-size:14px;">layers_clear</span> ${t.clear}`; document.getElementById('saveLoopBtn').innerHTML = `<span class="material-icons" style="font-size:14px;">bookmark_add</span> ${t.saveLoop}`; document.getElementById('speedUpLabel').innerText = t.speedUpLabel; document.getElementById('setStartBtn').innerText = t.setStart; document.getElementById('setEndBtn').innerText = t.setEnd; document.getElementById('authDesc').innerText = t.authDesc; document.getElementById('googleLoginBtnTxt').innerText = t.googleBtn; document.getElementById('authDivider').innerText = t.authDiv; document.getElementById('emailLoginBtnTxt').innerText = t.authEmail; document.getElementById('authCloseBtn').innerText = t.close; document.getElementById('subDesc').innerHTML = t.subDesc; document.getElementById('subStartBtn').innerText = t.subStart; document.getElementById('subCloseBtn').innerText = t.close; document.getElementById('subLogoutBtn').innerText = t.subLogout; document.getElementById('ytLoadBtnTxt').innerText = t.ytLoad; document.getElementById('historyTitle').innerText = t.historyTitle; document.getElementById('historyClearBtn').innerText = t.historyClear; document.getElementById('guideFileContent').innerHTML = t.guideFileContent; document.getElementById('guideYTContent').innerHTML = t.guideYTContent; document.getElementById('privacyPolicyInner').innerHTML = t.privacyInner; document.getElementById('legalNoticeInner').innerHTML = t.legalInner; const fileLabel = document.getElementById('fileSelectBtn'); if (fileLabel.innerText.includes("ファイル") || fileLabel.innerText.includes("Select")) fileLabel.innerText = t.fileSelect; const loadS = document.getElementById('loadStatus'); if (loadS.innerText.includes("READY") || loadS.innerText.includes("準備")) loadS.innerText = t.ready; const b = document.getElementById('toggleLoopBtn'); if(b) b.innerText = isLooping ? t.loopOn : t.loopOff; const recDel = document.getElementById('recDelBtnTxt'); if(recDel) recDel.innerHTML = `<span class="material-icons" style="font-size:14px;">delete</span> ${t.recDel}`; updateRecPlayBtnUI(); if(auth.currentUser) updateAccountModalUI(auth.currentUser); document.getElementById('accountMenuItem').innerText = t.langTitle === "Language Settings" ? "Account Info" : "アカウント情報"; }
+    function changeLanguage() { const lang = document.getElementById('langSelect').value || 'ja'; const t = translations[lang] || translations['ja']; document.getElementById('langTitle').innerText = t.langTitle; document.getElementById('helpTitle').innerText = t.helpTitle; document.getElementById('guideFileTitle').innerText = t.guideFile; document.getElementById('guideYTTitle').innerText = t.guideYT; document.getElementById('privacyMenu').innerText = t.privacyMenu; document.getElementById('legalMenu').innerText = t.legalMenu; document.getElementById('closeBtn1').innerText = t.close; document.getElementById('closeBtn2').innerText = t.close; document.getElementById('resetZoomBtn').innerText = t.fit; document.getElementById('clearRangeBtn').innerHTML = `<span class="material-icons" style="font-size:14px;">layers_clear</span> ${t.clear}`; document.getElementById('saveLoopBtn').innerHTML = `<span class="material-icons" style="font-size:14px;">bookmark_add</span> ${t.saveLoop}`; document.getElementById('speedUpLabel').innerText = t.speedUpLabel; document.getElementById('setStartBtn').innerText = t.setStart; document.getElementById('setEndBtn').innerText = t.setEnd; document.getElementById('authDesc').innerText = t.authDesc; document.getElementById('googleLoginBtnTxt').innerText = t.googleBtn; document.getElementById('authDivider').innerText = t.authDiv; document.getElementById('emailLoginBtnTxt').innerText = t.authEmail; document.getElementById('authCloseBtn').innerText = t.close; document.getElementById('subDesc').innerHTML = t.subDesc; document.getElementById('subStartBtn').innerText = t.subStart; document.getElementById('subCloseBtn').innerText = t.close; document.getElementById('subLogoutBtn').innerText = t.subLogout; document.getElementById('ytLoadBtnTxt').innerText = t.ytLoad; document.getElementById('historyTitle').innerText = t.historyTitle; document.getElementById('historyClearBtn').innerText = t.historyClear; document.getElementById('guideFileContent').innerHTML = t.guideFileContent; document.getElementById('guideYTContent').innerHTML = t.guideYTContent; document.getElementById('privacyPolicyInner').innerHTML = t.privacyInner; document.getElementById('legalNoticeInner').innerHTML = t.legalInner; const fileLabel = document.getElementById('fileSelectBtn'); if (fileLabel.innerText.includes("ファイル") || fileLabel.innerText.includes("Select")) fileLabel.innerText = t.fileSelect; const loadS = document.getElementById('loadStatus'); if (loadS.innerText.includes("READY") || loadS.innerText.includes("準備")) loadS.innerText = t.ready; const b = document.getElementById('toggleLoopBtn'); if(b) b.innerText = isLooping ? t.loopOn : t.loopOff; const recDel = document.getElementById('recDelBtnTxt'); if(recDel) recDel.innerHTML = `<span class="material-icons" style="font-size:14px;">delete</span> ${t.recDel}`; updateRecPlayBtnUI(); if(auth.currentUser) updateAccountModalUI(auth.currentUser); }
     function updateRecPlayBtnUI() { const lang = document.getElementById('langSelect').value; const t = translations[lang] || translations['ja']; const btn = document.getElementById('playRecBtn'); if (recWavesurfer && recWavesurfer.isPlaying()) btn.innerHTML = `<span class="material-icons" style="font-size:14px;">stop_circle</span> ${t.recStop}`; else if(btn) btn.innerHTML = `<span class="material-icons" style="font-size:14px;">play_circle</span> ${t.recPlay}`; }
     function toggleMenu(isOpen) { document.getElementById('sideMenu').classList.toggle('open', isOpen); document.getElementById('menuOverlay').style.display = isOpen ? 'block' : 'none'; }
     function showGuide(type) { toggleMenu(false); closeModals(); if (type === 'file') document.getElementById('guideModalFile').style.display = 'block'; if (type === 'yt') document.getElementById('guideModalYT').style.display = 'block'; document.getElementById('menuOverlay').style.display = 'block'; }
@@ -581,7 +611,6 @@
     const tag = document.createElement('script'); tag.src = "https://www.youtube.com/iframe_api"; document.head.appendChild(tag);
     function loadYouTube(manualUrl = null) { initAudioContext(); const urlInput = document.getElementById('ytUrl'); const url = manualUrl || urlInput.value; if (!url) return; const videoId = url.includes('v=') ? url.split('v=')[1].split('&')[0] : url.includes('be/') ? url.split('be/')[1].split('?')[0] : null; if (videoId) { currentYTId = videoId; document.getElementById('loopListYT').innerHTML = ""; loopStart = 0; loopEnd = 0; isLooping = false; document.getElementById('loopStartTxt').innerText = "00:00"; document.getElementById('loopEndTxt').innerText = "00:00"; const b = document.getElementById('toggleLoopBtn'); const lang = document.getElementById('langSelect').value || 'ja'; if(b) { b.innerText = translations[lang].loopOff; b.classList.remove('active'); } if (ytPlayer && ytPlayer.loadVideoById) ytPlayer.loadVideoById(videoId); else ytPlayer = new YT.Player('player', { videoId: videoId, events: { 'onReady': () => { updateYTInfo(); }, 'onStateChange': onPlayerStateChange } }); urlInput.value = ""; } }
     
-    // 履歴・ループ操作 (操作ごとにクラウド同期を実行)
     function saveToHistory(id, title) { let history = JSON.parse(localStorage.getItem('ams_yt_history') || "[]"); history = history.filter(item => item.id !== id); history.unshift({ id: id, title: title || id, url: `https://www.youtube.com/watch?v=${id}`, time: Date.now() }); if (history.length > 20) history.pop(); localStorage.setItem('ams_yt_history', JSON.stringify(history)); renderYTHistory(); syncToCloud(); }
     function renderYTHistory() { const historyList = document.getElementById('ytHistoryList'); const container = document.getElementById('ytHistoryContainer'); if(!historyList || !container) return; const history = JSON.parse(localStorage.getItem('ams_yt_history') || "[]"); if (history.length === 0) { container.style.display = 'none'; return; } container.style.display = 'block'; historyList.innerHTML = ""; history.forEach(item => { const card = document.createElement('div'); card.style = "background: #252525; border: 1px solid #333; border-radius: 6px; padding: 8px 12px; min-width: 180px; flex-shrink: 0; display: flex; justify-content: space-between; align-items: center; cursor: pointer;"; card.setAttribute('data-url', item.url); card.innerHTML = `<span style="font-size:0.7rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:#e0e0e0;">${item.title}</span><span class="material-icons" style="color:#ff5555; font-size:16px;" onclick="event.stopPropagation(); deleteHistoryItem('${item.id}')">cancel</span>`; historyList.appendChild(card); }); }
     function handleHistoryClick(event) { const card = event.target.closest('div[data-url]'); if (card) { if (!isSubscribed) { document.getElementById('subscription-overlay').style.display = 'flex'; return; } loadYouTube(card.getAttribute('data-url')); } }

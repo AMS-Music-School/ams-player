@@ -507,7 +507,6 @@
     function logout() { auth.signOut().then(() => location.reload()); }
     function redirectToCheckout() { const user = auth.currentUser; if (user) { const confirmed = confirm(`現在「${user.email}」でログインしています。\nこのメールアドレスで支払手続きを進めますか？\n（決済完了後、自動的にプレミアム機能が有効になります）`); if (confirmed) { const baseUrl = "https://square.link/u/B13lqKnj"; const checkoutUrl = `${baseUrl}?checkout_user_email=${encodeURIComponent(user.email)}`; window.location.href = checkoutUrl; } } else { alert("先にログインしてください。"); closeSubOverlay(); openAuthOverlay(); } }
 
-    // ★重要修正ポイント: db.collection().doc(user.email) -> db.collection().doc(user.uid) に変更
     async function checkSubscriptionStatus(user) { 
         if (!user) return false; 
         try { 
@@ -548,6 +547,17 @@
         if (user) {
             authOverlay.style.display = 'none'; authSection.style.display = 'none'; userInfo.style.display = 'flex';
             userNameSpan.innerText = user.displayName || user.email.split('@')[0];
+            
+            // ★追加: ログイン時に毎回 UID と メールアドレス をドキュメント内に記録・更新する
+            try {
+                await db.collection('Users').doc(user.uid).set({
+                    uid: user.uid,
+                    email: user.email
+                }, { merge: true });
+            } catch (e) {
+                console.error("Failed to update user info:", e);
+            }
+
             isSubscribed = await checkSubscriptionStatus(user);
             if (isSubscribed) subOverlay.style.display = 'none';
             await syncFromCloud(user);

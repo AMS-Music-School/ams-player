@@ -70,7 +70,7 @@
         }
         .subscribe-btn {
             background: var(--primary-color); color: #121212; border: none; padding: 15px 30px;
-            border-radius: 30px; font-weight: bold; cursor: margin-top: 20px; font-size: 1.1rem; width: 100%;
+            border-radius: 30px; font-weight: bold; cursor: pointer; margin-top: 20px; font-size: 1.1rem; width: 100%;
         }
         .user-info { font-size: 0.7rem; color: var(--text-dim); display: flex; align-items: center; gap: 10px; }
         .logout-btn { background: none; border: 1px solid var(--border-color); color: var(--text-dim); padding: 4px 8px; border-radius: 4px; font-size: 0.65rem; cursor: pointer; }
@@ -492,7 +492,26 @@
     function logout() { auth.signOut().then(() => location.reload()); }
     function redirectToCheckout() { const user = auth.currentUser; if (user) { const confirmed = confirm(`現在「${user.email}」でログインしています。\nこのメールアドレスで支払手続きを進めますか？\n（決済完了後、自動的にプレミアム機能が有効になります）`); if (confirmed) { const baseUrl = "https://square.link/u/B13lqKnj"; const checkoutUrl = `${baseUrl}?checkout_user_email=${encodeURIComponent(user.email)}`; window.location.href = checkoutUrl; } } else { alert("先にログインしてください。"); closeSubOverlay(); openAuthOverlay(); } }
 
-    async function checkSubscriptionStatus(user) { if (!user || !user.email) return false; try { const schoolDoc = await db.collection('SchoolMember').doc(user.email).get(); if (schoolDoc.exists) { const data = schoolDoc.data(); if (data.isSubscribed === true || data.isStudent === true) return true; } const userDoc = await db.collection('Users').doc(user.uid).get(); if (userDoc.exists) { const userData = userDoc.data(); if (userData.isSubscribed === true) { if (userData.expirationDate) { const now = new Date(); const expiration = userData.expirationDate.toDate(); if (now < expiration) return true; return false; } return true; } } return false; } catch (e) { console.error("Check error:", e); return false; } }
+    async function checkSubscriptionStatus(user) { 
+        if (!user) return false; 
+        try { 
+            const userDocRef = db.collection('Users').doc(user.uid);
+            const memberDocRef = db.collection('SchoolMember').doc(user.uid);
+
+            const [userDoc, memberDoc] = await Promise.all([
+                userDocRef.get(),
+                memberDocRef.get()
+            ]);
+
+            if ((userDoc.exists && userDoc.data().isSubscribed === true) || memberDoc.exists) {
+                return true;
+            }
+            return false; 
+        } catch (e) { 
+            console.error("Check error:", e); 
+            return false; 
+        } 
+    }
 
     function openAccountModal() { const user = auth.currentUser; if (!user) { alert("ログインしていません。先にログインしてください。"); toggleMenu(false); openAuthOverlay(); return; } updateAccountModalUI(user); document.getElementById('accountModal').style.display = 'block'; toggleMenu(false); }
     function closeAccountModal() { document.getElementById('accountModal').style.display = 'none'; }

@@ -522,6 +522,7 @@
     const db = firebase.firestore();
 
     let isSubscribed = false;
+    let lastTime = 0; // シーク判定用の追跡タイム
 
     async function syncToCloud() {
         const user = auth.currentUser;
@@ -800,6 +801,8 @@
     window.deleteLoop = (mode, index) => { const storageKey = mode === 'file' ? 'ams_loops' : 'ams_yt_loops'; const key = mode === 'file' ? currentFileName : currentYTId; let allLoops = JSON.parse(localStorage.getItem(storageKey) || "{}"); if (allLoops[key]) { allLoops[key].splice(index, 1); localStorage.setItem(storageKey, JSON.stringify(allLoops)); renderLoopList(mode); syncToCloud(); } };
     
     function startApp() { 
+        let lastTime = 0; 
+
         const initColor = localStorage.getItem('ams_theme_color') || '#d4a373';
         wavesurfer = WaveSurfer.create({ container: '#waveform', waveColor: '#333', progressColor: initColor, height: 120, barWidth: 2, normalize: true }); 
         recWavesurfer = WaveSurfer.create({ container: '#rec-waveform', waveColor: '#552222', progressColor: '#ff4444', height: 80, barWidth: 2, normalize: true }); 
@@ -834,13 +837,9 @@
             // 確実にスタート位置にジャンプさせる（少しだけ遅延させることでライブラリの処理を上書きする）
             setTimeout(() => {
                 wavesurfer.setTime(r.start);
-                // 再生中であれば、そのまま再生を継続させる
-                if (wavesurfer.isPlaying()) {
-                    wavesurfer.play().catch(e => console.error(e));
-                }
+                lastTime = r.start;
+                currentLoopCount = 0;
             }, 50);
-            
-            currentLoopCount = 0;
         });
 
         document.getElementById('zoomSlider').oninput = (e) => wavesurfer.zoom(Number(e.target.value)); 
@@ -928,9 +927,9 @@
             const current = wavesurfer.getCurrentTime();
             const region = wsRegions.getRegions()[0]; 
             
-            // 親切設計：カウントダウン有効時、再生位置が範囲外または終了間近ならスタート位置に戻す
-            if (isCountEnabled && region && (current < region.start || current >= region.end - 0.05)) {
+            if (isCountEnabled && region && current >= region.end - 0.1 && current < region.end + 0.1) {
                 wavesurfer.setTime(region.start); 
+                lastTime = region.start;
             }
             
             if (isCountEnabled) {
@@ -953,6 +952,10 @@
         }); 
 
         wavesurfer.on('pause', () => { document.getElementById('playIcon').innerText = 'play_arrow'; if (recWavesurfer) recWavesurfer.pause(); }); 
+        
+        wavesurfer.on('seeking', () => {
+            lastTime = wavesurfer.getCurrentTime();
+        });
 
         wavesurfer.on('interaction', () => { 
             if (recObjectURL && recWavesurfer) { 
@@ -962,15 +965,13 @@
                 if (wavesurfer.isPlaying()) recWavesurfer.play(); 
             } 
             currentLoopCount = 0; 
+            lastTime = wavesurfer.getCurrentTime();
         }); 
 
         recWavesurfer.on('interaction', () => { if (!recObjectURL) return; const recTime = recWavesurfer.getCurrentTime(); const targetMainTime = lastRecStartPos + recTime; if (targetMainTime <= wavesurfer.getDuration()) wavesurfer.setTime(targetMainTime); if (wavesurfer.isPlaying()) wavesurfer.play(); }); 
         
-        // 修正：自然な再生によるループと、タップによるシークを完全に区別する
-        let lastTime = 0;
         wavesurfer.on('timeupdate', t => { 
             document.getElementById('currentTime').innerText = fmt(t); 
-            
             if (wavesurfer.isPlaying() && recObjectURL && recWavesurfer && recWavesurfer.isPlaying()) { 
                 const expectedRecTime = t - lastRecStartPos; 
                 const actualRecTime = recWavesurfer.getCurrentTime(); 
@@ -978,19 +979,18 @@
                     if (expectedRecTime >= 0 && expectedRecTime < recWavesurfer.getDuration()) recWavesurfer.setTime(expectedRecTime); else recWavesurfer.pause(); 
                 } 
             } 
-
             const r = wsRegions.getRegions()[0]; 
             
-            // 時間の進み方が0.5秒未満なら「自然な再生」、それ以上なら「タップ（シーク）」と判断
+            // 修正：「前回から0.5秒以内の進み方」をしている時だけ自然な再生とみなす（タップによるシークと区別）
             const isNaturalPlay = (t - lastTime) >= 0 && (t - lastTime) < 0.5;
 
-            // 自然な再生で、かつ範囲の終端をまたいだ瞬間だけループさせる
-            if(r && isNaturalPlay && lastTime < r.end && t >= r.end) { 
+            // 自然に再生していて、かつループの終端をまたいだ瞬間だけループ処理を行う
+            if(r && isNaturalPlay && lastTime <= r.end && t >= r.end) { 
                 if (isRecording) { 
                     toggleRecording(); 
                 } else { 
                     wavesurfer.setTime(r.start); 
-                    t = r.start; // 二重発火防止
+                    t = r.start; // 二重発火を防ぐためローカルのtも即座に更新
                     
                     if (recObjectURL && recWavesurfer) { 
                         const loopOffset = r.start - lastRecStartPos; 
@@ -1011,13 +1011,8 @@
                     } 
                 } 
             } 
-            lastTime = t; // 現在の時間を記憶して次に備える
+            lastTime = t; 
         }); 
-
-        // ユーザーが波形を直接タップ・シークした時はlastTimeを更新してループをスキップさせる
-        wavesurfer.on('seeking', () => {
-            lastTime = wavesurfer.getCurrentTime();
-        });
 
         window.resetSetting = (id, val) => { document.getElementById(id).value = val; applySettings(); }; 
         changeLanguage(); 

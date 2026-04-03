@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AMS Practice Player v1.5.6 - CUSTOM COLOR EDITION</title>
+    <title>AMS Practice Player v1.5.7 - CUSTOM COLOR EDITION</title>
     
     <meta name="apple-mobile-web-app-title" content="AMS Player">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -732,7 +732,7 @@
     let recObjectURL = null, recordedAudioBuffer = null, lastRecStartPos = 0;
     let currentLoopCount = 0;
 
-    function changeLanguage() { const lang = document.getElementById('langSelect').value || 'ja'; const t = translations[lang] || translations['ja']; document.getElementById('langTitle').innerText = t.langTitle; document.getElementById('helpTitle').innerText = t.helpTitle; document.getElementById('themeTitle').innerText = t.themeTitle; document.getElementById('guideFileTitle').innerText = t.guideFile; document.getElementById('guideYTTitle').innerText = t.guideYT; document.getElementById('privacyMenu').innerText = t.privacyMenu; document.getElementById('legalMenu').innerText = t.legalMenu; document.getElementById('closeBtn1').innerText = t.close; document.getElementById('closeBtn2').innerText = t.close; document.getElementById('resetZoomBtn').innerText = t.fit; document.getElementById('clearRangeBtn').innerHTML = `<span class="material-icons" style="font-size:14px;">layers_clear</span> ${t.clear}`; document.getElementById('saveLoopBtn').innerHTML = `<span class="material-icons" style="font-size:14px;">bookmark_add</span> ${t.saveLoop}`; document.getElementById('speedUpLabel').innerText = t.speedUpLabel; document.getElementById('setStartBtn').innerText = t.setStart; document.getElementById('setEndBtn').innerText = t.setEnd; document.getElementById('authDesc').innerText = t.authDesc; document.getElementById('googleLoginBtnTxt').innerText = t.googleBtn; document.getElementById('authDivider').innerText = t.authDiv; document.getElementById('emailLoginBtnTxt').innerText = t.authEmail; document.getElementById('authCloseBtn').innerText = t.close; document.getElementById('subDesc').innerHTML = t.subDesc; document.getElementById('subStartBtn').innerText = t.subStart; document.getElementById('subCloseBtn').innerText = t.close; document.getElementById('subLogoutBtn').innerText = t.subLogout; document.getElementById('ytLoadBtnTxt').innerText = t.ytLoad; document.getElementById('historyTitle').innerText = t.historyTitle; document.getElementById('historyClearBtn').innerText = t.historyClear; document.getElementById('guideFileContent').innerHTML = t.guideFileContent; document.getElementById('guideYTContent').innerHTML = t.guideYTContent; document.getElementById('privacyPolicyInner').innerHTML = t.privacyInner; document.getElementById('legalNoticeInner').innerHTML = t.legalInner; const fileLabel = document.getElementById('fileSelectBtn'); if (fileLabel.innerText.includes("ファイル") || fileLabel.innerText.includes("Select") || fileLabel.innerText.includes("选择") || fileLabel.innerText.includes("선택") || fileLabel.innerText.includes("Elegir")) fileLabel.innerText = t.fileSelect; const loadS = document.getElementById('loadStatus'); if (loadS.innerText.includes("READY") || loadS.innerText.includes("準備") || loadS.innerText.includes("就绪") || loadS.innerText.includes("준비") || loadS.innerText.includes("LISTO")) loadS.innerText = t.ready; const b = document.getElementById('toggleLoopBtn'); if(b) b.innerText = isLooping ? t.loopOn : t.loopOff; const recDel = document.getElementById('recDelBtnTxt'); if(recDel) recDel.innerHTML = `<span class="material-icons" style="font-size:14px;">delete</span> ${t.recDel}`; updateRecPlayBtnUI(); if(auth.currentUser) updateAccountModalUI(auth.currentUser); document.getElementById('accountMenuItem').innerText = t.accInfo; document.getElementById('resetPwText').innerText = t.resetPw; }
+    function changeLanguage() { const lang = document.getElementById('langSelect').value || 'ja'; const t = translations[lang] || translations['ja']; document.getElementById('langTitle').innerText = t.langTitle; document.getElementById('helpTitle').innerText = t.helpTitle; document.getElementById('themeTitle').innerText = t.themeTitle; document.getElementById('guideFileTitle').innerText = t.guideFile; document.getElementById('guideYTTitle').innerText = t.guideYT; document.getElementById('privacyMenu').innerText = t.privacyMenu; document.getElementById('legalMenu').innerText = t.legalMenu; document.getElementById('closeBtn1').innerText = t.close; document.getElementById('closeBtn2').innerText = t.close; document.getElementById('resetZoomBtn').innerText = t.fit; document.getElementById('clearRangeBtn').innerHTML = `<span class="material-icons" style="font-size:14px;">layers_clear</span> ${t.clear}`; document.getElementById('saveLoopBtn').innerHTML = `<span class="material-icons" style="font-size:14px;">bookmark_add</span> ${t.saveLoop}`; document.getElementById('speedUpLabel').innerText = t.speedUpLabel; document.getElementById('setStartBtn').innerText = t.setStart; document.getElementById('setEndBtn').innerText = t.setEnd; document.getElementById('authDesc').innerText = t.authDesc; document.getElementById('googleLoginBtnTxt').innerText = t.googleBtn; document.getElementById('authDivider').innerText = t.authDiv; document.getElementById('emailLoginBtnTxt').innerText = t.authEmail; document.getElementById('authCloseBtn').innerText = t.close; document.getElementById('subDesc').innerHTML = t.subDesc; document.getElementById('subStartBtn').innerText = t.subStart; document.getElementById('subCloseBtn').innerText = t.close; document.getElementById('subLogoutBtn').innerText = t.subLogout; document.getElementById('ytLoadBtnTxt').innerText = t.ytLoad; document.getElementById('historyTitle').innerText = t.historyTitle; document.getElementById('historyClearBtn').innerText = t.historyClear; document.getElementById('guideFileContent').innerHTML = t.guideFileContent; document.getElementById('guideYTContent').innerHTML = t.guideYTContent; document.getElementById('privacyPolicyInner').innerHTML = t.privacyInner; document.getElementById('legalNoticeInner').innerHTML = t.legalNoticeInner; const fileLabel = document.getElementById('fileSelectBtn'); if (fileLabel.innerText.includes("ファイル") || fileLabel.innerText.includes("Select") || fileLabel.innerText.includes("选择") || fileLabel.innerText.includes("선택") || fileLabel.innerText.includes("Elegir")) fileLabel.innerText = t.fileSelect; const loadS = document.getElementById('loadStatus'); if (loadS.innerText.includes("READY") || loadS.innerText.includes("準備") || loadS.innerText.includes("就绪") || loadS.innerText.includes("준비") || loadS.innerText.includes("LISTO")) loadS.innerText = t.ready; const b = document.getElementById('toggleLoopBtn'); if(b) b.innerText = isLooping ? t.loopOn : t.loopOff; const recDel = document.getElementById('recDelBtnTxt'); if(recDel) recDel.innerHTML = `<span class="material-icons" style="font-size:14px;">delete</span> ${t.recDel}`; updateRecPlayBtnUI(); if(auth.currentUser) updateAccountModalUI(auth.currentUser); document.getElementById('accountMenuItem').innerText = t.accInfo; document.getElementById('resetPwText').innerText = t.resetPw; }
     function updateRecPlayBtnUI() { const lang = document.getElementById('langSelect').value || 'ja'; const t = translations[lang] || translations['ja']; const btn = document.getElementById('playRecBtn'); if (recWavesurfer && recWavesurfer.isPlaying()) btn.innerHTML = `<span class="material-icons" style="font-size:14px;">stop_circle</span> ${t.recStop}`; else if(btn) btn.innerHTML = `<span class="material-icons" style="font-size:14px;">play_circle</span> ${t.recPlay}`; }
     function toggleMenu(isOpen) { document.getElementById('sideMenu').classList.toggle('open', isOpen); document.getElementById('menuOverlay').style.display = isOpen ? 'block' : 'none'; }
     function showGuide(type) { toggleMenu(false); closeModals(); if (type === 'file') document.getElementById('guideModalFile').style.display = 'block'; if (type === 'yt') document.getElementById('guideModalYT').style.display = 'block'; document.getElementById('menuOverlay').style.display = 'block'; }
@@ -810,36 +810,32 @@
         wsRegions = wavesurfer.registerPlugin(WaveSurfer.Regions.create()); 
         wsRegions.enableDragSelection({ color: getRegionColor(initColor) }); 
         
-        // 修正：範囲の無限増殖を完全に防ぐ
+        // 修正：範囲の無限増殖を完全に防ぐ＆ドラッグ開始時の即時ジャンプ
         wsRegions.on('region-created', r => { 
             const regions = wsRegions.getRegions();
-            if (regions.length > 1) {
-                // 新しいものが作られたら、古いものを全て消去
-                regions.forEach(region => {
-                    if (region.id !== r.id) {
-                        region.remove();
-                    }
-                });
-            }
+            regions.forEach(region => {
+                if (region.id !== r.id) {
+                    region.remove();
+                }
+            });
+            // 作成と同時に同期的にジャンプ
+            wavesurfer.setTime(r.start);
+            lastTime = r.start;
             currentLoopCount = 0; 
         }); 
 
-        // 修正：ドラッグ完了後に確実にスタート位置に飛ぶ＆極小タップは消す
+        // 修正：ドラッグ完了後、確実にスタート位置へジャンプ
         wsRegions.on('region-update-end', r => {
             const duration = r.end - r.start;
-            
-            // 0.15秒未満の極小範囲は「ただのタップ（シーク）」とみなし、範囲を削除して無視する
-            if (duration < 0.15) {
+            // 極小範囲は「ただのタップ（シーク）」とみなし、範囲を削除して無視する
+            if (duration < 0.1) {
                 r.remove();
                 return;
             }
-
-            // 確実にスタート位置にジャンプさせる（少しだけ遅延させることでライブラリの処理を上書きする）
-            setTimeout(() => {
-                wavesurfer.setTime(r.start);
-                lastTime = r.start;
-                currentLoopCount = 0;
-            }, 50);
+            // 同期的にスタート位置にジャンプさせる（play()は呼ばない）
+            wavesurfer.setTime(r.start);
+            lastTime = r.start;
+            currentLoopCount = 0;
         });
 
         document.getElementById('zoomSlider').oninput = (e) => wavesurfer.zoom(Number(e.target.value)); 
@@ -927,7 +923,7 @@
             const current = wavesurfer.getCurrentTime();
             const region = wsRegions.getRegions()[0]; 
             
-            if (isCountEnabled && region && current >= region.end - 0.1 && current < region.end + 0.1) {
+            if (isCountEnabled && region && (current < region.start || current >= region.end - 0.05)) {
                 wavesurfer.setTime(region.start); 
                 lastTime = region.start;
             }
@@ -984,13 +980,12 @@
             // 修正：「前回から0.5秒以内の進み方」をしている時だけ自然な再生とみなす（タップによるシークと区別）
             const isNaturalPlay = (t - lastTime) >= 0 && (t - lastTime) < 0.5;
 
-            // 自然に再生していて、かつループの終端をまたいだ瞬間だけループ処理を行う
             if(r && isNaturalPlay && lastTime <= r.end && t >= r.end) { 
                 if (isRecording) { 
                     toggleRecording(); 
                 } else { 
                     wavesurfer.setTime(r.start); 
-                    t = r.start; // 二重発火を防ぐためローカルのtも即座に更新
+                    t = r.start; // 二重発火防止
                     
                     if (recObjectURL && recWavesurfer) { 
                         const loopOffset = r.start - lastRecStartPos; 

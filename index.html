@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AMS Practice Player v1.5.7 - GOOGLE GRADIENT EDITION</title>
+    <title>AMS Practice Player v1.5.7 - BRIGHT WAVE EDITION</title>
     
     <meta name="apple-mobile-web-app-title" content="AMS Player">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -22,7 +22,6 @@
     <style>
         :root {
             --primary-color: #d4a373;
-            /* 背景グラデーションの設定 */
             --bg-dark: #0f0f0f;
             --gradient-overlay: radial-gradient(circle at 50% -20%, rgba(212, 163, 115, 0.15) 0%, rgba(70, 40, 90, 0.1) 40%, rgba(15, 15, 15, 1) 80%);
             --panel-bg: rgba(30, 30, 30, 0.6);
@@ -48,7 +47,6 @@
             min-height: 100vh;
         }
 
-        /* ログイン・サブスク オーバーレイ */
         #auth-overlay, #subscription-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(10, 10, 10, 0.9); z-index: 5000;
@@ -97,7 +95,7 @@
         .content-section.active { display: block; }
 
         #waveform-wrapper, #rec-waveform-wrapper { 
-            position: relative; background: rgba(0,0,0,0.4); border: 1px solid var(--border-color); 
+            position: relative; background: rgba(0,0,0,0.5); border: 1px solid var(--border-color); 
             border-radius: 16px; margin-bottom: 10px; overflow: hidden; min-height: 120px; 
             backdrop-filter: blur(5px);
         }
@@ -191,7 +189,6 @@
         }
         .speedup-select { background: transparent; color: var(--primary-color); border: none; font-size: 0.8rem; font-weight: bold; outline: none; cursor: pointer; }
 
-        /* カラーピッカーの装飾 */
         .color-swatch {
             width: 34px; height: 34px; border-radius: 50%; cursor: pointer;
             border: 3px solid transparent; transition: transform 0.2s, border-color 0.2s;
@@ -394,8 +391,8 @@
                 </div>
             </div>
             <div class="row" id="recControls" style="display:none; justify-content:center; gap:8px; margin-top:4px;">
-                <button class="clear-btn-ja" onclick="playRecording()" id="playRecBtn" style="flex:none; padding:6px 15px;"><span class="material-icons" style="font-size:14px;">play_circle</span> 録音再生</button>
-                <button class="clear-btn-ja" onclick="deleteRecording()" style="flex:none; padding:6px 15px; color:#ff5555;" id="recDelBtnTxt"><span class="material-icons" style="font-size:14px;">delete</span> 削除</button>
+                <button class="clear-btn-ja rec-action-btn" onclick="playRecording()" id="playRecBtn" style="flex:none; padding:6px 15px;"><span class="material-icons" style="font-size:14px;">play_circle</span> 録音再生</button>
+                <button class="clear-btn-ja rec-action-btn" onclick="deleteRecording()" style="flex:none; padding:6px 15px; color:#ff5555;" id="recDelBtnTxt"><span class="material-icons" style="font-size:14px;">delete</span> 削除</button>
             </div>
         </div>
 
@@ -455,12 +452,10 @@
 </div>
 
 <script>
-    // ==================== ロジック完全維持 ====================
     function setThemeColor(color) {
         document.documentElement.style.setProperty('--primary-color', color);
         localStorage.setItem('ams_theme_color', color);
         
-        // グラデーションも色に合わせて微妙に調整（オプション）
         const rgba = getRegionColor(color);
         document.documentElement.style.setProperty('--gradient-overlay', `radial-gradient(circle at 50% -20%, ${rgba.replace('0.2', '0.15')} 0%, rgba(70, 40, 90, 0.1) 40%, rgba(15, 15, 15, 1) 80%)`);
 
@@ -667,7 +662,7 @@
     const translations = {
         ja: { langTitle: "言語設定", helpTitle: "ヘルプ & ガイド", themeTitle: "テーマカラー", guideFile: "Audio Fileモード ガイド", guideYT: "YouTubeモード ガイド", close: "閉じる", fit: "全体表示", clear: "選択解除", ready: "準備完了", analyzing: "解析中...", setStart: "START", setEnd: "END", loopOff: "LOOP OFF", loopOn: "LOOP ON", fileSelect: "ファイルを選択", saveLoop: "ループ保存", speedUpLabel: "自動BPMアップ", recPlay: "録音再生", recStop: "再生停止", privacyMenu: "Privacy Policy", legalMenu: "特定商取引法に基づく表記", authDesc: "テスト用アカウントでログイン", googleBtn: "Googleでログイン", authDiv: "または", authEmail: "ログイン / 新規登録", subDesc: "この機能を利用するには<br>サブスクリプションへの登録が必要です。", subStart: "サブスクリプションを開始する", subLogout: "別のカウントでログイン", historyTitle: "RECENT HISTORY", historyClear: "Clear All", ytLoad: "LOAD", recDel: "削除",
             accInfo: "アカウント情報", deleteAcc: "アカウント削除", accNameLabel: "アカウント名", accEmailLabel: "メールアドレス", accPlanLabel: "プラン", resetPw: "パスワードを変更する",
-            msgLoginReq: "先にログインしてください。", msgEmptyAuth: "メールアドレスとパスワードを入力してください", msgRegConfirm: "アカウントが見つかりません。新しく登録しますか？", msgLoginErr: "エラー: ", msgMailSent: "パスワード再設定メールを送信しました。メールボックスをご確認ください。", msgDelHist: "履歴を削除しますか？", msgDelRec: "録音を削除しますか？", msgDelAcc: "アカウントを完全に削除します。すべての保存データが消去され、元に戻せません。本当に削除しますか？", msgDelAccSuccess: "アカウントを削除しました。", msgPwReset: "パスワード再設定の案内メールを送信しますか？", msgRangeReq: "範囲を指定してください", msgRangeInv: "範囲が不正です", msgSubConfirm: "⚠️【超重要】\nSquareの決済画面でも、必ず今ログインしている同じメールアドレスを使用して決済してください。\n（Apple Pay等を使用すると別のアドレスになる場合があります）\n\n支払手続きを進めますか？",
+            msgLoginReq: "先にログインしてください。", msgEmptyAuth: "メールアドレスとパスワードを入力してください", msgRegConfirm: "アカウントが見つかりません。新しく登録しますか？", msgLoginErr: "エラー: ", msgMailSent: "パスワード再設定メールを送信しました。メールボックスをご確認ください。", msgDelHist: "履歴を削除しますか？", msgDelRec: "録音を削除しますか？", msgDelAcc: "アカウントを完全に削除します。すべての保存データが消去され、元に戻せません。本当に削除しますか？", msgDelAccSuccess: "アカウントを削除しました。", msgPwReset: "パスワード再設定の案内メールを送信しますか？", msgRangeReq: "範囲を指定してください", msgRangeInv: "範囲が不正です", msgSubConfirm: "⚠️【超重要】\nSquareの決済画面でも、必ず今ログインしている同じメールアドレスを使用して決済してください。\n\n支払手続きを進めますか？",
             privacyInner: `<h2 style="color:var(--primary-color); margin-top:0;">プライバシーポリシー</h2><p>Anderson Studios（以下「当スタジオ」）が運営する「AMS Music School」は、提供するアプリケーション「AMS Practice Player」（以下「本アプリ」）における個人情報の取扱いについて、以下の通り定めます。</p><h3>1. 取得する情報</h3><p>本アプリでは、Google認証によるメールアドレス・氏名、およびサービス利用に必要な決済ステータス（Square経由）を取得します。</p><h3>2. 利用目的</h3><p>取得した情報は、アカウント認証、サブスクリプション管理、ユーザーサポート、および本アプリの機能提供のみに利用します。</p><h3>3. 第三者提供</h3><p>法令に基づく場合を除き、同意なく第三者に提供しません。本アプリはインフラとしてGoogle Firebase、決済としてSquareを利用します。</p><h3>4. お問い合わせ</h3><p>運営：Anderson Studios (AMS Music School)<br>連絡先：ams.guitar.school@gmail.com</p><button class="clear-btn-ja" style="width:100%; margin-top:20px; padding:12px;" onclick="togglePolicy('privacy', false)">閉じる</button>`,
             legalInner: `<h2 style="color:var(--primary-color); margin-top:0;">特定商取引法に基づく表記</h2><h3>運営者名</h3><p>芦田幸一 (Anderson Studios / AMS Music School)</p><h3>連絡先</h3><p>ams.guitar.school@gmail.com</p><h3>販売価格</h3><p>購入手続きの際に画面に表示される金額（税込）</p><h3>代金の支払時期および方法</h3><p>Square決済（クレジットカード等）による即時決済。サブスクリプションは各更新日に課金されます。</p><h3>役務の提供時期</h3><p>決済完了後、直ちにご利用いただけます。</p><h3>解約・返金ポリシー</h3><p>・商品の性質上、決済完了後の返金・返品は原則としてお受けできません。<br>・サブスクリプションの解約はいつでも可能です。解約後も有効期限までは引き続きサービスをご利用いただけます。<br>・日割り計算による返金は行っておりません。</p><button class="clear-btn-ja" style="width:100%; margin-top:20px; padding:12px;" onclick="togglePolicy('legal', false)">閉じる</button>`,
             guideFileContent: `<b>【Audio File Mode】フルガイド</b><span class="guide-sub">1. ファイル読み込み</span><ul><li>端末内の音楽ファイルを選択して解析。読み込み時にBPMが自動算出されます。</li></ul><span class="guide-sub">2. ABループ (範囲指定)</span><ul><li>波形をドラッグして範囲を選択。再生中、範囲の終端で自動的に始端へ戻ります。</li><li>「選択解除」でループを解除。「ループ保存」で楽曲ごとに複数の範囲を保存し、下のリストから瞬時に切り替え可能です。</li></ul><span class="guide-sub">3. BPMとPitchの変更</span><ul><li>BPMスライダーで速度を変更（0.5x〜1.5x）。</li><li>Pitchスライダーでキーを半音単位で変更（±6）。※Pitch変更にはサブスクが必要です。</li></ul><span class="guide-sub">4. 自動スピードアップ機能</span><ul><li>「⚡(ボルト)」ボタンをONにし「速度回数」を選択。ループを指定回数繰り返すごとに、自動でBPMが+0.05ずつ上がります（元のBPMまで）。</li></ul><span class="guide-sub">5. セルフ録音チェック</span><ul><li>「mic」ボタンで、再生しながら自分の音を録音。</li><li>録音データは波形の下に表示され、メイン音源と録音の音量を個別に調整できます。</li><li>「S(ソロ)」ボタンをONにすると、録音した音だけを聴くことができます。</li><li class="guide-note">※正確な録音と同期には、PCとオーディオインターフェースの利用を推奨します。</li><li class="guide-note">※モバイル端末（スマホ・タブレット）ではブラウザの仕様により、録音動作が不安定になる場合があります。</li></ul><span class="guide-sub">【よくある質問 (FAQ)】</span><ul><li><b>メールアドレスの変更について:</b><br>メールアドレスを変更したい場合は、現在のサブスクリプションを一度解約し、有効期限が切れた後に新しいメールアドレスで再度新規登録（再決済）を行ってください。</li></ul>`,
@@ -747,10 +742,7 @@
             if (bpm > 0) originalBpm = Math.round(bpm); else originalBpm = 120; 
             updateBpmDisplay(); 
             statusEl.innerText = translations[lang].ready; 
-            
-            if(wavesurfer && !wavesurfer.isPlaying()) {
-                wavesurfer.setTime(firstSoundTime);
-            }
+            if(wavesurfer && !wavesurfer.isPlaying()) wavesurfer.setTime(firstSoundTime);
         } catch (e) { 
             console.error("Analysis error:", e); 
             statusEl.innerText = translations[lang].ready; 
@@ -788,8 +780,23 @@
     function startApp() { 
         let lastTime = 0; 
         const initColor = localStorage.getItem('ams_theme_color') || '#d4a373';
-        wavesurfer = WaveSurfer.create({ container: '#waveform', waveColor: 'rgba(255,255,255,0.1)', progressColor: initColor, height: 120, barWidth: 2, normalize: true }); 
-        recWavesurfer = WaveSurfer.create({ container: '#rec-waveform', waveColor: 'rgba(255,68,68,0.2)', progressColor: '#ff4444', height: 80, barWidth: 2, normalize: true }); 
+        // 波形の色を明るく調整（waveColorを明るい透過白に設定）
+        wavesurfer = WaveSurfer.create({ 
+            container: '#waveform', 
+            waveColor: 'rgba(255, 255, 255, 0.45)', 
+            progressColor: initColor, 
+            height: 120, 
+            barWidth: 2, 
+            normalize: true 
+        }); 
+        recWavesurfer = WaveSurfer.create({ 
+            container: '#rec-waveform', 
+            waveColor: 'rgba(255, 68, 68, 0.5)', 
+            progressColor: '#ff4444', 
+            height: 80, 
+            barWidth: 2, 
+            normalize: true 
+        }); 
         
         wsRegions = wavesurfer.registerPlugin(WaveSurfer.Regions.create()); 
         wsRegions.enableDragSelection({ color: getRegionColor(initColor) }); 

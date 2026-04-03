@@ -462,15 +462,17 @@
 
     let isSubscribed = false;
 
-    // クラウドへのデータ保存（同期）関数
+    // クラウドへのデータ保存（メールアドレスベースに変更）
     async function syncToCloud() {
         const user = auth.currentUser;
-        if (!user) return;
+        if (!user || !user.email) return;
         try {
             const ytHistory = JSON.parse(localStorage.getItem('ams_yt_history') || "[]");
             const ams_loops = JSON.parse(localStorage.getItem('ams_loops') || "{}");
             const ams_yt_loops = JSON.parse(localStorage.getItem('ams_yt_loops') || "{}");
-            await db.collection('Users').doc(user.uid).set({
+            await db.collection('Users').doc(user.email).set({
+                uid: user.uid,
+                email: user.email,
                 ytHistory: ytHistory,
                 ams_loops: ams_loops,
                 ams_yt_loops: ams_yt_loops,
@@ -481,11 +483,11 @@
         }
     }
 
-    // クラウドからのデータ復元関数
+    // クラウドからのデータ復元（メールアドレスベースに変更）
     async function syncFromCloud(user) {
-        if (!user) return;
+        if (!user || !user.email) return;
         try {
-            const doc = await db.collection('Users').doc(user.uid).get();
+            const doc = await db.collection('Users').doc(user.email).get();
             if (doc.exists) {
                 const data = doc.data();
                 if (data.ytHistory) localStorage.setItem('ams_yt_history', JSON.stringify(data.ytHistory));
@@ -507,15 +509,16 @@
     function logout() { auth.signOut().then(() => location.reload()); }
     function redirectToCheckout() { const user = auth.currentUser; if (user) { const confirmed = confirm(`現在「${user.email}」でログインしています。\nこのメールアドレスで支払手続きを進めますか？\n（決済完了後、自動的にプレミアム機能が有効になります）`); if (confirmed) { const baseUrl = "https://square.link/u/B13lqKnj"; const checkoutUrl = `${baseUrl}?checkout_user_email=${encodeURIComponent(user.email)}`; window.location.href = checkoutUrl; } } else { alert("先にログインしてください。"); closeSubOverlay(); openAuthOverlay(); } }
 
+    // ★重要: メールアドレスをキーにして購読状況を確認する（以前の自動化システムを生かす仕様）
     async function checkSubscriptionStatus(user) { 
-        if (!user) return false; 
+        if (!user || !user.email) return false; 
         try { 
-            const schoolDoc = await db.collection('SchoolMember').doc(user.uid).get(); 
+            const schoolDoc = await db.collection('SchoolMember').doc(user.email).get(); 
             if (schoolDoc.exists) { 
                 const data = schoolDoc.data(); 
                 if (data.isSubscribed === true || data.isStudent === true) return true; 
             } 
-            const userDoc = await db.collection('Users').doc(user.uid).get(); 
+            const userDoc = await db.collection('Users').doc(user.email).get(); 
             if (userDoc.exists) { 
                 const userData = userDoc.data(); 
                 if (userData.isSubscribed === true) { 
@@ -540,16 +543,17 @@
     
     async function updateAccountModalUI(user) { if (!user) return; document.getElementById('accountDisplayName').innerText = user.displayName || user.email?.split('@')[0] || "No Name"; document.getElementById('accountEmail').innerText = user.email || "No Email"; document.getElementById('accountUid').innerText = user.uid; const subStatus = await checkSubscriptionStatus(user); document.getElementById('accountPlan').innerHTML = subStatus ? '<span style="color:#d4a373;">PREMIUM</span>' : 'FREE'; const lang = document.getElementById('langSelect').value; const t = translations[lang] || translations['ja']; document.getElementById('deleteAccText').innerText = lang === 'ja' ? 'アカウント削除' : 'Delete Account'; document.getElementById('accNameLabel').innerText = lang === 'ja' ? 'アカウント名' : 'Display Name'; document.getElementById('accEmailLabel').innerText = lang === 'ja' ? 'メールアドレス' : 'Email'; document.getElementById('accUidLabel').innerText = 'UID'; document.getElementById('accPlanLabel').innerText = lang === 'ja' ? 'プラン' : 'Plan'; document.getElementById('accountModalTitle').innerText = lang === 'ja' ? 'アカウント情報' : 'Account Info'; document.getElementById('accountCloseBtn').innerText = lang === 'ja' ? '閉じる' : 'Close'; document.getElementById('accountMenuItem').innerText = lang === 'ja' ? 'アカウント情報' : 'Account Info'; }
 
-    async function deleteUserAccount() { const user = auth.currentUser; if (!user) return alert("ログインしていません"); const confirmed = confirm("アカウントを完全に削除します。すべての保存データ（ループ、履歴など）が消去され、元に戻せません。本当に削除しますか？"); if (!confirmed) return; try { await db.collection('Users').doc(user.uid).delete(); await user.delete(); alert("アカウントを削除しました。ページをリロードします。"); location.reload(); } catch (error) { alert("削除エラー: " + error.message + "\n再度ログインしてからお試しください。"); } }
+    async function deleteUserAccount() { const user = auth.currentUser; if (!user || !user.email) return alert("ログインしていません"); const confirmed = confirm("アカウントを完全に削除します。すべての保存データ（ループ、履歴など）が消去され、元に戻せません。本当に削除しますか？"); if (!confirmed) return; try { await db.collection('Users').doc(user.email).delete(); await user.delete(); alert("アカウントを削除しました。ページをリロードします。"); location.reload(); } catch (error) { alert("削除エラー: " + error.message + "\n再度ログインしてからお試しください。"); } }
 
     auth.onAuthStateChanged(async user => {
         const userInfo = document.getElementById('userInfoDisplay'), userNameSpan = document.getElementById('userName'), authSection = document.getElementById('auth-section'), authOverlay = document.getElementById('auth-overlay'), subOverlay = document.getElementById('subscription-overlay');
-        if (user) {
+        if (user && user.email) {
             authOverlay.style.display = 'none'; authSection.style.display = 'none'; userInfo.style.display = 'flex';
             userNameSpan.innerText = user.displayName || user.email.split('@')[0];
             
             try {
-                await db.collection('Users').doc(user.uid).set({
+                // メールアドレスをIDとしてユーザー情報をセット
+                await db.collection('Users').doc(user.email).set({
                     uid: user.uid,
                     email: user.email
                 }, { merge: true });
@@ -557,8 +561,15 @@
                 console.error("Failed to update user info:", e);
             }
 
-            // ★追加: データベースの変更をリアルタイムで監視（管理者がtrueにした瞬間に反映させるため）
-            db.collection('Users').doc(user.uid).onSnapshot(async () => {
+            // 自動化システムがメールアドレス基準で書き換えた瞬間を監視
+            db.collection('Users').doc(user.email).onSnapshot(async () => {
+                isSubscribed = await checkSubscriptionStatus(user);
+                if (isSubscribed) {
+                    subOverlay.style.display = 'none';
+                }
+                updateAccountModalUI(user);
+            });
+            db.collection('SchoolMember').doc(user.email).onSnapshot(async () => {
                 isSubscribed = await checkSubscriptionStatus(user);
                 if (isSubscribed) {
                     subOverlay.style.display = 'none';

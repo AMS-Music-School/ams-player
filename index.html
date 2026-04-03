@@ -810,35 +810,37 @@
         wsRegions = wavesurfer.registerPlugin(WaveSurfer.Regions.create()); 
         wsRegions.enableDragSelection({ color: getRegionColor(initColor) }); 
         
-        // 修正：タップ（クリック）による極小の範囲作成を無視する
+        // 修正：範囲が作られた瞬間に、古いものを確実に削除する
         wsRegions.on('region-created', r => { 
-            // 古い範囲をここで無条件に消さない（タップによるループ崩壊を防ぐため）
+            const regions = wsRegions.getRegions();
+            regions.forEach(region => {
+                if (region.id !== r.id) {
+                    region.remove();
+                }
+            });
         }); 
 
-        // 修正：ドラッグ（範囲指定）が終わった瞬間の処理
+        // 修正：ドラッグ（範囲設定）が終わった直後の処理
         wsRegions.on('region-update-end', r => {
-            const isClick = (r.end - r.start) < 0.05;
+            const duration = r.end - r.start;
             
-            if (isClick) {
-                // ただのタップだった場合は、この極小の範囲を消して、通常のシーク（ジャンプ）に任せる
+            // タップによる極小の範囲（0.15秒未満）は削除し、通常のシークを優先
+            if (duration < 0.15) {
                 r.remove();
                 return;
             }
 
-            // 有効なドラッグ選択の場合、他の範囲を削除してこれだけを残す
-            const regions = wsRegions.getRegions();
-            regions.forEach(region => {
-                if (region !== r) {
-                    region.remove();
-                }
-            });
-
-            // Wavesurfer本体のシーク処理が終わった直後に、スタート位置へ確実にジャンプさせる
+            // ドラッグ終了後、確実にスタート位置へジャンプして再生を続ける
             setTimeout(() => {
                 wavesurfer.setTime(r.start);
                 lastTime = r.start;
                 currentLoopCount = 0;
-            }, 20);
+                
+                // 再生中であれば、ジャンプ後も再生を維持する
+                if (wavesurfer.isPlaying()) {
+                    wavesurfer.play().catch(e => console.error(e));
+                }
+            }, 50);
         });
 
         document.getElementById('zoomSlider').oninput = (e) => wavesurfer.zoom(Number(e.target.value)); 

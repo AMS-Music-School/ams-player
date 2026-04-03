@@ -462,6 +462,7 @@
 
     let isSubscribed = false;
 
+    // クラウドへのデータ保存
     async function syncToCloud() {
         const user = auth.currentUser;
         if (!user || !user.email) return;
@@ -478,9 +479,12 @@
                 ams_yt_loops: ams_yt_loops,
                 lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
             }, { merge: true });
-        } catch (e) { console.error("Cloud sync error:", e); }
+        } catch (e) {
+            console.error("Cloud sync error:", e);
+        }
     }
 
+    // クラウドからのデータ復元
     async function syncFromCloud(user) {
         if (!user || !user.email) return;
         const uEmail = user.email.toLowerCase().trim();
@@ -492,7 +496,9 @@
                 if (data.ams_loops) localStorage.setItem('ams_loops', JSON.stringify(data.ams_loops));
                 if (data.ams_yt_loops) localStorage.setItem('ams_yt_loops', JSON.stringify(data.ams_yt_loops));
             }
-        } catch (e) { console.error("Cloud load error:", e); }
+        } catch (e) {
+            console.error("Cloud load error:", e);
+        }
     }
 
     function openAuthOverlay() { document.getElementById('auth-overlay').style.display = 'flex'; }
@@ -544,7 +550,10 @@
                 } 
             } 
             return false; 
-        } catch (e) { return false; } 
+        } catch (e) { 
+            console.error("Check error:", e); 
+            return false; 
+        } 
     }
 
     function openAccountModal() { const user = auth.currentUser; if (!user) { alert("ログインしていません。先にログインしてください。"); toggleMenu(false); openAuthOverlay(); return; } updateAccountModalUI(user); document.getElementById('accountModal').style.display = 'block'; toggleMenu(false); }
@@ -561,7 +570,11 @@
             authOverlay.style.display = 'none'; authSection.style.display = 'none'; userInfo.style.display = 'flex';
             userNameSpan.innerText = user.displayName || user.email.split('@')[0];
             
-            try { await db.collection('Users').doc(uEmail).set({ uid: user.uid, email: uEmail }, { merge: true }); } catch (e) {}
+            try {
+                await db.collection('Users').doc(uEmail).set({ uid: user.uid, email: uEmail }, { merge: true });
+            } catch (e) {
+                console.error("Failed to update user info:", e);
+            }
 
             db.collection('Users').doc(uEmail).onSnapshot(async () => {
                 isSubscribed = await checkSubscriptionStatus(user);
@@ -675,7 +688,6 @@
         wsRegions = wavesurfer.registerPlugin(WaveSurfer.Regions.create()); 
         wsRegions.enableDragSelection({ color: 'rgba(212, 163, 115, 0.2)' }); 
         
-        // 【修正】タップ時やドラッグ開始時は現在の位置に移動するだけ（強制リセットしない）
         wsRegions.on('region-created', r => { 
             if(wsRegions.getRegions().length > 1) {
                 wsRegions.getRegions()[0].remove(); 
@@ -684,7 +696,6 @@
             currentLoopCount = 0; 
         }); 
 
-        // 【修正】ドラッグ調整が終わった瞬間に移動する
         wsRegions.on('region-update-end', r => {
             wavesurfer.setTime(r.start);
             currentLoopCount = 0;
@@ -766,8 +777,6 @@
             const current = wavesurfer.getCurrentTime();
             const region = wsRegions.getRegions()[0]; 
             
-            // 【修正】強制的なジャンプ処理を削除。
-            // ※ループの「終わり際」で止まっている状態でPlayを押した時のみ、ループの先頭に戻してあげる親切設計。
             if (isCountEnabled && region && current >= region.end - 0.1 && current < region.end + 0.1) {
                 wavesurfer.setTime(region.start); 
             }
@@ -813,8 +822,6 @@
             } 
             const r = wsRegions.getRegions()[0]; 
             
-            // 【超重要修正】t が r.end を超えても、それが「自然な再生（0.4秒以内のズレ）」である場合のみループさせる。
-            // ユーザーが自ら先をタップして大きく進んだ場合は、ループを無視してそこから再生させる！
             if(r && t >= r.end && t < r.end + 0.4) { 
                 if (isRecording) { 
                     toggleRecording(); 
@@ -843,6 +850,26 @@
         window.resetSetting = (id, val) => { document.getElementById(id).value = val; applySettings(); }; 
         changeLanguage(); 
         renderYTHistory(); 
+
+        // 【操作性】キーボードショートカット機能の追加
+        document.addEventListener('keydown', (e) => {
+            // 入力欄にフォーカスがある時は無効化
+            if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
+
+            if (e.code === 'Space') {
+                e.preventDefault(); // スペースキーによる画面スクロールを防止
+                document.getElementById('playBtn').click();
+            } else if (e.code === 'ArrowLeft') {
+                e.preventDefault();
+                if (wavesurfer) wavesurfer.skip(-5);
+            } else if (e.code === 'ArrowRight') {
+                e.preventDefault();
+                if (wavesurfer) wavesurfer.skip(5);
+            } else if (e.code === 'KeyR' || e.key.toLowerCase() === 'r') {
+                e.preventDefault();
+                toggleRecording();
+            }
+        });
     }
     window.addEventListener('DOMContentLoaded', startApp);
 </script>

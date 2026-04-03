@@ -248,6 +248,9 @@
         <div class="account-info-row"><span class="account-info-label" id="accEmailLabel">メールアドレス</span><span class="account-info-value" id="accountEmail">---</span></div>
         <div class="account-info-row"><span class="account-info-label" id="accUidLabel">UID</span><span class="account-info-value" id="accountUid">---</span></div>
         <div class="account-info-row"><span class="account-info-label" id="accPlanLabel">プラン</span><span class="account-info-value" id="accountPlan">---</span></div>
+        
+        <button class="clear-btn-ja" onclick="resetPassword()" style="width:100%; padding:10px; border-radius:10px; margin-top:12px; border: 1px solid var(--border-color);"><span class="material-icons" style="font-size:16px;">lock_reset</span> <span id="resetPwText">パスワードを変更する</span></button>
+
         <button class="delete-account-btn" id="deleteAccountBtn" onclick="deleteUserAccount()"><span class="material-icons" style="font-size:16px;">delete_forever</span> <span id="deleteAccText">アカウント削除</span></button>
     </div>
     <button class="clear-btn-ja" onclick="closeAccountModal()" style="width:100%; margin-top:8px; justify-content:center;" id="accountCloseBtn">閉じる</button>
@@ -462,7 +465,6 @@
 
     let isSubscribed = false;
 
-    // クラウドへのデータ保存
     async function syncToCloud() {
         const user = auth.currentUser;
         if (!user || !user.email) return;
@@ -479,12 +481,9 @@
                 ams_yt_loops: ams_yt_loops,
                 lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
             }, { merge: true });
-        } catch (e) {
-            console.error("Cloud sync error:", e);
-        }
+        } catch (e) { console.error("Cloud sync error:", e); }
     }
 
-    // クラウドからのデータ復元
     async function syncFromCloud(user) {
         if (!user || !user.email) return;
         const uEmail = user.email.toLowerCase().trim();
@@ -496,9 +495,7 @@
                 if (data.ams_loops) localStorage.setItem('ams_loops', JSON.stringify(data.ams_loops));
                 if (data.ams_yt_loops) localStorage.setItem('ams_yt_loops', JSON.stringify(data.ams_yt_loops));
             }
-        } catch (e) {
-            console.error("Cloud load error:", e);
-        }
+        } catch (e) { console.error("Cloud load error:", e); }
     }
 
     function openAuthOverlay() { document.getElementById('auth-overlay').style.display = 'flex'; }
@@ -510,6 +507,20 @@
     function loginWithEmail() { const email = document.getElementById('loginEmail').value, password = document.getElementById('loginPassword').value; if(!email || !password) return alert("メールアドレスとパスワードを入力してください"); initAudioContext(); auth.signInWithEmailAndPassword(email, password).then(() => closeAuthOverlay()).catch((error) => { if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') { if(confirm("アカウントが見つかりません。この内容で新しく登録しますか？")) auth.createUserWithEmailAndPassword(email, password).then(() => closeAuthOverlay()).catch(e => alert("登録エラー: " + e.message)); } else alert("ログインエラー: " + error.message); }); }
     function logout() { auth.signOut().then(() => location.reload()); }
     
+    // 【機能追加】パスワードのリセット
+    function resetPassword() {
+        const user = auth.currentUser;
+        if (!user || !user.email) return;
+        const confirmed = confirm(`現在のアドレス (${user.email}) 宛に、パスワード再設定の案内メールを送信しますか？`);
+        if (confirmed) {
+            auth.sendPasswordResetEmail(user.email).then(() => {
+                alert("パスワード再設定メールを送信しました。メールボックスをご確認ください。");
+            }).catch((error) => {
+                alert("エラーが発生しました: " + error.message);
+            });
+        }
+    }
+
     function redirectToCheckout() { 
         const user = auth.currentUser; 
         if (user) { 
@@ -550,16 +561,13 @@
                 } 
             } 
             return false; 
-        } catch (e) { 
-            console.error("Check error:", e); 
-            return false; 
-        } 
+        } catch (e) { return false; } 
     }
 
     function openAccountModal() { const user = auth.currentUser; if (!user) { alert("ログインしていません。先にログインしてください。"); toggleMenu(false); openAuthOverlay(); return; } updateAccountModalUI(user); document.getElementById('accountModal').style.display = 'block'; toggleMenu(false); }
     function closeAccountModal() { document.getElementById('accountModal').style.display = 'none'; }
     
-    async function updateAccountModalUI(user) { if (!user) return; document.getElementById('accountDisplayName').innerText = user.displayName || user.email?.split('@')[0] || "No Name"; document.getElementById('accountEmail').innerText = user.email || "No Email"; document.getElementById('accountUid').innerText = user.uid; const subStatus = await checkSubscriptionStatus(user); document.getElementById('accountPlan').innerHTML = subStatus ? '<span style="color:#d4a373;">PREMIUM</span>' : 'FREE'; const lang = document.getElementById('langSelect').value; const t = translations[lang] || translations['ja']; document.getElementById('deleteAccText').innerText = lang === 'ja' ? 'アカウント削除' : 'Delete Account'; document.getElementById('accNameLabel').innerText = lang === 'ja' ? 'アカウント名' : 'Display Name'; document.getElementById('accEmailLabel').innerText = lang === 'ja' ? 'メールアドレス' : 'Email'; document.getElementById('accUidLabel').innerText = 'UID'; document.getElementById('accPlanLabel').innerText = lang === 'ja' ? 'プラン' : 'Plan'; document.getElementById('accountModalTitle').innerText = lang === 'ja' ? 'アカウント情報' : 'Account Info'; document.getElementById('accountCloseBtn').innerText = lang === 'ja' ? '閉じる' : 'Close'; document.getElementById('accountMenuItem').innerText = lang === 'ja' ? 'アカウント情報' : 'Account Info'; }
+    async function updateAccountModalUI(user) { if (!user) return; document.getElementById('accountDisplayName').innerText = user.displayName || user.email?.split('@')[0] || "No Name"; document.getElementById('accountEmail').innerText = user.email || "No Email"; document.getElementById('accountUid').innerText = user.uid; const subStatus = await checkSubscriptionStatus(user); document.getElementById('accountPlan').innerHTML = subStatus ? '<span style="color:#d4a373;">PREMIUM</span>' : 'FREE'; const lang = document.getElementById('langSelect').value; const t = translations[lang] || translations['ja']; document.getElementById('deleteAccText').innerText = lang === 'ja' ? 'アカウント削除' : 'Delete Account'; document.getElementById('accNameLabel').innerText = lang === 'ja' ? 'アカウント名' : 'Display Name'; document.getElementById('accEmailLabel').innerText = lang === 'ja' ? 'メールアドレス' : 'Email'; document.getElementById('accUidLabel').innerText = 'UID'; document.getElementById('accPlanLabel').innerText = lang === 'ja' ? 'プラン' : 'Plan'; document.getElementById('accountModalTitle').innerText = lang === 'ja' ? 'アカウント情報' : 'Account Info'; document.getElementById('accountCloseBtn').innerText = lang === 'ja' ? '閉じる' : 'Close'; document.getElementById('accountMenuItem').innerText = lang === 'ja' ? 'アカウント情報' : 'Account Info'; document.getElementById('resetPwText').innerText = lang === 'ja' ? 'パスワードを変更する' : 'Reset Password'; }
 
     async function deleteUserAccount() { const user = auth.currentUser; if (!user || !user.email) return alert("ログインしていません"); const uEmail = user.email.toLowerCase().trim(); const confirmed = confirm("アカウントを完全に削除します。すべての保存データ（ループ、履歴など）が消去され、元に戻せません。本当に削除しますか？"); if (!confirmed) return; try { await db.collection('Users').doc(uEmail).delete(); await user.delete(); alert("アカウントを削除しました。ページをリロードします。"); location.reload(); } catch (error) { alert("削除エラー: " + error.message + "\n再度ログインしてからお試しください。"); } }
 
@@ -570,11 +578,7 @@
             authOverlay.style.display = 'none'; authSection.style.display = 'none'; userInfo.style.display = 'flex';
             userNameSpan.innerText = user.displayName || user.email.split('@')[0];
             
-            try {
-                await db.collection('Users').doc(uEmail).set({ uid: user.uid, email: uEmail }, { merge: true });
-            } catch (e) {
-                console.error("Failed to update user info:", e);
-            }
+            try { await db.collection('Users').doc(uEmail).set({ uid: user.uid, email: uEmail }, { merge: true }); } catch (e) {}
 
             db.collection('Users').doc(uEmail).onSnapshot(async () => {
                 isSubscribed = await checkSubscriptionStatus(user);
@@ -599,6 +603,12 @@
             legalInner: `<h2 style="color:var(--primary-color); margin-top:0;">特定商取引法に基づく表記</h2><h3>運営者名</h3><p>芦田幸一 (Anderson Studios / AMS Music School)</p><h3>連絡先</h3><p>ams.guitar.school@gmail.com</p><h3>販売価格</h3><p>購入手続きの際に画面に表示される金額（税込）</p><h3>代金の支払時期および方法</h3><p>Square決済（クレジットカード等）による即時決済。サブスクリプションは各更新日に課金されます。</p><h3>役務の提供時期</h3><p>決済完了後、直ちにご利用いただけます。</p><h3>解約・返金ポリシー</h3><p>・商品の性質上、決済完了後の返金・返品は原則としてお受けできません。<br>・サブスクリプションの解約はいつでも可能です。解約後も有効期限までは引き続きサービスをご利用いただけます。<br>・日割り計算による返金は行っておりません。</p><button class="clear-btn-ja" style="width:100%; margin-top:20px;" onclick="togglePolicy('legal', false)">閉じる</button>`,
             guideFileContent: `<b>【Audio File Mode】フルガイド</b><span class="guide-sub">1. ファイル読み込み</span><ul><li>端末内の音楽ファイルを選択して解析。読み込み時にBPMが自動算出されます。</li></ul><span class="guide-sub">2. ABループ (範囲指定)</span><ul><li>波形をドラッグして範囲を選択。再生中、範囲の終端で自動的に始端へ戻ります。</li><li>「選択解除」でループを解除。「ループ保存」で楽曲ごとに複数の範囲を保存し、下のリストから瞬時に切り替え可能です。</li></ul><span class="guide-sub">3. BPMとPitchの変更</span><ul><li>BPMスライダーで速度を変更（0.5x〜1.5x）。</li><li>Pitchスライダーでキーを半音単位で変更（±6）。※Pitch変更にはサブスクが必要です。</li></ul><span class="guide-sub">4. 自動スピードアップ機能</span><ul><li>「⚡(ボルト)」ボタンをONにし「速度回数」を選択。ループを指定回数繰り返すごとに、自動でBPMが+0.05ずつ上がります（元のBPMまで）。</li></ul><span class="guide-sub">5. セルフ録音チェック</span><ul><li>「mic」ボタンで、再生しながら自分の音を録音。</li><li>録音データは波形の下に表示され、メイン音源と録音の音量を個別に調整できます。</li><li>「S(ソロ)」ボタンをONにすると、録音した音だけを聴くことができます。</li><li class="guide-note">※正確な録音と同期には、PCとオーディオインターフェースの利用を推奨します。</li><li class="guide-note">※モバイル端末（スマホ・タブレット）ではブラウザの仕様により、録音動作が不安定になる場合があります。</li></ul>`,
             guideYTContent: `<b>【YouTube Mode】フルガイド</b><span class="guide-sub">1. 動画読み込み</span><ul><li>YouTubeのURLを貼り付けて「LOAD」をタップ。</li><li>読み込んだ動画は「RECENT HISTORY」に保存され、履歴から素早く再読み込みできます。</li></ul><span class="guide-sub">2. ABループ設定</span><ul><li>「SET START」と「SET END」ボタンで現在の再生位置をループ範囲に設定。</li><li>「-1s / +1s」ボタンで、開始・終了位置を1秒単位で微調整できます。</li><li>「LOOP ON/OFF」ボタンでループの有効/無効を切り替えます。</li></ul><span class="guide-sub">3. ループの保存</span><ul><li>「SAVE」ボタンで設定したループ範囲を保存。</li><li>保存されたループは動画ごとにリスト化され、数字アイコンをタップするだけで瞬時に呼び出せます。</li></ul>`
+        },
+        en: { langTitle: "Language Settings", helpTitle: "Help & Guide", guideFile: "Audio File Mode Guide", guideYT: "YouTube Mode Guide", close: "Close", fit: "FIT", clear: "Clear Loop", ready: "READY", analyzing: "ANALYZING...", setStart: "SET START", setEnd: "SET END", loopOff: "LOOP OFF", loopOn: "LOOP ON", fileSelect: "Select Audio File", saveLoop: "Save Loop", speedUpLabel: "Auto Speed", recPlay: "Play Rec", recStop: "Stop Rec", privacyMenu: "Privacy Policy", legalMenu: "Commercial Transactions Act", authDesc: "Login with test account", googleBtn: "Login with Google", authDiv: "OR", authEmail: "Login / Register", subDesc: "Subscription is required to use this feature.", subStart: "Start Subscription", subLogout: "Login with another account", historyTitle: "Recent History", historyClear: "Clear All", ytLoad: "LOAD", recDel: "Delete",
+            privacyInner: `<h2 style="color:var(--primary-color); margin-top:0;">Privacy Policy</h2><p>Anderson Studios ("We/Us") operating as "AMS Music School" establishes this Privacy Policy regarding the handling of personal information in the "AMS Practice Player" ("App").</p><h3>1. Collected Information</h3><p>The App collects email addresses and names via Google Authentication, and payment statuses via Square for subscription management.</p><h3>2. Purpose of Use</h3><p>Collected information is used solely for authentication, subscription management, user support, and delivering App features.</p><h3>3. Third-Party Sharing</h3><p>We do not share information with third parties without consent, except as required by law. The App utilizes Google Firebase and Square.</p><h3>4. Contact</h3><p>Operator: Anderson Studios (AMS Music School)<br>Contact: ams.guitar.school@gmail.com</p><button class="clear-btn-ja" style="width:100%; margin-top:20px;" onclick="togglePolicy('privacy', false)">Close</button>`,
+            legalInner: `<h2 style="color:var(--primary-color); margin-top:0;">Legal Notice</h2><h3>Operator</h3><p>Koichi Ashida (Anderson Studios / AMS Music School)</p><h3>Contact</h3><p>ams.guitar.school@gmail.com</p><h3>Pricing</h3><p>Displayed during the purchase process (Tax included).</p><h3>Payment</h3><p>Immediate payment via Square (Credit Card, etc.). Subscriptions are billed on each renewal date.</p><h3>Delivery</h3><p>Service is available immediately after payment completion.</p><h3>Refund Policy</h3><p>・Due to the nature of digital services, refunds are generally not accepted after payment.<br>・Subscriptions can be canceled at any time. The service remains active until the end of the current billing period.<br>・No pro-rated refunds are provided.</p><button class="clear-btn-ja" style="width:100%; margin-top:20px;" onclick="togglePolicy('legal', false)">Close</button>`,
+            guideFileContent: `<b>【Audio File Mode】Full Guide</b><span class="guide-sub">1. Load Audio</span><ul><li>Select a file to analyze BPM automatically.</li></ul><span class="guide-sub">2. AB Loop</span><ul><li>Drag waveform to select range. Use "Save Loop" to store segments.</li></ul><span class="guide-sub">3. BPM & Pitch</span><ul><li>Adjust speed (0.5x-1.5x) and Pitch (±6). *Pitch requires subscription.</li></ul><span class="guide-sub">4. Auto Speed Up</span><ul><li>Enable "Bolt" and set loop count to automatically increase BPM by +0.05 per interval.</li></ul><span class="guide-sub">5. Recording</span><ul><li>Record while playing. Adjust Main/Rec volume or use "Solo(S)" to hear only the recording.</li><li class="guide-note">*Using a PC and Audio Interface is highly recommended for stable sync.</li><li class="guide-note">*Mobile devices may experience unstable recording due to browser limitations.</li></ul>`,
+            guideYTContent: `<b>【YouTube Mode】Full Guide</b><span class="guide-sub">1. Load Video</span><ul><li>Paste URL and tap LOAD. Recently viewed videos are saved in History.</li></ul><span class="guide-sub">2. AB Loop</span><ul><li>Use SET START/END to define range. Fine-tune with -1s/+1s buttons.</li><li>Toggle LOOP ON/OFF to control repetition.</li></ul><span class="guide-sub">3. Save Loops</span><ul><li>Save multiple loop ranges per video and recall them instantly via the loop list.</li></ul>`
         }
     };
     
@@ -613,7 +623,7 @@
     let recObjectURL = null, recordedAudioBuffer = null, lastRecStartPos = 0;
     let currentLoopCount = 0;
 
-    function changeLanguage() { const lang = document.getElementById('langSelect').value || 'ja'; const t = translations[lang] || translations['ja']; document.getElementById('langTitle').innerText = t.langTitle; document.getElementById('helpTitle').innerText = t.helpTitle; document.getElementById('guideFileTitle').innerText = t.guideFile; document.getElementById('guideYTTitle').innerText = t.guideYT; document.getElementById('privacyMenu').innerText = t.privacyMenu; document.getElementById('legalMenu').innerText = t.legalMenu; document.getElementById('closeBtn1').innerText = t.close; document.getElementById('closeBtn2').innerText = t.close; document.getElementById('resetZoomBtn').innerText = t.fit; document.getElementById('clearRangeBtn').innerHTML = `<span class="material-icons" style="font-size:14px;">layers_clear</span> ${t.clear}`; document.getElementById('saveLoopBtn').innerHTML = `<span class="material-icons" style="font-size:14px;">bookmark_add</span> ${t.saveLoop}`; document.getElementById('speedUpLabel').innerText = t.speedUpLabel; document.getElementById('setStartBtn').innerText = t.setStart; document.getElementById('setEndBtn').innerText = t.setEnd; document.getElementById('authDesc').innerText = t.authDesc; document.getElementById('googleLoginBtnTxt').innerText = t.googleBtn; document.getElementById('authDivider').innerText = t.authDiv; document.getElementById('emailLoginBtnTxt').innerText = t.authEmail; document.getElementById('authCloseBtn').innerText = t.close; document.getElementById('subDesc').innerHTML = t.subDesc; document.getElementById('subStartBtn').innerText = t.subStart; document.getElementById('subCloseBtn').innerText = t.close; document.getElementById('subLogoutBtn').innerText = t.subLogout; document.getElementById('ytLoadBtnTxt').innerText = t.ytLoad; document.getElementById('historyTitle').innerText = t.historyTitle; document.getElementById('historyClearBtn').innerText = t.historyClear; document.getElementById('guideFileContent').innerHTML = t.guideFileContent; document.getElementById('guideYTContent').innerHTML = t.guideYTContent; document.getElementById('privacyPolicyInner').innerHTML = t.privacyInner; document.getElementById('legalNoticeInner').innerHTML = t.legalInner; const fileLabel = document.getElementById('fileSelectBtn'); if (fileLabel.innerText.includes("ファイル") || fileLabel.innerText.includes("Select")) fileLabel.innerText = t.fileSelect; const loadS = document.getElementById('loadStatus'); if (loadS.innerText.includes("READY") || loadS.innerText.includes("準備")) loadS.innerText = t.ready; const b = document.getElementById('toggleLoopBtn'); if(b) b.innerText = isLooping ? t.loopOn : t.loopOff; const recDel = document.getElementById('recDelBtnTxt'); if(recDel) recDel.innerHTML = `<span class="material-icons" style="font-size:14px;">delete</span> ${t.recDel}`; updateRecPlayBtnUI(); if(auth.currentUser) updateAccountModalUI(auth.currentUser); document.getElementById('accountMenuItem').innerText = t.langTitle === "Language Settings" ? "Account Info" : "アカウント情報"; }
+    function changeLanguage() { const lang = document.getElementById('langSelect').value || 'ja'; const t = translations[lang] || translations['ja']; document.getElementById('langTitle').innerText = t.langTitle; document.getElementById('helpTitle').innerText = t.helpTitle; document.getElementById('guideFileTitle').innerText = t.guideFile; document.getElementById('guideYTTitle').innerText = t.guideYT; document.getElementById('privacyMenu').innerText = t.privacyMenu; document.getElementById('legalMenu').innerText = t.legalMenu; document.getElementById('closeBtn1').innerText = t.close; document.getElementById('closeBtn2').innerText = t.close; document.getElementById('resetZoomBtn').innerText = t.fit; document.getElementById('clearRangeBtn').innerHTML = `<span class="material-icons" style="font-size:14px;">layers_clear</span> ${t.clear}`; document.getElementById('saveLoopBtn').innerHTML = `<span class="material-icons" style="font-size:14px;">bookmark_add</span> ${t.saveLoop}`; document.getElementById('speedUpLabel').innerText = t.speedUpLabel; document.getElementById('setStartBtn').innerText = t.setStart; document.getElementById('setEndBtn').innerText = t.setEnd; document.getElementById('authDesc').innerText = t.authDesc; document.getElementById('googleLoginBtnTxt').innerText = t.googleBtn; document.getElementById('authDivider').innerText = t.authDiv; document.getElementById('emailLoginBtnTxt').innerText = t.authEmail; document.getElementById('authCloseBtn').innerText = t.close; document.getElementById('subDesc').innerHTML = t.subDesc; document.getElementById('subStartBtn').innerText = t.subStart; document.getElementById('subCloseBtn').innerText = t.close; document.getElementById('subLogoutBtn').innerText = t.subLogout; document.getElementById('ytLoadBtnTxt').innerText = t.ytLoad; document.getElementById('historyTitle').innerText = t.historyTitle; document.getElementById('historyClearBtn').innerText = t.historyClear; document.getElementById('guideFileContent').innerHTML = t.guideFileContent; document.getElementById('guideYTContent').innerHTML = t.guideYTContent; document.getElementById('privacyPolicyInner').innerHTML = t.privacyInner; document.getElementById('legalNoticeInner').innerHTML = t.legalInner; const fileLabel = document.getElementById('fileSelectBtn'); if (fileLabel.innerText.includes("ファイル") || fileLabel.innerText.includes("Select")) fileLabel.innerText = t.fileSelect; const loadS = document.getElementById('loadStatus'); if (loadS.innerText.includes("READY") || loadS.innerText.includes("準備")) loadS.innerText = t.ready; const b = document.getElementById('toggleLoopBtn'); if(b) b.innerText = isLooping ? t.loopOn : t.loopOff; const recDel = document.getElementById('recDelBtnTxt'); if(recDel) recDel.innerHTML = `<span class="material-icons" style="font-size:14px;">delete</span> ${t.recDel}`; updateRecPlayBtnUI(); if(auth.currentUser) updateAccountModalUI(auth.currentUser); document.getElementById('accountMenuItem').innerText = t.langTitle === "Language Settings" ? "Account Info" : "アカウント情報"; document.getElementById('resetPwText').innerText = t.langTitle === "Language Settings" ? "Reset Password" : "パスワードを変更する"; }
     function updateRecPlayBtnUI() { const lang = document.getElementById('langSelect').value; const t = translations[lang] || translations['ja']; const btn = document.getElementById('playRecBtn'); if (recWavesurfer && recWavesurfer.isPlaying()) btn.innerHTML = `<span class="material-icons" style="font-size:14px;">stop_circle</span> ${t.recStop}`; else if(btn) btn.innerHTML = `<span class="material-icons" style="font-size:14px;">play_circle</span> ${t.recPlay}`; }
     function toggleMenu(isOpen) { document.getElementById('sideMenu').classList.toggle('open', isOpen); document.getElementById('menuOverlay').style.display = isOpen ? 'block' : 'none'; }
     function showGuide(type) { toggleMenu(false); closeModals(); if (type === 'file') document.getElementById('guideModalFile').style.display = 'block'; if (type === 'yt') document.getElementById('guideModalYT').style.display = 'block'; document.getElementById('menuOverlay').style.display = 'block'; }
@@ -851,21 +861,30 @@
         changeLanguage(); 
         renderYTHistory(); 
 
-        // 【操作性】キーボードショートカット機能の追加
+        // 【機能追加】キーボードショートカット機能
         document.addEventListener('keydown', (e) => {
-            // 入力欄にフォーカスがある時は無効化
+            // 文字入力中（URLやメアドなど）はショートカットを無効化して誤作動を防止
             if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
 
+            // Spaceキー: 再生 / 一時停止
             if (e.code === 'Space') {
-                e.preventDefault(); // スペースキーによる画面スクロールを防止
+                e.preventDefault(); 
                 document.getElementById('playBtn').click();
-            } else if (e.code === 'ArrowLeft') {
+            } 
+            // 左矢印: 5秒戻る
+            else if (e.code === 'ArrowLeft') {
                 e.preventDefault();
-                if (wavesurfer) wavesurfer.skip(-5);
-            } else if (e.code === 'ArrowRight') {
+                if (currentMode === 'file' && wavesurfer) wavesurfer.skip(-5);
+                if (currentMode === 'yt' && ytPlayer) ytPlayer.seekTo(Math.max(0, ytPlayer.getCurrentTime() - 5));
+            } 
+            // 右矢印: 5秒進む
+            else if (e.code === 'ArrowRight') {
                 e.preventDefault();
-                if (wavesurfer) wavesurfer.skip(5);
-            } else if (e.code === 'KeyR' || e.key.toLowerCase() === 'r') {
+                if (currentMode === 'file' && wavesurfer) wavesurfer.skip(5);
+                if (currentMode === 'yt' && ytPlayer) ytPlayer.seekTo(ytPlayer.getCurrentTime() + 5);
+            } 
+            // Rキー: 録音開始 / 停止 (Fileモード時のみ)
+            else if ((e.code === 'KeyR' || e.key.toLowerCase() === 'r') && currentMode === 'file') {
                 e.preventDefault();
                 toggleRecording();
             }

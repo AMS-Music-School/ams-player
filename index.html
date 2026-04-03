@@ -696,18 +696,20 @@
         wsRegions = wavesurfer.registerPlugin(WaveSurfer.Regions.create()); 
         wsRegions.enableDragSelection({ color: 'rgba(212, 163, 115, 0.2)' }); 
         
+        // 【安定化】リージョン作成時ではなく、更新完了時（ドラッグ後）に再生位置をセットする
         wsRegions.on('region-created', r => { 
             if(wsRegions.getRegions().length > 1) {
                 wsRegions.getRegions()[0].remove(); 
             }
-            // 【安定化】マウスドラッグ完了時のシーク衝突を防ぐための遅延処理
-            setTimeout(() => {
-                if (!wavesurfer.isPlaying()) {
-                    wavesurfer.setTime(r.start);
-                }
-            }, 50);
             currentLoopCount = 0; 
         }); 
+
+        wsRegions.on('region-updated', r => {
+            // 再生中でない場合のみシーク（ドラッグの競合フリーズを防ぐ）
+            if (!wavesurfer.isPlaying()) {
+                wavesurfer.setTime(r.start);
+            }
+        });
 
         document.getElementById('zoomSlider').oninput = (e) => wavesurfer.zoom(Number(e.target.value)); 
         document.getElementById('resetZoomBtn').onclick = () => { wavesurfer.zoom(0); document.getElementById('zoomSlider').value = 100; }; 
@@ -724,8 +726,8 @@
                 if (currentObjectURL) URL.revokeObjectURL(currentObjectURL); 
                 currentObjectURL = URL.createObjectURL(blob); 
                 
-                // 【安定化】新ファイル読み込み前に前のデータを完全にリセット
-                wavesurfer.stop();
+                // 【安定化】wavesurfer.stop() を廃止し、正しい初期化へ修正
+                wavesurfer.pause();
                 wavesurfer.empty();
                 wsRegions.clearRegions();
 
@@ -774,15 +776,35 @@
             initAudioContext(); 
             if (wavesurfer.isPlaying()) { 
                 wavesurfer.pause(); 
-            } else { 
-                const current = wavesurfer.getCurrentTime(), region = wsRegions.getRegions()[0]; 
-                if (isCountEnabled && region && (current < region.start || current >= (region.end - 0.05))) {
-                    wavesurfer.setTime(region.start); 
-                }
-                await runCountdown(); 
-                // 【安定化】再生直前にapplySettings()を呼ぶとiOS等でフリーズするため削除
-                wavesurfer.play().catch(e => console.error("Play interrupted:", e)); 
+                return; // ここで終了させる
             } 
+            
+            // 【安定化】モバイルブラウザの自動再生ブロックを解除するハック
+            const media = wavesurfer.getMediaElement();
+            if (media && media.paused) {
+                try {
+                    await media.play();
+                    media.pause();
+                } catch(e) {} // エラーは無視してロック解除のみ行う
+            }
+
+            const current = wavesurfer.getCurrentTime();
+            const region = wsRegions.getRegions()[0]; 
+            
+            if (isCountEnabled && region && (current < region.start || current >= (region.end - 0.05))) {
+                wavesurfer.setTime(region.start); 
+            }
+            
+            // カウントダウン（非同期処理）
+            if (isCountEnabled) {
+                await runCountdown(); 
+            }
+            
+            // 再生直前に設定を同期
+            applySettings();
+
+            // 再生を実行
+            wavesurfer.play().catch(e => console.error("Play interrupted:", e)); 
         }; 
 
         wavesurfer.on('play', () => { 

@@ -650,7 +650,6 @@
             updateBpmDisplay(); 
             statusEl.innerText = translations[lang].ready; 
             
-            // 【安定化】分析完了後、もし再生中でなければ無音部分をスキップして待機
             if(wavesurfer && !wavesurfer.isPlaying()) {
                 wavesurfer.setTime(firstSoundTime);
             }
@@ -696,19 +695,19 @@
         wsRegions = wavesurfer.registerPlugin(WaveSurfer.Regions.create()); 
         wsRegions.enableDragSelection({ color: 'rgba(212, 163, 115, 0.2)' }); 
         
-        // 【安定化】リージョン作成時ではなく、更新完了時（ドラッグ後）に再生位置をセットする
+        // 【修正】クリック（タップ）で新しい範囲が作られた瞬間に、その位置へジャンプ（再生中も有効）
         wsRegions.on('region-created', r => { 
             if(wsRegions.getRegions().length > 1) {
                 wsRegions.getRegions()[0].remove(); 
             }
+            wavesurfer.setTime(r.start);
             currentLoopCount = 0; 
         }); 
 
-        wsRegions.on('region-updated', r => {
-            // 再生中でない場合のみシーク（ドラッグの競合フリーズを防ぐ）
-            if (!wavesurfer.isPlaying()) {
-                wavesurfer.setTime(r.start);
-            }
+        // 【修正】ドラッグによる範囲調整が「終わった瞬間」にジャンプさせる（ドラッグ中のフリーズを防止）
+        wsRegions.on('region-update-end', r => {
+            wavesurfer.setTime(r.start);
+            currentLoopCount = 0;
         });
 
         document.getElementById('zoomSlider').oninput = (e) => wavesurfer.zoom(Number(e.target.value)); 
@@ -726,7 +725,6 @@
                 if (currentObjectURL) URL.revokeObjectURL(currentObjectURL); 
                 currentObjectURL = URL.createObjectURL(blob); 
                 
-                // 【安定化】wavesurfer.stop() を廃止し、正しい初期化へ修正
                 wavesurfer.pause();
                 wavesurfer.empty();
                 wsRegions.clearRegions();
@@ -753,6 +751,7 @@
                         media.preservesPitch = false; 
                         wavesurfer.setPlaybackRate(s * Math.pow(2, p / 12)); 
                     } else {
+                        media.preservesPitch = true;
                         wavesurfer.setPlaybackRate(s);
                     }
                 } 
@@ -776,16 +775,15 @@
             initAudioContext(); 
             if (wavesurfer.isPlaying()) { 
                 wavesurfer.pause(); 
-                return; // ここで終了させる
+                return;
             } 
             
-            // 【安定化】モバイルブラウザの自動再生ブロックを解除するハック
             const media = wavesurfer.getMediaElement();
             if (media && media.paused) {
                 try {
                     await media.play();
                     media.pause();
-                } catch(e) {} // エラーは無視してロック解除のみ行う
+                } catch(e) {} 
             }
 
             const current = wavesurfer.getCurrentTime();
@@ -795,15 +793,12 @@
                 wavesurfer.setTime(region.start); 
             }
             
-            // カウントダウン（非同期処理）
             if (isCountEnabled) {
                 await runCountdown(); 
             }
             
-            // 再生直前に設定を同期
             applySettings();
 
-            // 再生を実行
             wavesurfer.play().catch(e => console.error("Play interrupted:", e)); 
         }; 
 

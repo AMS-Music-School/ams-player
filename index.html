@@ -466,13 +466,14 @@
     async function syncToCloud() {
         const user = auth.currentUser;
         if (!user || !user.email) return;
+        const uEmail = user.email.toLowerCase(); // 大文字小文字のズレ防止
         try {
             const ytHistory = JSON.parse(localStorage.getItem('ams_yt_history') || "[]");
             const ams_loops = JSON.parse(localStorage.getItem('ams_loops') || "{}");
             const ams_yt_loops = JSON.parse(localStorage.getItem('ams_yt_loops') || "{}");
-            await db.collection('Users').doc(user.email).set({
+            await db.collection('Users').doc(uEmail).set({
                 uid: user.uid,
-                email: user.email,
+                email: uEmail,
                 ytHistory: ytHistory,
                 ams_loops: ams_loops,
                 ams_yt_loops: ams_yt_loops,
@@ -483,11 +484,12 @@
         }
     }
 
-    // クラウドからのデータ復元（メールアドレスベースに変更）
+    // クラウドからのデータ復元
     async function syncFromCloud(user) {
         if (!user || !user.email) return;
+        const uEmail = user.email.toLowerCase();
         try {
-            const doc = await db.collection('Users').doc(user.email).get();
+            const doc = await db.collection('Users').doc(uEmail).get();
             if (doc.exists) {
                 const data = doc.data();
                 if (data.ytHistory) localStorage.setItem('ams_yt_history', JSON.stringify(data.ytHistory));
@@ -507,18 +509,34 @@
     function loginWithGoogle() { initAudioContext(); const provider = new firebase.auth.GoogleAuthProvider(); provider.setCustomParameters({ prompt: 'select_account' }); auth.signInWithPopup(provider).then(() => closeAuthOverlay()).catch(e => alert("ログインエラー: " + e.message)); }
     function loginWithEmail() { const email = document.getElementById('loginEmail').value, password = document.getElementById('loginPassword').value; if(!email || !password) return alert("メールアドレスとパスワードを入力してください"); initAudioContext(); auth.signInWithEmailAndPassword(email, password).then(() => closeAuthOverlay()).catch((error) => { if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') { if(confirm("アカウントが見つかりません。この内容で新しく登録しますか？")) auth.createUserWithEmailAndPassword(email, password).then(() => closeAuthOverlay()).catch(e => alert("登録エラー: " + e.message)); } else alert("ログインエラー: " + error.message); }); }
     function logout() { auth.signOut().then(() => location.reload()); }
-    function redirectToCheckout() { const user = auth.currentUser; if (user) { const confirmed = confirm(`現在「${user.email}」でログインしています。\nこのメールアドレスで支払手続きを進めますか？\n（決済完了後、自動的にプレミアム機能が有効になります）`); if (confirmed) { const baseUrl = "https://square.link/u/B13lqKnj"; const checkoutUrl = `${baseUrl}?checkout_user_email=${encodeURIComponent(user.email)}`; window.location.href = checkoutUrl; } } else { alert("先にログインしてください。"); closeSubOverlay(); openAuthOverlay(); } }
+    
+    function redirectToCheckout() { 
+        const user = auth.currentUser; 
+        if (user) { 
+            const uEmail = user.email.toLowerCase();
+            const confirmed = confirm(`現在「${uEmail}」でログインしています。\n\n⚠️【超重要】\nSquareの決済画面でも、必ずこの同じメールアドレス「${uEmail}」を使用して決済してください。（Apple Pay等を使うと別のアドレスになる場合があります）\n\n支払手続きを進めますか？`); 
+            if (confirmed) { 
+                const baseUrl = "https://square.link/u/B13lqKnj"; 
+                const checkoutUrl = `${baseUrl}?checkout_user_email=${encodeURIComponent(uEmail)}`; 
+                window.location.href = checkoutUrl; 
+            } 
+        } else { 
+            alert("先にログインしてください。"); 
+            closeSubOverlay(); 
+            openAuthOverlay(); 
+        } 
+    }
 
-    // ★重要: メールアドレスをキーにして購読状況を確認する（以前の自動化システムを生かす仕様）
     async function checkSubscriptionStatus(user) { 
         if (!user || !user.email) return false; 
+        const uEmail = user.email.toLowerCase();
         try { 
-            const schoolDoc = await db.collection('SchoolMember').doc(user.email).get(); 
+            const schoolDoc = await db.collection('SchoolMember').doc(uEmail).get(); 
             if (schoolDoc.exists) { 
                 const data = schoolDoc.data(); 
                 if (data.isSubscribed === true || data.isStudent === true) return true; 
             } 
-            const userDoc = await db.collection('Users').doc(user.email).get(); 
+            const userDoc = await db.collection('Users').doc(uEmail).get(); 
             if (userDoc.exists) { 
                 const userData = userDoc.data(); 
                 if (userData.isSubscribed === true) { 
@@ -543,33 +561,32 @@
     
     async function updateAccountModalUI(user) { if (!user) return; document.getElementById('accountDisplayName').innerText = user.displayName || user.email?.split('@')[0] || "No Name"; document.getElementById('accountEmail').innerText = user.email || "No Email"; document.getElementById('accountUid').innerText = user.uid; const subStatus = await checkSubscriptionStatus(user); document.getElementById('accountPlan').innerHTML = subStatus ? '<span style="color:#d4a373;">PREMIUM</span>' : 'FREE'; const lang = document.getElementById('langSelect').value; const t = translations[lang] || translations['ja']; document.getElementById('deleteAccText').innerText = lang === 'ja' ? 'アカウント削除' : 'Delete Account'; document.getElementById('accNameLabel').innerText = lang === 'ja' ? 'アカウント名' : 'Display Name'; document.getElementById('accEmailLabel').innerText = lang === 'ja' ? 'メールアドレス' : 'Email'; document.getElementById('accUidLabel').innerText = 'UID'; document.getElementById('accPlanLabel').innerText = lang === 'ja' ? 'プラン' : 'Plan'; document.getElementById('accountModalTitle').innerText = lang === 'ja' ? 'アカウント情報' : 'Account Info'; document.getElementById('accountCloseBtn').innerText = lang === 'ja' ? '閉じる' : 'Close'; document.getElementById('accountMenuItem').innerText = lang === 'ja' ? 'アカウント情報' : 'Account Info'; }
 
-    async function deleteUserAccount() { const user = auth.currentUser; if (!user || !user.email) return alert("ログインしていません"); const confirmed = confirm("アカウントを完全に削除します。すべての保存データ（ループ、履歴など）が消去され、元に戻せません。本当に削除しますか？"); if (!confirmed) return; try { await db.collection('Users').doc(user.email).delete(); await user.delete(); alert("アカウントを削除しました。ページをリロードします。"); location.reload(); } catch (error) { alert("削除エラー: " + error.message + "\n再度ログインしてからお試しください。"); } }
+    async function deleteUserAccount() { const user = auth.currentUser; if (!user || !user.email) return alert("ログインしていません"); const uEmail = user.email.toLowerCase(); const confirmed = confirm("アカウントを完全に削除します。すべての保存データ（ループ、履歴など）が消去され、元に戻せません。本当に削除しますか？"); if (!confirmed) return; try { await db.collection('Users').doc(uEmail).delete(); await user.delete(); alert("アカウントを削除しました。ページをリロードします。"); location.reload(); } catch (error) { alert("削除エラー: " + error.message + "\n再度ログインしてからお試しください。"); } }
 
     auth.onAuthStateChanged(async user => {
         const userInfo = document.getElementById('userInfoDisplay'), userNameSpan = document.getElementById('userName'), authSection = document.getElementById('auth-section'), authOverlay = document.getElementById('auth-overlay'), subOverlay = document.getElementById('subscription-overlay');
         if (user && user.email) {
+            const uEmail = user.email.toLowerCase();
             authOverlay.style.display = 'none'; authSection.style.display = 'none'; userInfo.style.display = 'flex';
             userNameSpan.innerText = user.displayName || user.email.split('@')[0];
             
             try {
-                // メールアドレスをIDとしてユーザー情報をセット
-                await db.collection('Users').doc(user.email).set({
+                await db.collection('Users').doc(uEmail).set({
                     uid: user.uid,
-                    email: user.email
+                    email: uEmail
                 }, { merge: true });
             } catch (e) {
                 console.error("Failed to update user info:", e);
             }
 
-            // 自動化システムがメールアドレス基準で書き換えた瞬間を監視
-            db.collection('Users').doc(user.email).onSnapshot(async () => {
+            db.collection('Users').doc(uEmail).onSnapshot(async () => {
                 isSubscribed = await checkSubscriptionStatus(user);
                 if (isSubscribed) {
                     subOverlay.style.display = 'none';
                 }
                 updateAccountModalUI(user);
             });
-            db.collection('SchoolMember').doc(user.email).onSnapshot(async () => {
+            db.collection('SchoolMember').doc(uEmail).onSnapshot(async () => {
                 isSubscribed = await checkSubscriptionStatus(user);
                 if (isSubscribed) {
                     subOverlay.style.display = 'none';
@@ -589,6 +606,12 @@
             legalInner: `<h2 style="color:var(--primary-color); margin-top:0;">特定商取引法に基づく表記</h2><h3>運営者名</h3><p>芦田幸一 (Anderson Studios / AMS Music School)</p><h3>連絡先</h3><p>ams.guitar.school@gmail.com</p><h3>販売価格</h3><p>購入手続きの際に画面に表示される金額（税込）</p><h3>代金の支払時期および方法</h3><p>Square決済（クレジットカード等）による即時決済。サブスクリプションは各更新日に課金されます。</p><h3>役務の提供時期</h3><p>決済完了後、直ちにご利用いただけます。</p><h3>解約・返金ポリシー</h3><p>・商品の性質上、決済完了後の返金・返品は原則としてお受けできません。<br>・サブスクリプションの解約はいつでも可能です。解約後も有効期限までは引き続きサービスをご利用いただけます。<br>・日割り計算による返金は行っておりません。</p><button class="clear-btn-ja" style="width:100%; margin-top:20px;" onclick="togglePolicy('legal', false)">閉じる</button>`,
             guideFileContent: `<b>【Audio File Mode】フルガイド</b><span class="guide-sub">1. ファイル読み込み</span><ul><li>端末内の音楽ファイルを選択して解析。読み込み時にBPMが自動算出されます。</li></ul><span class="guide-sub">2. ABループ (範囲指定)</span><ul><li>波形をドラッグして範囲を選択。再生中、範囲の終端で自動的に始端へ戻ります。</li><li>「選択解除」でループを解除。「ループ保存」で楽曲ごとに複数の範囲を保存し、下のリストから瞬時に切り替え可能です。</li></ul><span class="guide-sub">3. BPMとPitchの変更</span><ul><li>BPMスライダーで速度を変更（0.5x〜1.5x）。</li><li>Pitchスライダーでキーを半音単位で変更（±6）。※Pitch変更にはサブスクが必要です。</li></ul><span class="guide-sub">4. 自動スピードアップ機能</span><ul><li>「⚡(ボルト)」ボタンをONにし「速度回数」を選択。ループを指定回数繰り返すごとに、自動でBPMが+0.05ずつ上がります（元のBPMまで）。</li></ul><span class="guide-sub">5. セルフ録音チェック</span><ul><li>「mic」ボタンで、再生しながら自分の音を録音。</li><li>録音データは波形の下に表示され、メイン音源と録音の音量を個別に調整できます。</li><li>「S(ソロ)」ボタンをONにすると、録音した音だけを聴くことができます。</li><li class="guide-note">※正確な録音と同期には、PCとオーディオインターフェースの利用を推奨します。</li><li class="guide-note">※モバイル端末（スマホ・タブレット）ではブラウザの仕様により、録音動作が不安定になる場合があります。</li></ul>`,
             guideYTContent: `<b>【YouTube Mode】フルガイド</b><span class="guide-sub">1. 動画読み込み</span><ul><li>YouTubeのURLを貼り付けて「LOAD」をタップ。</li><li>読み込んだ動画は「RECENT HISTORY」に保存され、履歴から素早く再読み込みできます。</li></ul><span class="guide-sub">2. ABループ設定</span><ul><li>「SET START」と「SET END」ボタンで現在の再生位置をループ範囲に設定。</li><li>「-1s / +1s」ボタンで、開始・終了位置を1秒単位で微調整できます。</li><li>「LOOP ON/OFF」ボタンでループの有効/無効を切り替えます。</li></ul><span class="guide-sub">3. ループの保存</span><ul><li>「SAVE」ボタンで設定したループ範囲を保存。</li><li>保存されたループは動画ごとにリスト化され、数字アイコンをタップするだけで瞬時に呼び出せます。</li></ul>`
+        },
+        en: { langTitle: "Language Settings", helpTitle: "Help & Guide", guideFile: "Audio File Mode Guide", guideYT: "YouTube Mode Guide", close: "Close", fit: "FIT", clear: "Clear Loop", ready: "READY", analyzing: "ANALYZING...", setStart: "SET START", setEnd: "SET END", loopOff: "LOOP OFF", loopOn: "LOOP ON", fileSelect: "Select Audio File", saveLoop: "Save Loop", speedUpLabel: "Auto Speed", recPlay: "Play Rec", recStop: "Stop Rec", privacyMenu: "Privacy Policy", legalMenu: "Commercial Transactions Act", authDesc: "Login with test account", googleBtn: "Login with Google", authDiv: "OR", authEmail: "Login / Register", subDesc: "Subscription is required to use this feature.", subStart: "Start Subscription", subLogout: "Login with another account", historyTitle: "Recent History", historyClear: "Clear All", ytLoad: "LOAD", recDel: "Delete",
+            privacyInner: `<h2 style="color:var(--primary-color); margin-top:0;">Privacy Policy</h2><p>Anderson Studios ("We/Us") operating as "AMS Music School" establishes this Privacy Policy regarding the handling of personal information in the "AMS Practice Player" ("App").</p><h3>1. Collected Information</h3><p>The App collects email addresses and names via Google Authentication, and payment statuses via Square for subscription management.</p><h3>2. Purpose of Use</h3><p>Collected information is used solely for authentication, subscription management, user support, and delivering App features.</p><h3>3. Third-Party Sharing</h3><p>We do not share information with third parties without consent, except as required by law. The App utilizes Google Firebase and Square.</p><h3>4. Contact</h3><p>Operator: Anderson Studios (AMS Music School)<br>Contact: ams.guitar.school@gmail.com</p><button class="clear-btn-ja" style="width:100%; margin-top:20px;" onclick="togglePolicy('privacy', false)">Close</button>`,
+            legalInner: `<h2 style="color:var(--primary-color); margin-top:0;">Legal Notice</h2><h3>Operator</h3><p>Koichi Ashida (Anderson Studios / AMS Music School)</p><h3>Contact</h3><p>ams.guitar.school@gmail.com</p><h3>Pricing</h3><p>Displayed during the purchase process (Tax included).</p><h3>Payment</h3><p>Immediate payment via Square (Credit Card, etc.). Subscriptions are billed on each renewal date.</p><h3>Delivery</h3><p>Service is available immediately after payment completion.</p><h3>Refund Policy</h3><p>・Due to the nature of digital services, refunds are generally not accepted after payment.<br>・Subscriptions can be canceled at any time. The service remains active until the end of the current billing period.<br>・No pro-rated refunds are provided.</p><button class="clear-btn-ja" style="width:100%; margin-top:20px;" onclick="togglePolicy('legal', false)">Close</button>`,
+            guideFileContent: `<b>【Audio File Mode】Full Guide</b><span class="guide-sub">1. Load Audio</span><ul><li>Select a file to analyze BPM automatically.</li></ul><span class="guide-sub">2. AB Loop</span><ul><li>Drag waveform to select range. Use "Save Loop" to store segments.</li></ul><span class="guide-sub">3. BPM & Pitch</span><ul><li>Adjust speed (0.5x-1.5x) and Pitch (±6). *Pitch requires subscription.</li></ul><span class="guide-sub">4. Auto Speed Up</span><ul><li>Enable "Bolt" and set loop count to automatically increase BPM by +0.05 per interval.</li></ul><span class="guide-sub">5. Recording</span><ul><li>Record while playing. Adjust Main/Rec volume or use "Solo(S)" to hear only the recording.</li><li class="guide-note">*Using a PC and Audio Interface is highly recommended for stable sync.</li><li class="guide-note">*Mobile devices may experience unstable recording due to browser limitations.</li></ul>`,
+            guideYTContent: `<b>【YouTube Mode】Full Guide</b><span class="guide-sub">1. Load Video</span><ul><li>Paste URL and tap LOAD. Recently viewed videos are saved in History.</li></ul><span class="guide-sub">2. AB Loop</span><ul><li>Use SET START/END to define range. Fine-tune with -1s/+1s buttons.</li><li>Toggle LOOP ON/OFF to control repetition.</li></ul><span class="guide-sub">3. Save Loops</span><ul><li>Save multiple loop ranges per video and recall them instantly via the loop list.</li></ul>`
         }
     };
     

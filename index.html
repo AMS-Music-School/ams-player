@@ -120,7 +120,6 @@
         .menu-item { display: flex; align-items: center; gap: 12px; color: var(--text-main); padding: 10px; text-decoration: none; border-radius: 8px; margin-bottom: 5px; cursor: pointer; transition: background 0.2s; font-size: 0.9rem; }
         .menu-item:hover { background: #2c2c2c; }
         
-        /* アカウント情報モーダル */
         .account-modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 95%; max-width: 420px; background: var(--panel-bg); border: 1px solid var(--primary-color); border-radius: 20px; z-index: 7000; padding: 24px 20px; box-shadow: 0 0 50px rgba(0,0,0,0.9); }
         .account-info-card { background: #0a0a0a; border-radius: 16px; padding: 16px; margin: 8px 0 16px; border: 1px solid var(--border-color); }
         .account-info-row { display: flex; justify-content: space-between; margin-bottom: 12px; word-break: break-all; gap: 12px; align-items: baseline; }
@@ -508,7 +507,34 @@
     function logout() { auth.signOut().then(() => location.reload()); }
     function redirectToCheckout() { const user = auth.currentUser; if (user) { const confirmed = confirm(`現在「${user.email}」でログインしています。\nこのメールアドレスで支払手続きを進めますか？\n（決済完了後、自動的にプレミアム機能が有効になります）`); if (confirmed) { const baseUrl = "https://square.link/u/B13lqKnj"; const checkoutUrl = `${baseUrl}?checkout_user_email=${encodeURIComponent(user.email)}`; window.location.href = checkoutUrl; } } else { alert("先にログインしてください。"); closeSubOverlay(); openAuthOverlay(); } }
 
-    async function checkSubscriptionStatus(user) { if (!user || !user.email) return false; try { const schoolDoc = await db.collection('SchoolMember').doc(user.email).get(); if (schoolDoc.exists) { const data = schoolDoc.data(); if (data.isSubscribed === true || data.isStudent === true) return true; } const userDoc = await db.collection('Users').doc(user.email).get(); if (userDoc.exists) { const userData = userDoc.data(); if (userData.isSubscribed === true) { if (userData.expirationDate) { const now = new Date(); const expiration = userData.expirationDate.toDate(); if (now < expiration) return true; return false; } return true; } } return false; } catch (e) { console.error("Check error:", e); return false; } }
+    // ★重要修正ポイント: db.collection().doc(user.email) -> db.collection().doc(user.uid) に変更
+    async function checkSubscriptionStatus(user) { 
+        if (!user) return false; 
+        try { 
+            const schoolDoc = await db.collection('SchoolMember').doc(user.uid).get(); 
+            if (schoolDoc.exists) { 
+                const data = schoolDoc.data(); 
+                if (data.isSubscribed === true || data.isStudent === true) return true; 
+            } 
+            const userDoc = await db.collection('Users').doc(user.uid).get(); 
+            if (userDoc.exists) { 
+                const userData = userDoc.data(); 
+                if (userData.isSubscribed === true) { 
+                    if (userData.expirationDate) { 
+                        const now = new Date(); 
+                        const expiration = userData.expirationDate.toDate(); 
+                        if (now < expiration) return true; 
+                        return false; 
+                    } 
+                    return true; 
+                } 
+            } 
+            return false; 
+        } catch (e) { 
+            console.error("Check error:", e); 
+            return false; 
+        } 
+    }
 
     function openAccountModal() { const user = auth.currentUser; if (!user) { alert("ログインしていません。先にログインしてください。"); toggleMenu(false); openAuthOverlay(); return; } updateAccountModalUI(user); document.getElementById('accountModal').style.display = 'block'; toggleMenu(false); }
     function closeAccountModal() { document.getElementById('accountModal').style.display = 'none'; }

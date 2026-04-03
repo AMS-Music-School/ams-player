@@ -446,14 +446,15 @@
 
 <script>
     // ==================== Firebase & 全機能維持 + クラウド同期 ====================
+    // ⚠️【超重要】以下の設定を必ず「ams-player-e04bf」のものに書き換えてください！
     const firebaseConfig = {
-        apiKey: "AIzaSyAHaRRponFdRJZMxWwV5kEiBMBrmKswtW0",
-        authDomain: "ams-player-test.firebaseapp.com",
-        projectId: "ams-player-test",
-        storageBucket: "ams-player-test.firebasestorage.app",
-        messagingSenderId: "371056740344",
-        appId: "1:371056740344:web:f440083382c8d97900780d",
-        measurementId: "G-V3VWGESN1Y"
+        apiKey: "AIzaSyDI4ReBg15LAaQbd-4slccBHOS9R69sLNU", // ←★ここも e04bf のものに変更
+        authDomain: "ams-player-e04bf.firebaseapp.com", // ←★「ams-player-e04bf.firebaseapp.com」に変更
+        projectId: "ams-player-e04bf", // ←★「ams-player-e04bf」に変更
+        storageBucket: "ams-player-e04bf.firebasestorage.app", // ←★「ams-player-e04bf.firebasestorage.app」に変更
+        messagingSenderId: "102274983236", // ←★ここも変更
+        appId: "1:102274983236:web:f4334348391dde42dd6311", // ←★ここも変更
+        measurementId: "G-GYHLQKN6SS" // ←★ここも変更
     };
 
     firebase.initializeApp(firebaseConfig);
@@ -466,7 +467,7 @@
     async function syncToCloud() {
         const user = auth.currentUser;
         if (!user || !user.email) return;
-        const uEmail = user.email.toLowerCase(); // 大文字小文字のズレ防止
+        const uEmail = user.email.toLowerCase().trim(); // 大文字小文字・スペースのズレ防止
         try {
             const ytHistory = JSON.parse(localStorage.getItem('ams_yt_history') || "[]");
             const ams_loops = JSON.parse(localStorage.getItem('ams_loops') || "{}");
@@ -487,7 +488,7 @@
     // クラウドからのデータ復元
     async function syncFromCloud(user) {
         if (!user || !user.email) return;
-        const uEmail = user.email.toLowerCase();
+        const uEmail = user.email.toLowerCase().trim();
         try {
             const doc = await db.collection('Users').doc(uEmail).get();
             if (doc.exists) {
@@ -513,7 +514,7 @@
     function redirectToCheckout() { 
         const user = auth.currentUser; 
         if (user) { 
-            const uEmail = user.email.toLowerCase();
+            const uEmail = user.email.toLowerCase().trim();
             const confirmed = confirm(`現在「${uEmail}」でログインしています。\n\n⚠️【超重要】\nSquareの決済画面でも、必ずこの同じメールアドレス「${uEmail}」を使用して決済してください。（Apple Pay等を使うと別のアドレスになる場合があります）\n\n支払手続きを進めますか？`); 
             if (confirmed) { 
                 const baseUrl = "https://square.link/u/B13lqKnj"; 
@@ -529,7 +530,7 @@
 
     async function checkSubscriptionStatus(user) { 
         if (!user || !user.email) return false; 
-        const uEmail = user.email.toLowerCase();
+        const uEmail = user.email.toLowerCase().trim();
         try { 
             const schoolDoc = await db.collection('SchoolMember').doc(uEmail).get(); 
             if (schoolDoc.exists) { 
@@ -561,12 +562,12 @@
     
     async function updateAccountModalUI(user) { if (!user) return; document.getElementById('accountDisplayName').innerText = user.displayName || user.email?.split('@')[0] || "No Name"; document.getElementById('accountEmail').innerText = user.email || "No Email"; document.getElementById('accountUid').innerText = user.uid; const subStatus = await checkSubscriptionStatus(user); document.getElementById('accountPlan').innerHTML = subStatus ? '<span style="color:#d4a373;">PREMIUM</span>' : 'FREE'; const lang = document.getElementById('langSelect').value; const t = translations[lang] || translations['ja']; document.getElementById('deleteAccText').innerText = lang === 'ja' ? 'アカウント削除' : 'Delete Account'; document.getElementById('accNameLabel').innerText = lang === 'ja' ? 'アカウント名' : 'Display Name'; document.getElementById('accEmailLabel').innerText = lang === 'ja' ? 'メールアドレス' : 'Email'; document.getElementById('accUidLabel').innerText = 'UID'; document.getElementById('accPlanLabel').innerText = lang === 'ja' ? 'プラン' : 'Plan'; document.getElementById('accountModalTitle').innerText = lang === 'ja' ? 'アカウント情報' : 'Account Info'; document.getElementById('accountCloseBtn').innerText = lang === 'ja' ? '閉じる' : 'Close'; document.getElementById('accountMenuItem').innerText = lang === 'ja' ? 'アカウント情報' : 'Account Info'; }
 
-    async function deleteUserAccount() { const user = auth.currentUser; if (!user || !user.email) return alert("ログインしていません"); const uEmail = user.email.toLowerCase(); const confirmed = confirm("アカウントを完全に削除します。すべての保存データ（ループ、履歴など）が消去され、元に戻せません。本当に削除しますか？"); if (!confirmed) return; try { await db.collection('Users').doc(uEmail).delete(); await user.delete(); alert("アカウントを削除しました。ページをリロードします。"); location.reload(); } catch (error) { alert("削除エラー: " + error.message + "\n再度ログインしてからお試しください。"); } }
+    async function deleteUserAccount() { const user = auth.currentUser; if (!user || !user.email) return alert("ログインしていません"); const uEmail = user.email.toLowerCase().trim(); const confirmed = confirm("アカウントを完全に削除します。すべての保存データ（ループ、履歴など）が消去され、元に戻せません。本当に削除しますか？"); if (!confirmed) return; try { await db.collection('Users').doc(uEmail).delete(); await user.delete(); alert("アカウントを削除しました。ページをリロードします。"); location.reload(); } catch (error) { alert("削除エラー: " + error.message + "\n再度ログインしてからお試しください。"); } }
 
     auth.onAuthStateChanged(async user => {
         const userInfo = document.getElementById('userInfoDisplay'), userNameSpan = document.getElementById('userName'), authSection = document.getElementById('auth-section'), authOverlay = document.getElementById('auth-overlay'), subOverlay = document.getElementById('subscription-overlay');
         if (user && user.email) {
-            const uEmail = user.email.toLowerCase();
+            const uEmail = user.email.toLowerCase().trim();
             authOverlay.style.display = 'none'; authSection.style.display = 'none'; userInfo.style.display = 'flex';
             userNameSpan.innerText = user.displayName || user.email.split('@')[0];
             
@@ -577,6 +578,7 @@
                 }, { merge: true });
             } catch (e) {
                 console.error("Failed to update user info:", e);
+                // alert("データベースの接続エラー: " + e.message); // 開発用
             }
 
             db.collection('Users').doc(uEmail).onSnapshot(async () => {

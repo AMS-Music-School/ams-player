@@ -561,7 +561,10 @@
                 } 
             } 
             return false; 
-        } catch (e) { return false; } 
+        } catch (e) { 
+            console.error("Check error:", e); 
+            return false; 
+        } 
     }
 
     function openAccountModal() { const user = auth.currentUser; if (!user) { alert("ログインしていません。先にログインしてください。"); toggleMenu(false); openAuthOverlay(); return; } updateAccountModalUI(user); document.getElementById('accountModal').style.display = 'block'; toggleMenu(false); }
@@ -578,7 +581,11 @@
             authOverlay.style.display = 'none'; authSection.style.display = 'none'; userInfo.style.display = 'flex';
             userNameSpan.innerText = user.displayName || user.email.split('@')[0];
             
-            try { await db.collection('Users').doc(uEmail).set({ uid: user.uid, email: uEmail }, { merge: true }); } catch (e) {}
+            try {
+                await db.collection('Users').doc(uEmail).set({ uid: user.uid, email: uEmail }, { merge: true });
+            } catch (e) {
+                console.error("Failed to update user info:", e);
+            }
 
             db.collection('Users').doc(uEmail).onSnapshot(async () => {
                 isSubscribed = await checkSubscriptionStatus(user);
@@ -601,14 +608,14 @@
         ja: { langTitle: "言語設定", helpTitle: "ヘルプ & ガイド", guideFile: "Audio Fileモード ガイド", guideYT: "YouTubeモード ガイド", close: "閉じる", fit: "全体表示", clear: "選択解除", ready: "準備完了", analyzing: "解析中...", setStart: "開始位置", setEnd: "終了位置", loopOff: "LOOP OFF", loopOn: "LOOP ON", fileSelect: "ファイルを選択", saveLoop: "ループ保存", speedUpLabel: "速度回数", recPlay: "録音再生", recStop: "再生停止", privacyMenu: "Privacy Policy", legalMenu: "特定商取引法に基づく表記", authDesc: "テスト用アカウントでログイン", googleBtn: "Googleでログイン", authDiv: "または", authEmail: "ログイン / 新規登録", subDesc: "この機能を利用するには<br>サブスクリプションへの登録が必要です。", subStart: "サブスクリプションを開始する", subLogout: "別のカウントでログイン", historyTitle: "最近の履歴", historyClear: "すべて消去", ytLoad: "読み込む", recDel: "削除",
             privacyInner: `<h2 style="color:var(--primary-color); margin-top:0;">プライバシーポリシー</h2><p>Anderson Studios（以下「当スタジオ」）が運営する「AMS Music School」は、提供するアプリケーション「AMS Practice Player」（以下「本アプリ」）における個人情報の取扱いについて、以下の通り定めます。</p><h3>1. 取得する情報</h3><p>本アプリでは、Google認証によるメールアドレス・氏名、およびサービス利用に必要な決済ステータス（Square経由）を取得します。</p><h3>2. 利用目的</h3><p>取得した情報は、アカウント認証、サブスクリプション管理、ユーザーサポート、および本アプリの機能提供のみに利用します。</p><h3>3. 第三者提供</h3><p>法令に基づく場合を除き、同意なく第三者に提供しません。本アプリはインフラとしてGoogle Firebase、決済としてSquareを利用します。</p><h3>4. お問い合わせ</h3><p>運営：Anderson Studios (AMS Music School)<br>連絡先：ams.guitar.school@gmail.com</p><button class="clear-btn-ja" style="width:100%; margin-top:20px;" onclick="togglePolicy('privacy', false)">閉じる</button>`,
             legalInner: `<h2 style="color:var(--primary-color); margin-top:0;">特定商取引法に基づく表記</h2><h3>運営者名</h3><p>芦田幸一 (Anderson Studios / AMS Music School)</p><h3>連絡先</h3><p>ams.guitar.school@gmail.com</p><h3>販売価格</h3><p>購入手続きの際に画面に表示される金額（税込）</p><h3>代金の支払時期および方法</h3><p>Square決済（クレジットカード等）による即時決済。サブスクリプションは各更新日に課金されます。</p><h3>役務の提供時期</h3><p>決済完了後、直ちにご利用いただけます。</p><h3>解約・返金ポリシー</h3><p>・商品の性質上、決済完了後の返金・返品は原則としてお受けできません。<br>・サブスクリプションの解約はいつでも可能です。解約後も有効期限までは引き続きサービスをご利用いただけます。<br>・日割り計算による返金は行っておりません。</p><button class="clear-btn-ja" style="width:100%; margin-top:20px;" onclick="togglePolicy('legal', false)">閉じる</button>`,
-            guideFileContent: `<b>【Audio File Mode】フルガイド</b><span class="guide-sub">1. ファイル読み込み</span><ul><li>端末内の音楽ファイルを選択して解析。読み込み時にBPMが自動算出されます。</li></ul><span class="guide-sub">2. ABループ (範囲指定)</span><ul><li>波形をドラッグして範囲を選択。再生中、範囲の終端で自動的に始端へ戻ります。</li><li>「選択解除」でループを解除。「ループ保存」で楽曲ごとに複数の範囲を保存し、下のリストから瞬時に切り替え可能です。</li></ul><span class="guide-sub">3. BPMとPitchの変更</span><ul><li>BPMスライダーで速度を変更（0.5x〜1.5x）。</li><li>Pitchスライダーでキーを半音単位で変更（±6）。※Pitch変更にはサブスクが必要です。</li></ul><span class="guide-sub">4. 自動スピードアップ機能</span><ul><li>「⚡(ボルト)」ボタンをONにし「速度回数」を選択。ループを指定回数繰り返すごとに、自動でBPMが+0.05ずつ上がります（元のBPMまで）。</li></ul><span class="guide-sub">5. セルフ録音チェック</span><ul><li>「mic」ボタンで、再生しながら自分の音を録音。</li><li>録音データは波形の下に表示され、メイン音源と録音の音量を個別に調整できます。</li><li>「S(ソロ)」ボタンをONにすると、録音した音だけを聴くことができます。</li><li class="guide-note">※正確な録音と同期には、PCとオーディオインターフェースの利用を推奨します。</li><li class="guide-note">※モバイル端末（スマホ・タブレット）ではブラウザの仕様により、録音動作が不安定になる場合があります。</li></ul>`,
-            guideYTContent: `<b>【YouTube Mode】フルガイド</b><span class="guide-sub">1. 動画読み込み</span><ul><li>YouTubeのURLを貼り付けて「LOAD」をタップ。</li><li>読み込んだ動画は「RECENT HISTORY」に保存され、履歴から素早く再読み込みできます。</li></ul><span class="guide-sub">2. ABループ設定</span><ul><li>「SET START」と「SET END」ボタンで現在の再生位置をループ範囲に設定。</li><li>「-1s / +1s」ボタンで、開始・終了位置を1秒単位で微調整できます。</li><li>「LOOP ON/OFF」ボタンでループの有効/無効を切り替えます。</li></ul><span class="guide-sub">3. ループの保存</span><ul><li>「SAVE」ボタンで設定したループ範囲を保存。</li><li>保存されたループは動画ごとにリスト化され、数字アイコンをタップするだけで瞬時に呼び出せます。</li></ul>`
+            guideFileContent: `<b>【Audio File Mode】フルガイド</b><span class="guide-sub">1. ファイル読み込み</span><ul><li>端末内の音楽ファイルを選択して解析。読み込み時にBPMが自動算出されます。</li></ul><span class="guide-sub">2. ABループ (範囲指定)</span><ul><li>波形をドラッグして範囲を選択。再生中、範囲の終端で自動的に始端へ戻ります。</li><li>「選択解除」でループを解除。「ループ保存」で楽曲ごとに複数の範囲を保存し、下のリストから瞬時に切り替え可能です。</li></ul><span class="guide-sub">3. BPMとPitchの変更</span><ul><li>BPMスライダーで速度を変更（0.5x〜1.5x）。</li><li>Pitchスライダーでキーを半音単位で変更（±6）。※Pitch変更にはサブスクが必要です。</li></ul><span class="guide-sub">4. 自動スピードアップ機能</span><ul><li>「⚡(ボルト)」ボタンをONにし「速度回数」を選択。ループを指定回数繰り返すごとに、自動でBPMが+0.05ずつ上がります（元のBPMまで）。</li></ul><span class="guide-sub">5. セルフ録音チェック</span><ul><li>「mic」ボタンで、再生しながら自分の音を録音。</li><li>録音データは波形の下に表示され、メイン音源と録音の音量を個別に調整できます。</li><li>「S(ソロ)」ボタンをONにすると、録音した音だけを聴くことができます。</li><li class="guide-note">※正確な録音と同期には、PCとオーディオインターフェースの利用を推奨します。</li><li class="guide-note">※モバイル端末（スマホ・タブレット）ではブラウザの仕様により、録音動作が不安定になる場合があります。</li></ul><span class="guide-sub">【よくある質問 (FAQ)】</span><ul><li><b>メールアドレスの変更について:</b><br>メールアドレスを変更したい場合は、現在のサブスクリプションを一度解約し、有効期限が切れた後に新しいメールアドレスで再度新規登録（再決済）を行ってください。</li></ul>`,
+            guideYTContent: `<b>【YouTube Mode】フルガイド</b><span class="guide-sub">1. 動画読み込み</span><ul><li>YouTubeのURLを貼り付けて「LOAD」をタップ。</li><li>読み込んだ動画は「RECENT HISTORY」に保存され、履歴から素早く再読み込みできます。</li></ul><span class="guide-sub">2. ABループ設定</span><ul><li>「SET START」と「SET END」ボタンで現在の再生位置をループ範囲に設定。</li><li>「-1s / +1s」ボタンで、開始・終了位置を1秒単位で微調整できます。</li><li>「LOOP ON/OFF」ボタンでループの有効/無効を切り替えます。</li></ul><span class="guide-sub">3. ループの保存</span><ul><li>「SAVE」ボタンで設定したループ範囲を保存。</li><li>保存されたループは動画ごとにリスト化され、数字アイコンをタップするだけで瞬時に呼び出せます。</li></ul><span class="guide-sub">【よくある質問 (FAQ)】</span><ul><li><b>メールアドレスの変更について:</b><br>メールアドレスを変更したい場合は、現在のサブスクリプションを一度解約し、有効期限が切れた後に新しいメールアドレスで再度新規登録（再決済）を行ってください。</li></ul>`
         },
         en: { langTitle: "Language Settings", helpTitle: "Help & Guide", guideFile: "Audio File Mode Guide", guideYT: "YouTube Mode Guide", close: "Close", fit: "FIT", clear: "Clear Loop", ready: "READY", analyzing: "ANALYZING...", setStart: "SET START", setEnd: "SET END", loopOff: "LOOP OFF", loopOn: "LOOP ON", fileSelect: "Select Audio File", saveLoop: "Save Loop", speedUpLabel: "Auto Speed", recPlay: "Play Rec", recStop: "Stop Rec", privacyMenu: "Privacy Policy", legalMenu: "Commercial Transactions Act", authDesc: "Login with test account", googleBtn: "Login with Google", authDiv: "OR", authEmail: "Login / Register", subDesc: "Subscription is required to use this feature.", subStart: "Start Subscription", subLogout: "Login with another account", historyTitle: "Recent History", historyClear: "Clear All", ytLoad: "LOAD", recDel: "Delete",
             privacyInner: `<h2 style="color:var(--primary-color); margin-top:0;">Privacy Policy</h2><p>Anderson Studios ("We/Us") operating as "AMS Music School" establishes this Privacy Policy regarding the handling of personal information in the "AMS Practice Player" ("App").</p><h3>1. Collected Information</h3><p>The App collects email addresses and names via Google Authentication, and payment statuses via Square for subscription management.</p><h3>2. Purpose of Use</h3><p>Collected information is used solely for authentication, subscription management, user support, and delivering App features.</p><h3>3. Third-Party Sharing</h3><p>We do not share information with third parties without consent, except as required by law. The App utilizes Google Firebase and Square.</p><h3>4. Contact</h3><p>Operator: Anderson Studios (AMS Music School)<br>Contact: ams.guitar.school@gmail.com</p><button class="clear-btn-ja" style="width:100%; margin-top:20px;" onclick="togglePolicy('privacy', false)">Close</button>`,
             legalInner: `<h2 style="color:var(--primary-color); margin-top:0;">Legal Notice</h2><h3>Operator</h3><p>Koichi Ashida (Anderson Studios / AMS Music School)</p><h3>Contact</h3><p>ams.guitar.school@gmail.com</p><h3>Pricing</h3><p>Displayed during the purchase process (Tax included).</p><h3>Payment</h3><p>Immediate payment via Square (Credit Card, etc.). Subscriptions are billed on each renewal date.</p><h3>Delivery</h3><p>Service is available immediately after payment completion.</p><h3>Refund Policy</h3><p>・Due to the nature of digital services, refunds are generally not accepted after payment.<br>・Subscriptions can be canceled at any time. The service remains active until the end of the current billing period.<br>・No pro-rated refunds are provided.</p><button class="clear-btn-ja" style="width:100%; margin-top:20px;" onclick="togglePolicy('legal', false)">Close</button>`,
-            guideFileContent: `<b>【Audio File Mode】Full Guide</b><span class="guide-sub">1. Load Audio</span><ul><li>Select a file to analyze BPM automatically.</li></ul><span class="guide-sub">2. AB Loop</span><ul><li>Drag waveform to select range. Use "Save Loop" to store segments.</li></ul><span class="guide-sub">3. BPM & Pitch</span><ul><li>Adjust speed (0.5x-1.5x) and Pitch (±6). *Pitch requires subscription.</li></ul><span class="guide-sub">4. Auto Speed Up</span><ul><li>Enable "Bolt" and set loop count to automatically increase BPM by +0.05 per interval.</li></ul><span class="guide-sub">5. Recording</span><ul><li>Record while playing. Adjust Main/Rec volume or use "Solo(S)" to hear only the recording.</li><li class="guide-note">*Using a PC and Audio Interface is highly recommended for stable sync.</li><li class="guide-note">*Mobile devices may experience unstable recording due to browser limitations.</li></ul>`,
-            guideYTContent: `<b>【YouTube Mode】Full Guide</b><span class="guide-sub">1. Load Video</span><ul><li>Paste URL and tap LOAD. Recently viewed videos are saved in History.</li></ul><span class="guide-sub">2. AB Loop</span><ul><li>Use SET START/END to define range. Fine-tune with -1s/+1s buttons.</li><li>Toggle LOOP ON/OFF to control repetition.</li></ul><span class="guide-sub">3. Save Loops</span><ul><li>Save multiple loop ranges per video and recall them instantly via the loop list.</li></ul>`
+            guideFileContent: `<b>【Audio File Mode】Full Guide</b><span class="guide-sub">1. Load Audio</span><ul><li>Select a file to analyze BPM automatically.</li></ul><span class="guide-sub">2. AB Loop</span><ul><li>Drag waveform to select range. Use "Save Loop" to store segments.</li></ul><span class="guide-sub">3. BPM & Pitch</span><ul><li>Adjust speed (0.5x-1.5x) and Pitch (±6). *Pitch requires subscription.</li></ul><span class="guide-sub">4. Auto Speed Up</span><ul><li>Enable "Bolt" and set loop count to automatically increase BPM by +0.05 per interval.</li></ul><span class="guide-sub">5. Recording</span><ul><li>Record while playing. Adjust Main/Rec volume or use "Solo(S)" to hear only the recording.</li><li class="guide-note">*Using a PC and Audio Interface is highly recommended for stable sync.</li><li class="guide-note">*Mobile devices may experience unstable recording due to browser limitations.</li></ul><span class="guide-sub">FAQ</span><ul><li><b>Changing Email Address:</b><br>If you wish to change your email address, please cancel your current subscription and register again (re-subscribe) with your new email address after the current subscription expires.</li></ul>`,
+            guideYTContent: `<b>【YouTube Mode】Full Guide</b><span class="guide-sub">1. Load Video</span><ul><li>Paste URL and tap LOAD. Recently viewed videos are saved in History.</li></ul><span class="guide-sub">2. AB Loop</span><ul><li>Use SET START/END to define range. Fine-tune with -1s/+1s buttons.</li><li>Toggle LOOP ON/OFF to control repetition.</li></ul><span class="guide-sub">3. Save Loops</span><ul><li>Save multiple loop ranges per video and recall them instantly via the loop list.</li></ul><span class="guide-sub">FAQ</span><ul><li><b>Changing Email Address:</b><br>If you wish to change your email address, please cancel your current subscription and register again (re-subscribe) with your new email address after the current subscription expires.</li></ul>`
         }
     };
     
@@ -861,29 +868,23 @@
         changeLanguage(); 
         renderYTHistory(); 
 
-        // 【機能追加】キーボードショートカット機能
         document.addEventListener('keydown', (e) => {
-            // 文字入力中（URLやメアドなど）はショートカットを無効化して誤作動を防止
             if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
 
-            // Spaceキー: 再生 / 一時停止
             if (e.code === 'Space') {
                 e.preventDefault(); 
                 document.getElementById('playBtn').click();
             } 
-            // 左矢印: 5秒戻る
             else if (e.code === 'ArrowLeft') {
                 e.preventDefault();
                 if (currentMode === 'file' && wavesurfer) wavesurfer.skip(-5);
                 if (currentMode === 'yt' && ytPlayer) ytPlayer.seekTo(Math.max(0, ytPlayer.getCurrentTime() - 5));
             } 
-            // 右矢印: 5秒進む
             else if (e.code === 'ArrowRight') {
                 e.preventDefault();
                 if (currentMode === 'file' && wavesurfer) wavesurfer.skip(5);
                 if (currentMode === 'yt' && ytPlayer) ytPlayer.seekTo(ytPlayer.getCurrentTime() + 5);
             } 
-            // Rキー: 録音開始 / 停止 (Fileモード時のみ)
             else if ((e.code === 'KeyR' || e.key.toLowerCase() === 'r') && currentMode === 'file') {
                 e.preventDefault();
                 toggleRecording();

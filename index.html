@@ -585,6 +585,8 @@
 
     function loginWithGoogle() { initAudioContext(); const provider = new firebase.auth.GoogleAuthProvider(); provider.setCustomParameters({ prompt: 'select_account' }); auth.signInWithPopup(provider).then(() => closeAuthOverlay()).catch(e => alert(getMsg('msgLoginErr') + e.message)); }
     
+    let isRegistering = false; // 新規追加：登録処理中かどうかを判定するフラグ
+
     function loginWithEmail() { 
         const email = document.getElementById('loginEmail').value, password = document.getElementById('loginPassword').value; 
         if(!email || !password) return alert(getMsg('msgEmptyAuth')); 
@@ -600,12 +602,18 @@
         }).catch((error) => { 
             if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') { 
                 if(confirm(getMsg('msgRegConfirm'))) {
+                    isRegistering = true; // 新規登録プロセス開始（監視機能を一時ブロック）
                     auth.createUserWithEmailAndPassword(email, password).then((userCredential) => { 
                         userCredential.user.sendEmailVerification().then(() => {
                             alert(getMsg('msgVerifySent'));
-                            auth.signOut();
+                            auth.signOut().then(() => {
+                                isRegistering = false; // ログアウト完了後にブロック解除
+                            });
                         });
-                    }).catch(e => alert(getMsg('msgLoginErr') + e.message)); 
+                    }).catch(e => {
+                        isRegistering = false; // エラー時もブロック解除
+                        alert(getMsg('msgLoginErr') + e.message);
+                    }); 
                 }
             } else {
                 alert(getMsg('msgLoginErr') + error.message); 
@@ -706,6 +714,9 @@
     async function deleteUserAccount() { const user = auth.currentUser; if (!user || !user.email) return alert(getMsg('msgLoginReq')); const uEmail = user.email.toLowerCase().trim(); if (!confirm(getMsg('msgDelAcc'))) return; try { await db.collection('Users').doc(uEmail).delete(); await user.delete(); alert(getMsg('msgDelAccSuccess')); location.reload(); } catch (error) { alert(getMsg('msgLoginErr') + error.message); } }
 
     auth.onAuthStateChanged(async user => {
+        // 新規登録処理による強制ログインを検知した場合は、画面を切り替えずに無視する
+        if (isRegistering) return;
+
         // メール認証が完了していないユーザーの自動ログインをブロック
         if (user && user.providerData.some(p => p.providerId === 'password') && !user.emailVerified) {
             auth.signOut();

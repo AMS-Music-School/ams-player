@@ -7,6 +7,7 @@
     
     <meta name="apple-mobile-web-app-title" content="AMS Player">
     <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     
     <link rel="icon" href="icon.png?v=1.2.1" type="image/png">
     <link rel="apple-touch-icon" href="icon.png?v=1.2.1">
@@ -21,7 +22,6 @@
     
     <style>
         :root {
-            /* デフォルトカラー（JavaScriptで上書きされます） */
             --primary-color: #d4a373;
             --bg-dark: #050508;
             --panel-bg: rgba(25, 25, 30, 0.45);
@@ -36,7 +36,6 @@
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { 
             background-color: var(--bg-dark);
-            /* AMSロゴを模した青・オレンジ・紫の光源グラデーション（モバイル用：控えめ） */
             background-image: 
                 radial-gradient(circle at 15% 25%, rgba(70, 130, 255, 0.15) 0%, transparent 45%),
                 radial-gradient(circle at 85% 20%, rgba(212, 163, 115, 0.12) 0%, transparent 40%),
@@ -49,7 +48,6 @@
             padding-top: var(--header-height);
         }
 
-        /* PC画面（画面幅768px以上）の場合は背景の光をより強く、鮮やかにする */
         @media (min-width: 768px) {
             body {
                 background-image: 
@@ -62,8 +60,7 @@
         #auth-overlay, #subscription-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0, 0, 0, 0.85); z-index: 5000;
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
+            backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
             display: flex; flex-direction: column; align-items: center; justify-content: center;
             text-align: center; padding: 20px;
         }
@@ -85,29 +82,15 @@
         .auth-divider { margin: 15px 0; font-size: 0.7rem; color: var(--text-dim); display: flex; align-items: center; gap: 10px; }
         .auth-divider::before, .auth-divider::after { content: ""; flex: 1; height: 1px; background: var(--border-color); }
 
-        .google-btn {
-            background: white; color: #757575; border: none; padding: 12px 20px;
-            border-radius: 8px; font-weight: bold; cursor: pointer; display: flex;
-            align-items: center; justify-content: center; gap: 10px; width: 100%;
-            font-size: 0.9rem; transition: background 0.3s;
-        }
+        .google-btn { background: white; color: #757575; border: none; padding: 12px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; font-size: 0.9rem; transition: background 0.3s; }
         .google-btn:hover { background: #f0f0f0; }
-        .subscribe-btn {
-            background: var(--primary-color); color: #121212; border: none; padding: 15px 30px;
-            border-radius: 30px; font-weight: bold; cursor: pointer; margin-top: 20px; font-size: 1.1rem; width: 100%;
-            box-shadow: 0 4px 15px rgba(212, 163, 115, 0.3);
-        }
+        .subscribe-btn { background: var(--primary-color); color: #121212; border: none; padding: 15px 30px; border-radius: 30px; font-weight: bold; cursor: pointer; margin-top: 20px; font-size: 1.1rem; width: 100%; box-shadow: 0 4px 15px rgba(212, 163, 115, 0.3); }
         .user-info { font-size: 0.7rem; color: var(--text-dim); display: flex; align-items: center; gap: 10px; }
         .logout-btn { background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: var(--text-dim); padding: 4px 8px; border-radius: 4px; font-size: 0.65rem; cursor: pointer; transition: all 0.3s; }
         .logout-btn:hover { background: rgba(255,255,255,0.1); color: var(--text-main); }
         .header-login-btn { background: var(--primary-color); color: #121212; border: none; padding: 6px 12px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; cursor: pointer; box-shadow: 0 2px 10px rgba(212, 163, 115, 0.3); }
 
-        header {
-            position: fixed; top: 0; left: 0; width: 100%; height: var(--header-height);
-            background: rgba(5, 5, 8, 0.6); border-bottom: 1px solid var(--border-color);
-            display: flex; align-items: center; justify-content: space-between; padding: 0 15px;
-            z-index: 2000; backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-        }
+        header { position: fixed; top: 0; left: 0; width: 100%; height: var(--header-height); background: rgba(5, 5, 8, 0.6); border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; padding: 0 15px; z-index: 2000; backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
         .header-logo { color: var(--text-main); font-weight: bold; letter-spacing: 2px; font-size: 0.95rem; text-shadow: 0 0 10px rgba(255,255,255,0.2); }
         .container { width: 100%; max-width: 1200px; margin: 0 auto; padding: 10px; padding-bottom: 40px; }
         
@@ -119,12 +102,7 @@
         .waveform-label { font-size: 0.75rem; color: var(--text-dim); margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 5px; }
         .time-display { color: var(--primary-color); font-weight: bold; font-size: 1rem; text-shadow: 0 0 8px rgba(212, 163, 115, 0.4); }
         
-        .panel { 
-            background: var(--panel-bg); padding: 15px; border-radius: 12px; 
-            border: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 12px; margin-bottom: 15px; 
-            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
-        }
+        .panel { background: var(--panel-bg); padding: 15px; border-radius: 12px; border: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 12px; margin-bottom: 15px; backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5); }
         .panel-rec { padding: 10px 15px; gap: 8px; border-color: rgba(255, 68, 68, 0.4); }
         .row { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
         input[type="range"] { flex-grow: 1; accent-color: var(--primary-color); height: 6px; min-width: 50px; -webkit-appearance: none; background: rgba(255,255,255,0.1); border-radius: 5px; }
@@ -136,7 +114,6 @@
         .btn-ctrl:hover { background: rgba(255,255,255,0.1); border-color: var(--primary-color); }
         .btn-ctrl.active { color: var(--primary-color); border-color: var(--primary-color); box-shadow: 0 0 10px rgba(212, 163, 115, 0.2); }
         
-        /* 再生ボタンがホバーでグレーアウトしないよう、!important で保護 */
         .play-main { background: var(--primary-color) !important; color: #121212 !important; width: 64px; height: 64px; border: none !important; box-shadow: 0 0 15px rgba(212, 163, 115, 0.4); }
         .play-main:hover { transform: scale(1.05); background: var(--primary-color) !important; filter: brightness(1.15); }
         
@@ -204,73 +181,21 @@
         .loop-btn-main { background: rgba(0,0,0,0.4); color: var(--text-main); border: 1px solid var(--primary-color); padding: 10px 15px; border-radius: 8px; cursor: pointer; font-size: 0.8rem; font-weight: bold; transition: all 0.3s; }
         .loop-btn-main:hover { background: rgba(212, 163, 115, 0.1); box-shadow: 0 0 10px rgba(212, 163, 115, 0.2); }
         
-        .yt-loop-btn-ui {
-            width: 140px;
-            padding: 10px;
-            border-radius: 8px;
-            border: 1px solid var(--primary-color);
-            cursor: pointer;
-            font-size: 0.8rem;
-            font-weight: bold;
-            background: rgba(0,0,0,0.5);
-            color: var(--primary-color);
-            transition: all 0.3s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .yt-loop-btn-ui.active {
-            background: var(--primary-color);
-            color: #121212;
-            box-shadow: 0 0 15px rgba(212, 163, 115, 0.4);
-        }
+        .yt-loop-btn-ui { width: 140px; padding: 10px; border-radius: 8px; border: 1px solid var(--primary-color); cursor: pointer; font-size: 0.8rem; font-weight: bold; background: rgba(0,0,0,0.5); color: var(--primary-color); transition: all 0.3s; display: flex; align-items: center; justify-content: center; }
+        .yt-loop-btn-ui.active { background: var(--primary-color); color: #121212; box-shadow: 0 0 15px rgba(212, 163, 115, 0.4); }
 
-        /* アクション行（3つのボタン）を均等幅に強制する修正 */
-        .action-row-container { 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: stretch; 
-            gap: 8px; 
-            margin-bottom: 15px; 
-            width: 100%;
-        }
-        .action-row-container > * {
-            flex: 1 1 0; /* 幅を1:1:1で完全均等に */
-            min-width: 0; /* 文字がはみ出る場合でも比率を維持 */
-        }
+        .action-row-container { display: flex; justify-content: space-between; align-items: stretch; gap: 8px; margin-bottom: 15px; width: 100%; }
+        .action-row-container > * { flex: 1 1 0; min-width: 0; }
         
-        .speedup-group { 
-            display: flex; 
-            align-items: center; 
-            gap: 8px; 
-            background: rgba(0,0,0,0.3); 
-            padding: 6px 12px; 
-            border-radius: 8px; 
-            border: 1px solid var(--border-color);
-            flex: 1;
-            justify-content: center;
-        }
-        .speedup-select { 
-            background: transparent; 
-            color: var(--primary-color); 
-            border: none; 
-            font-size: 0.85rem; 
-            font-weight: bold;
-            outline: none; 
-            cursor: pointer;
-            transition: opacity 0.3s; 
-        }
+        .speedup-group { display: flex; align-items: center; gap: 8px; background: rgba(0,0,0,0.3); padding: 6px 12px; border-radius: 8px; border: 1px solid var(--border-color); flex: 1; justify-content: center; }
+        .speedup-select { background: transparent; color: var(--primary-color); border: none; font-size: 0.85rem; font-weight: bold; outline: none; cursor: pointer; transition: opacity 0.3s; }
         .speedup-select:disabled { opacity: 0.3; cursor: not-allowed; }
 
         .policy-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 5000; overflow-y: auto; padding: 20px; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
         .policy-content { background: var(--panel-bg); color: var(--text-main); padding: 30px; border-radius: 16px; max-width: 600px; margin: 30px auto; font-size: 0.85rem; line-height: 1.8; border: 1px solid var(--border-color); position: relative; box-shadow: 0 10px 40px rgba(0,0,0,0.6); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
         .policy-content h3 { color: var(--primary-color); border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px; margin-top: 25px; font-size: 1.05rem; }
 
-        /* --- Theme Color Swatches --- */
-        .color-swatch {
-            width: 30px; height: 30px; border-radius: 50%; cursor: pointer;
-            border: 2px solid transparent; transition: transform 0.2s, box-shadow 0.2s;
-        }
+        .color-swatch { width: 30px; height: 30px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: transform 0.2s, box-shadow 0.2s; }
         .color-swatch:hover { transform: scale(1.15); }
         .color-swatch.active { border-color: #fff; box-shadow: 0 0 12px rgba(255,255,255,0.6); }
     </style>
@@ -321,9 +246,7 @@
         
         <button class="subscribe-btn" id="modalSubStartBtn" onclick="redirectToCheckout()" style="padding:10px; font-size:0.85rem; margin-top:12px; display:none;">サブスクリプションを開始する</button>
         <button class="clear-btn-ja" id="modalSubManageBtn" onclick="manageSubscription()" style="width:100%; padding:10px; border-radius:10px; margin-top:12px; border: 1px solid var(--primary-color); display:none;"><span class="material-icons" style="font-size:16px;">manage_accounts</span> <span id="manageSubText">サブスクリプションを管理・解約</span></button>
-
         <button class="clear-btn-ja" onclick="resetPassword()" style="width:100%; padding:10px; border-radius:10px; margin-top:12px; border: 1px solid var(--border-color);"><span class="material-icons" style="font-size:16px;">lock_reset</span> <span id="resetPwText">パスワードを変更する</span></button>
-
         <button class="delete-account-btn" id="deleteAccountBtn" onclick="deleteUserAccount()"><span class="material-icons" style="font-size:16px;">delete_forever</span> <span id="deleteAccText">アカウント削除</span></button>
     </div>
     <button class="clear-btn-ja" onclick="closeAccountModal()" style="width:100%; margin-top:8px; justify-content:center;" id="accountCloseBtn">閉じる</button>
@@ -390,7 +313,12 @@
     <div class="menu-item" onclick="togglePolicy('privacy', true)"><span class="material-icons">policy</span><span id="privacyMenu">Privacy Policy</span></div>
     <div class="menu-item" onclick="togglePolicy('legal', true)"><span class="material-icons">gavel</span><span id="legalMenu">特定商取引法に基づく表記</span></div>
     
-    <div style="margin-top: 30px; text-align: center; color: var(--text-dim); font-size: 0.7rem;">
+    <div class="menu-item" onclick="checkForUpdates()" style="justify-content: center; margin-top: 15px; border: 1px solid var(--border-color); background: rgba(0,0,0,0.3);">
+        <span class="material-icons" style="font-size: 18px;">system_update_alt</span>
+        <span id="updateBtnText" style="font-size: 0.8rem; font-weight: bold;">アップデートを確認</span>
+    </div>
+
+    <div style="margin-top: 20px; text-align: center; color: var(--text-dim); font-size: 0.7rem;">
         AMS Practice Player v1.5.8
     </div>
 </div>
@@ -568,13 +496,11 @@
 </div>
 
 <script>
-    // ==================== 追加機能：YouTube検索用APIキー ====================
-    // ★アプリ内でキーワード検索を有効にするには、ここにYouTube Data API v3のキーを設定してください。
-    // APIキーがない場合は、YouTube公式の検索画面（別タブ）へ自動で誘導するようになっています。
+    // ==================== YouTube検索用APIキー ====================
+    // ★ ここに取得したキーを設定してください
     const YOUTUBE_API_KEY = "AIzaSyDVxlW-Unh4j4vRofeByf3el9Mh_16BoCg"; 
-    // ========================================================================
+    // ===============================================================
 
-    // 追加機能: PWAインストールの変数とイベントリスナー設定
     let deferredPrompt;
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
@@ -631,7 +557,16 @@
         }
     }
 
-    // ==================== テーマカラー設定機能 ====================
+    // ★アップデート確認機能
+    function checkForUpdates() {
+        const lang = document.getElementById('langSelect').value || 'ja';
+        const msg = lang === 'ja' 
+            ? "最新バージョンを確認しています...\nページを再読み込みします。" 
+            : "Checking for updates...\nReloading page.";
+        alert(msg);
+        window.location.href = window.location.pathname + '?v=' + new Date().getTime();
+    }
+
     function setThemeColor(color) {
         document.documentElement.style.setProperty('--primary-color', color);
         localStorage.setItem('ams_theme_color', color);
@@ -666,7 +601,6 @@
     const savedThemeColor = localStorage.getItem('ams_theme_color') || '#d4a373';
     document.documentElement.style.setProperty('--primary-color', savedThemeColor);
 
-    // ==================== Firebase & 全機能維持 + クラウド同期 ====================
     const firebaseConfig = {
         apiKey: "AIzaSyDI4ReBg15LAaQbd-4slccBHOS9R69sLNU",
         authDomain: "ams-player-e04bf.firebaseapp.com",
@@ -825,9 +759,7 @@
         } 
     }
 
-    function manageSubscription() {
-        alert(getMsg('msgManageSub'));
-    }
+    function manageSubscription() { alert(getMsg('msgManageSub')); }
 
     async function checkSubscriptionStatus(user) { 
         if (!user || !user.email) return false; 
@@ -888,18 +820,14 @@
         document.getElementById('resetPwText').innerText = t.resetPw; 
         document.getElementById('modalSubStartBtn').innerText = t.modalSubStartText;
         document.getElementById('manageSubText').innerText = t.manageSubText;
+        document.getElementById('updateBtnText').innerText = lang === 'ja' ? 'アップデートを確認' : 'Check for Updates';
     }
 
     async function deleteUserAccount() { const user = auth.currentUser; if (!user || !user.email) return alert(getMsg('msgLoginReq')); const uEmail = user.email.toLowerCase().trim(); if (!confirm(getMsg('msgDelAcc'))) return; try { await db.collection('Users').doc(uEmail).delete(); await user.delete(); alert(getMsg('msgDelAccSuccess')); location.reload(); } catch (error) { alert(getMsg('msgLoginErr') + error.message); } }
 
     auth.onAuthStateChanged(async user => {
         if (isRegistering) return; 
-
-        if (user && user.providerData.some(p => p.providerId === 'password') && !user.emailVerified) {
-            await auth.signOut();
-            location.reload(); 
-            return; 
-        }
+        if (user && user.providerData.some(p => p.providerId === 'password') && !user.emailVerified) { await auth.signOut(); location.reload(); return; }
 
         const userInfo = document.getElementById('userInfoDisplay'), userNameSpan = document.getElementById('userName'), authSection = document.getElementById('auth-section'), authOverlay = document.getElementById('auth-overlay'), subOverlay = document.getElementById('subscription-overlay');
         
@@ -910,26 +838,13 @@
             
             try { await db.collection('Users').doc(uEmail).set({ uid: user.uid, email: uEmail }, { merge: true }); } catch (e) {}
 
-            db.collection('Users').doc(uEmail).onSnapshot(async () => {
-                isSubscribed = await checkSubscriptionStatus(user);
-                if (isSubscribed) subOverlay.style.display = 'none';
-                updateAccountModalUI(user);
-            });
-            db.collection('SchoolMember').doc(uEmail).onSnapshot(async () => {
-                isSubscribed = await checkSubscriptionStatus(user);
-                if (isSubscribed) subOverlay.style.display = 'none';
-                updateAccountModalUI(user);
-            });
+            db.collection('Users').doc(uEmail).onSnapshot(async () => { isSubscribed = await checkSubscriptionStatus(user); if (isSubscribed) subOverlay.style.display = 'none'; updateAccountModalUI(user); });
+            db.collection('SchoolMember').doc(uEmail).onSnapshot(async () => { isSubscribed = await checkSubscriptionStatus(user); if (isSubscribed) subOverlay.style.display = 'none'; updateAccountModalUI(user); });
 
             await syncFromCloud(user);
             if (currentMode === 'file') renderLoopList('file'); else renderLoopList('yt');
             renderYTHistory();
-        } else { 
-            userInfo.style.display = 'none'; 
-            authSection.style.display = 'block'; 
-            subOverlay.style.display = 'none'; 
-            isSubscribed = false; 
-        }
+        } else { userInfo.style.display = 'none'; authSection.style.display = 'block'; subOverlay.style.display = 'none'; isSubscribed = false; }
     });
 
     const translations = {
@@ -985,7 +900,6 @@
         }
     };
     
-    // ========== 以下、全ての既存機能 (WaveSurfer, YouTube, 録音, ループ等) 完全維持 ==========
     let wavesurfer, wsRegions, recWavesurfer, ytPlayer, loopInterval;
     let loopStart = 0, loopEnd = 0, isLooping = false, currentMode = 'file';
     let audioCtx, firstSoundTime = 0, originalBpm = 120;
@@ -996,7 +910,7 @@
     let recObjectURL = null, recordedAudioBuffer = null, lastRecStartPos = 0;
     let currentLoopCount = 0;
 
-    function changeLanguage() { const lang = document.getElementById('langSelect').value || 'ja'; const t = translations[lang] || translations['ja']; document.getElementById('langTitle').innerText = t.langTitle; document.getElementById('helpTitle').innerText = t.helpTitle; document.getElementById('themeTitle').innerText = t.themeTitle; document.getElementById('guideFileTitle').innerText = t.guideFile; document.getElementById('guideYTTitle').innerText = t.guideYT; document.getElementById('privacyMenu').innerText = t.privacyMenu; document.getElementById('legalMenu').innerText = t.legalMenu; document.getElementById('closeBtn1').innerText = t.close; document.getElementById('closeBtn2').innerText = t.close; document.getElementById('resetZoomBtn').innerText = t.fit; document.getElementById('clearRangeBtn').innerHTML = `<span class="material-icons" style="font-size:18px;">layers_clear</span><span style="font-size:0.65rem; white-space:nowrap;">${t.clear}</span>`; document.getElementById('saveLoopBtn').innerHTML = `<span class="material-icons" style="font-size:18px;">bookmark_add</span><span style="font-size:0.65rem; white-space:nowrap;">${t.saveLoop}</span>`; document.getElementById('speedUpLabel').innerText = t.speedUpLabel; document.getElementById('setStartBtn').innerText = t.setStart; document.getElementById('setEndBtn').innerText = t.setEnd; document.getElementById('authDesc').innerText = t.authDesc; document.getElementById('googleLoginBtnTxt').innerText = t.googleBtn; document.getElementById('authDivider').innerText = t.authDiv; document.getElementById('emailLoginBtnTxt').innerText = t.authEmail; document.getElementById('authCloseBtn').innerText = t.close; document.getElementById('subDesc').innerHTML = t.subDesc; document.getElementById('subStartBtn').innerText = t.subStart; document.getElementById('subCloseBtn').innerText = t.close; document.getElementById('subLogoutBtn').innerText = t.subLogout; document.getElementById('ytLoadBtnTxt').innerText = t.ytLoad; document.getElementById('historyTitle').innerText = t.historyTitle; document.getElementById('historyClearBtn').innerText = t.historyClear; document.getElementById('guideFileContent').innerHTML = t.guideFileContent; document.getElementById('guideYTContent').innerHTML = t.guideYTContent; document.getElementById('privacyPolicyInner').innerHTML = t.privacyInner; document.getElementById('legalNoticeInner').innerHTML = t.legalInner; const fileLabel = document.getElementById('fileSelectBtn'); if (fileLabel.innerText.includes("ファイル") || fileLabel.innerText.includes("Select") || fileLabel.innerText.includes("选择") || fileLabel.innerText.includes("선택") || fileLabel.innerText.includes("Elegir")) fileLabel.innerText = t.fileSelect; const loadS = document.getElementById('loadStatus'); if (loadS.innerText.includes("READY") || loadS.innerText.includes("準備") || loadS.innerText.includes("就绪") || loadS.innerText.includes("준비") || loadS.innerText.includes("LISTO")) loadS.innerText = t.ready; const b = document.getElementById('toggleLoopBtn'); if(b) b.innerText = isLooping ? t.loopOn : t.loopOff; const recDel = document.getElementById('recDelBtnTxt'); if(recDel) recDel.innerHTML = `<span class="material-icons" style="font-size:14px;">delete</span> ${t.recDel}`; updateRecPlayBtnUI(); if(auth.currentUser) updateAccountModalUI(auth.currentUser); document.getElementById('accountMenuItem').innerText = t.accInfo; document.getElementById('resetPwText').innerText = t.resetPw; const forgotBtn = document.getElementById('forgotPwBtnTxt'); if(forgotBtn) forgotBtn.innerText = t.forgotPw; updateInstallButton(); }
+    function changeLanguage() { const lang = document.getElementById('langSelect').value || 'ja'; const t = translations[lang] || translations['ja']; document.getElementById('langTitle').innerText = t.langTitle; document.getElementById('helpTitle').innerText = t.helpTitle; document.getElementById('themeTitle').innerText = t.themeTitle; document.getElementById('guideFileTitle').innerText = t.guideFile; document.getElementById('guideYTTitle').innerText = t.guideYT; document.getElementById('privacyMenu').innerText = t.privacyMenu; document.getElementById('legalMenu').innerText = t.legalMenu; document.getElementById('closeBtn1').innerText = t.close; document.getElementById('closeBtn2').innerText = t.close; document.getElementById('resetZoomBtn').innerText = t.fit; document.getElementById('clearRangeBtn').innerHTML = `<span class="material-icons" style="font-size:18px;">layers_clear</span><span style="font-size:0.65rem; white-space:nowrap;">${t.clear}</span>`; document.getElementById('saveLoopBtn').innerHTML = `<span class="material-icons" style="font-size:18px;">bookmark_add</span><span style="font-size:0.65rem; white-space:nowrap;">${t.saveLoop}</span>`; document.getElementById('speedUpLabel').innerText = t.speedUpLabel; document.getElementById('setStartBtn').innerText = t.setStart; document.getElementById('setEndBtn').innerText = t.setEnd; document.getElementById('authDesc').innerText = t.authDesc; document.getElementById('googleLoginBtnTxt').innerText = t.googleBtn; document.getElementById('authDivider').innerText = t.authDiv; document.getElementById('emailLoginBtnTxt').innerText = t.authEmail; document.getElementById('authCloseBtn').innerText = t.close; document.getElementById('subDesc').innerHTML = t.subDesc; document.getElementById('subStartBtn').innerText = t.subStart; document.getElementById('subCloseBtn').innerText = t.close; document.getElementById('subLogoutBtn').innerText = t.subLogout; document.getElementById('ytLoadBtnTxt').innerText = t.ytLoad; document.getElementById('historyTitle').innerText = t.historyTitle; document.getElementById('historyClearBtn').innerText = t.historyClear; document.getElementById('guideFileContent').innerHTML = t.guideFileContent; document.getElementById('guideYTContent').innerHTML = t.guideYTContent; document.getElementById('privacyPolicyInner').innerHTML = t.privacyInner; document.getElementById('legalNoticeInner').innerHTML = t.legalInner; const fileLabel = document.getElementById('fileSelectBtn'); if (fileLabel.innerText.includes("ファイル") || fileLabel.innerText.includes("Select") || fileLabel.innerText.includes("选择") || fileLabel.innerText.includes("선택") || fileLabel.innerText.includes("Elegir")) fileLabel.innerText = t.fileSelect; const loadS = document.getElementById('loadStatus'); if (loadS.innerText.includes("READY") || loadS.innerText.includes("準備") || loadS.innerText.includes("就绪") || loadS.innerText.includes("준비") || loadS.innerText.includes("LISTO")) loadS.innerText = t.ready; const b = document.getElementById('toggleLoopBtn'); if(b) b.innerText = isLooping ? t.loopOn : t.loopOff; const recDel = document.getElementById('recDelBtnTxt'); if(recDel) recDel.innerHTML = `<span class="material-icons" style="font-size:14px;">delete</span> ${t.recDel}`; updateRecPlayBtnUI(); if(auth.currentUser) updateAccountModalUI(auth.currentUser); document.getElementById('accountMenuItem').innerText = t.accInfo; document.getElementById('resetPwText').innerText = t.resetPw; const forgotBtn = document.getElementById('forgotPwBtnTxt'); if(forgotBtn) forgotBtn.innerText = t.forgotPw; document.getElementById('updateBtnText').innerText = lang === 'ja' ? 'アップデートを確認' : 'Check for Updates'; updateInstallButton(); }
     function updateRecPlayBtnUI() { const lang = document.getElementById('langSelect').value || 'ja'; const t = translations[lang] || translations['ja']; const btn = document.getElementById('playRecBtn'); if (recWavesurfer && recWavesurfer.isPlaying()) btn.innerHTML = `<span class="material-icons" style="font-size:14px;">stop_circle</span> ${t.recStop}`; else if(btn) btn.innerHTML = `<span class="material-icons" style="font-size:14px;">play_circle</span> ${t.recPlay}`; }
     function toggleMenu(isOpen) { document.getElementById('sideMenu').classList.toggle('open', isOpen); document.getElementById('menuOverlay').style.display = isOpen ? 'block' : 'none'; }
     function showGuide(type) { toggleMenu(false); closeModals(); if (type === 'file') document.getElementById('guideModalFile').style.display = 'block'; if (type === 'yt') document.getElementById('guideModalYT').style.display = 'block'; document.getElementById('menuOverlay').style.display = 'block'; }
@@ -1007,51 +921,28 @@
     function toggleFeature(type) { if (type === 'count') { isCountEnabled = !isCountEnabled; document.getElementById('countToggleBtn').classList.toggle('active', isCountEnabled); } else if (type === 'speedup') { if (!isSubscribed) { document.getElementById('subscription-overlay').style.display = 'flex'; return; } isSpeedUpEnabled = !isSpeedUpEnabled; document.getElementById('speedUpToggleBtn').classList.toggle('active', isSpeedUpEnabled); const selectEl = document.getElementById('speedUpCount'); selectEl.disabled = !isSpeedUpEnabled; currentLoopCount = 0; } }
     function switchMode(mode) { currentMode = mode; document.getElementById('file-section').classList.toggle('active', mode === 'file'); document.getElementById('yt-section').classList.toggle('active', mode === 'yt'); document.getElementById('tab-file').classList.toggle('active', mode === 'file'); document.getElementById('tab-yt').classList.toggle('active', mode === 'yt'); if(mode === 'yt') { if(wavesurfer) wavesurfer.pause(); renderYTHistory(); } if(mode === 'file' && ytPlayer && ytPlayer.pauseVideo) ytPlayer.pauseVideo(); }
     
-    // ==================== モバイル安定化のためのリフレッシュ機能 ====================
     async function forceRefreshPlayer() {
         if (currentMode !== 'file' || !currentObjectURL) return;
-        
         const lang = document.getElementById('langSelect').value || 'ja';
         const t = translations[lang] || translations['ja'];
         const statusEl = document.getElementById('loadStatus');
         statusEl.innerText = "REFRESHING...";
 
         try {
-            // AudioContextの再起動を試みる
-            if (audioCtx && audioCtx.state === 'suspended') {
-                await audioCtx.resume();
-            } else {
-                initAudioContext();
-            }
-
-            // 現在の再生状態・位置・ループ範囲を記憶
-            const wasPlaying = wavesurfer.isPlaying();
+            if (audioCtx && audioCtx.state === 'suspended') { await audioCtx.resume(); } else { initAudioContext(); }
             const currentTime = wavesurfer.getCurrentTime();
             const currentRegions = wsRegions.getRegions().map(r => ({ start: r.start, end: r.end }));
             
-            // 一度空にして再読み込み（ファイルは消さない）
-            wavesurfer.pause();
-            wavesurfer.empty();
-            wsRegions.clearRegions();
-            
+            wavesurfer.pause(); wavesurfer.empty(); wsRegions.clearRegions();
             wavesurfer.load(currentObjectURL);
             wavesurfer.once('ready', () => {
                 const currentColor = localStorage.getItem('ams_theme_color') || '#d4a373';
-                currentRegions.forEach(r => {
-                    wsRegions.addRegion({ start: r.start, end: r.end, color: getRegionColor(currentColor) });
-                });
-                wavesurfer.setTime(currentTime);
-                statusEl.innerText = t.ready || "READY";
-                
-                // ピッチやスピードを再適用させるためにinputイベントを発火
+                currentRegions.forEach(r => { wsRegions.addRegion({ start: r.start, end: r.end, color: getRegionColor(currentColor) }); });
+                wavesurfer.setTime(currentTime); statusEl.innerText = t.ready || "READY";
                 document.getElementById('speed').dispatchEvent(new Event('input'));
             });
-        } catch(e) {
-            console.error("Refresh error:", e);
-            statusEl.innerText = "ERROR";
-        }
+        } catch(e) { console.error("Refresh error:", e); statusEl.innerText = "ERROR"; }
     }
-    // =================================================================================
 
     async function analyzeAudio(blob) { 
         const lang = document.getElementById('langSelect').value || 'ja'; 
@@ -1064,22 +955,13 @@
             const data = audioBuffer.getChannelData(0); 
             let skip = 0; 
             const threshold = 0.015; 
-            for (let i = 0; i < data.length; i += 100) { 
-                if (Math.abs(data[i]) > threshold) { skip = i / audioBuffer.sampleRate; break; } 
-            } 
+            for (let i = 0; i < data.length; i += 100) { if (Math.abs(data[i]) > threshold) { skip = i / audioBuffer.sampleRate; break; } } 
             firstSoundTime = skip; 
             const bpm = detectBPM(audioBuffer); 
             if (bpm > 0) originalBpm = Math.round(bpm); else originalBpm = 120; 
-            updateBpmDisplay(); 
-            statusEl.innerText = translations[lang].ready; 
-            
-            if(wavesurfer && !wavesurfer.isPlaying()) {
-                wavesurfer.setTime(firstSoundTime);
-            }
-        } catch (e) { 
-            console.error("Analysis error:", e); 
-            statusEl.innerText = translations[lang].ready; 
-        } 
+            updateBpmDisplay(); statusEl.innerText = translations[lang].ready; 
+            if(wavesurfer && !wavesurfer.isPlaying()) { wavesurfer.setTime(firstSoundTime); }
+        } catch (e) { console.error("Analysis error:", e); statusEl.innerText = translations[lang].ready; } 
     }
     
     function updateBpmDisplay() { const currentSpeed = parseFloat(document.getElementById('speed').value); const currentBpm = Math.round(originalBpm * currentSpeed); const bpmEl = document.getElementById('spTxt'); if (bpmEl) bpmEl.innerText = "BPM " + (originalBpm > 0 ? currentBpm : "---"); }
@@ -1089,20 +971,18 @@
     async function toggleRecording() { if (!isSubscribed) { document.getElementById('subscription-overlay').style.display = 'flex'; return; } initAudioContext(); if (isRecording) { if (mediaRecorder) mediaRecorder.stop(); if (wavesurfer.isPlaying()) wavesurfer.pause(); isRecording = false; document.getElementById('recBtn').classList.remove('recording'); document.getElementById('recIcon').innerText = 'mic'; } else { try { const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } }); const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4'; mediaRecorder = new MediaRecorder(stream, { mimeType }); recordedChunks = []; mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); }; mediaRecorder.onstop = async () => { const blob = new Blob(recordedChunks, { type: mimeType }); if (recObjectURL) URL.revokeObjectURL(recObjectURL); recObjectURL = URL.createObjectURL(blob); const arrayBuffer = await blob.arrayBuffer(); const ctx = initAudioContext(); recordedAudioBuffer = await ctx.decodeAudioData(arrayBuffer); document.getElementById('rec-waveform-wrapper').style.display = 'block'; document.getElementById('recVolControl').style.display = 'flex'; document.getElementById('recControls').style.display = 'flex'; await recWavesurfer.load(recObjectURL); applyVolumes(); updateRecPlayBtnUI(); stream.getTracks().forEach(track => track.stop()); }; const region = wsRegions.getRegions()[0]; const startPos = region ? region.start : wavesurfer.getCurrentTime(); wavesurfer.setTime(startPos); lastRecStartPos = startPos; await runCountdown(); mediaRecorder.start(); await wavesurfer.play(); isRecording = true; document.getElementById('recBtn').classList.add('recording'); document.getElementById('recIcon').innerText = 'stop'; } catch (err) { alert("マイクを許可してください"); } } }
     function playRecording() { if (!recWavesurfer || !recObjectURL) return; initAudioContext(); if (recWavesurfer.isPlaying()) { recWavesurfer.pause(); wavesurfer.pause(); } else { const currentTime = wavesurfer.getCurrentTime(); const offset = currentTime - lastRecStartPos; if (offset >= 0 && offset < recWavesurfer.getDuration()) { recWavesurfer.setTime(offset); wavesurfer.play(); recWavesurfer.play(); } else { wavesurfer.setTime(lastRecStartPos); recWavesurfer.setTime(0); wavesurfer.play(); recWavesurfer.play(); } } updateRecPlayBtnUI(); }
     function deleteRecording() { if (confirm(getMsg('msgDelRec'))) { document.getElementById('rec-waveform-wrapper').style.display = 'none'; document.getElementById('recControls').style.display = 'none'; document.getElementById('recVolControl').style.display = 'none'; if (recWavesurfer) { recWavesurfer.pause(); recWavesurfer.empty(); } if (recObjectURL) { URL.revokeObjectURL(recObjectURL); recObjectURL = null; } recordedAudioBuffer = null; isSolo = false; document.getElementById('soloBtn').classList.remove('active'); applyVolumes(); } }
+    
     const tag = document.createElement('script'); tag.src = "https://www.youtube.com/iframe_api"; document.head.appendChild(tag);
     
-    // ========== 検索・URL読み込み機能 (改修) ==========
     function loadYouTube(manualUrl = null) { 
         initAudioContext(); 
         const urlInput = document.getElementById('ytUrl'); 
         const query = manualUrl || urlInput.value.trim(); 
         if (!query) return; 
 
-        // URLかキーワード検索かを判定
         const isUrl = query.includes('youtube.com') || query.includes('youtu.be') || query.startsWith('http');
 
         if (isUrl) {
-            // URLの場合の既存処理
             document.getElementById('ytSearchResults').style.display = 'none';
             const videoId = query.includes('v=') ? query.split('v=')[1].split('&')[0] : query.includes('be/') ? query.split('be/')[1].split('?')[0] : null; 
             if (videoId) { 
@@ -1120,16 +1000,12 @@
                 } else {
                     ytPlayer = new YT.Player('player', { 
                         videoId: videoId, 
-                        events: { 
-                            'onReady': () => { updateYTInfo(); }, 
-                            'onStateChange': onPlayerStateChange 
-                        } 
+                        events: { 'onReady': () => { updateYTInfo(); }, 'onStateChange': onPlayerStateChange } 
                     }); 
                 }
                 urlInput.value = ""; 
             } 
         } else {
-            // キーワード検索モード
             searchYouTube(query);
         }
     }
@@ -1138,7 +1014,6 @@
         const resultsContainer = document.getElementById('ytSearchResults');
         
         if (!YOUTUBE_API_KEY) {
-            // APIキーがない場合のフォールバック（別タブでYouTube検索を開く）
             if (confirm("APIキーが設定されていないため、アプリ内で直接検索ができません。\nYouTubeの検索画面を別タブで開きますか？\n（動画を開いた後、URLをコピーしてここに貼り付けてください）")) {
                 window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(keyword)}`, '_blank');
             }
@@ -1187,7 +1062,6 @@
             resultsContainer.innerHTML = "<div style='padding:15px; color:#ff5555; font-size:0.8rem; text-align:center;'>検索エラーが発生しました。<br>APIキーの制限等の可能性があります。</div>";
         }
     }
-    // ==================================================
     
     function saveToHistory(id, title) { let history = JSON.parse(localStorage.getItem('ams_yt_history') || "[]"); history = history.filter(item => item.id !== id); history.unshift({ id: id, title: title || id, url: `https://www.youtube.com/watch?v=${id}`, time: Date.now() }); if (history.length > 20) history.pop(); localStorage.setItem('ams_yt_history', JSON.stringify(history)); renderYTHistory(); syncToCloud(); }
     function renderYTHistory() { const historyList = document.getElementById('ytHistoryList'); const container = document.getElementById('ytHistoryContainer'); if(!historyList || !container) return; const history = JSON.parse(localStorage.getItem('ams_yt_history') || "[]"); if (history.length === 0) { container.style.display = 'none'; return; } container.style.display = 'block'; historyList.innerHTML = ""; history.forEach(item => { const card = document.createElement('div'); card.style = "background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 8px 12px; min-width: 180px; flex-shrink: 0; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: background 0.2s; backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);"; card.onmouseover = () => card.style.background = "rgba(255,255,255,0.1)"; card.onmouseout = () => card.style.background = "rgba(0,0,0,0.4)"; card.setAttribute('data-url', item.url); card.innerHTML = `<span style="font-size:0.7rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:#e0e0e0;">${item.title}</span><span class="material-icons" style="color:#ff5555; font-size:16px; transition:transform 0.2s;" onmouseover="this.style.transform='scale(1.2)'" onmouseout="this.style.transform='scale(1)'" onclick="event.stopPropagation(); deleteHistoryItem('${item.id}')">cancel</span>`; historyList.appendChild(card); }); }
@@ -1209,37 +1083,13 @@
     
     function startApp() { 
         let lastTime = 0; 
-
         const initColor = localStorage.getItem('ams_theme_color') || '#d4a373';
         wavesurfer = WaveSurfer.create({ container: '#waveform', waveColor: '#444', progressColor: initColor, height: 120, barWidth: 2, normalize: true }); 
         recWavesurfer = WaveSurfer.create({ container: '#rec-waveform', waveColor: '#552222', progressColor: '#ff4444', height: 80, barWidth: 2, normalize: true }); 
-        
         wsRegions = wavesurfer.registerPlugin(WaveSurfer.Regions.create()); 
         wsRegions.enableDragSelection({ color: getRegionColor(initColor) }); 
-        
-        wsRegions.on('region-created', r => { 
-            const regions = wsRegions.getRegions();
-            regions.forEach(region => {
-                if (region.id !== r.id) {
-                    region.remove();
-                }
-            });
-            wavesurfer.setTime(r.start);
-            lastTime = r.start;
-            currentLoopCount = 0; 
-        }); 
-
-        wsRegions.on('region-update-end', r => {
-            const duration = r.end - r.start;
-            if (duration < 0.1) {
-                r.remove();
-                return;
-            }
-            wavesurfer.setTime(r.start);
-            lastTime = r.start;
-            currentLoopCount = 0;
-        });
-
+        wsRegions.on('region-created', r => { const regions = wsRegions.getRegions(); regions.forEach(region => { if (region.id !== r.id) { region.remove(); } }); wavesurfer.setTime(r.start); lastTime = r.start; currentLoopCount = 0; }); 
+        wsRegions.on('region-update-end', r => { const duration = r.end - r.start; if (duration < 0.1) { r.remove(); return; } wavesurfer.setTime(r.start); lastTime = r.start; currentLoopCount = 0; });
         document.getElementById('zoomSlider').oninput = (e) => wavesurfer.zoom(Number(e.target.value)); 
         document.getElementById('resetZoomBtn').onclick = () => { wavesurfer.zoom(0); document.getElementById('zoomSlider').value = 0; }; 
         document.getElementById('mainVolume').oninput = applyVolumes; 
@@ -1254,15 +1104,10 @@
                 const blob = new Blob([file], { type: file.type }); 
                 if (currentObjectURL) URL.revokeObjectURL(currentObjectURL); 
                 currentObjectURL = URL.createObjectURL(blob); 
-                
                 if(wavesurfer.isPlaying()) wavesurfer.pause();
                 wsRegions.clearRegions();
-
                 wavesurfer.load(currentObjectURL); 
-                wavesurfer.once('decode', () => { 
-                    analyzeAudio(blob); 
-                    renderLoopList('file'); 
-                }); 
+                wavesurfer.once('decode', () => { analyzeAudio(blob); renderLoopList('file'); }); 
             } 
         }; 
 
@@ -1271,36 +1116,15 @@
             const p = parseInt(document.getElementById('pitch').value); 
             const media = wavesurfer.getMediaElement(); 
             if (media) { 
-                let targetRate = s;
-                let targetPreservesPitch = true;
-
-                if (media.detune !== undefined) { 
-                    if(media.detune !== p * 100) media.detune = p * 100; 
-                } else { 
-                    if (p !== 0) { 
-                        targetPreservesPitch = false; 
-                        targetRate = s * Math.pow(2, p / 12); 
-                    }
-                } 
-                
-                if(media.preservesPitch !== targetPreservesPitch) {
-                    media.preservesPitch = targetPreservesPitch;
-                }
-                
-                if(Math.abs(wavesurfer.getPlaybackRate() - targetRate) > 0.001) {
-                    wavesurfer.setPlaybackRate(targetRate);
-                }
+                let targetRate = s; let targetPreservesPitch = true;
+                if (media.detune !== undefined) { if(media.detune !== p * 100) media.detune = p * 100; } else { if (p !== 0) { targetPreservesPitch = false; targetRate = s * Math.pow(2, p / 12); } } 
+                if(media.preservesPitch !== targetPreservesPitch) { media.preservesPitch = targetPreservesPitch; }
+                if(Math.abs(wavesurfer.getPlaybackRate() - targetRate) > 0.001) { wavesurfer.setPlaybackRate(targetRate); }
             } 
-            updateBpmDisplay(); 
-            document.getElementById('pitchTxt').innerText = (p > 0 ? "+" : "") + p; 
-            applyVolumes(); 
+            updateBpmDisplay(); document.getElementById('pitchTxt').innerText = (p > 0 ? "+" : "") + p; applyVolumes(); 
         }; 
 
-        wavesurfer.on('ready', () => { 
-            document.getElementById('totalTime').innerText = fmt(wavesurfer.getDuration()); 
-            applySettings(); 
-        }); 
-
+        wavesurfer.on('ready', () => { document.getElementById('totalTime').innerText = fmt(wavesurfer.getDuration()); applySettings(); }); 
         recWavesurfer.on('finish', () => { wavesurfer.pause(); updateRecPlayBtnUI(); }); 
         document.getElementById('speed').oninput = applySettings; 
         document.getElementById('pitch').onmousedown = document.getElementById('pitch').ontouchstart = (e) => { if (!isSubscribed) { e.preventDefault(); document.getElementById('subscription-overlay').style.display = 'flex'; } }; 
@@ -1308,103 +1132,33 @@
         
         document.getElementById('playBtn').onclick = async () => { 
             initAudioContext(); 
-            if (wavesurfer.isPlaying()) { 
-                wavesurfer.pause(); 
-                return;
-            } 
-            
+            if (wavesurfer.isPlaying()) { wavesurfer.pause(); return; } 
             const media = wavesurfer.getMediaElement();
-            if (media && media.paused) {
-                const p = media.play();
-                if (p !== undefined) {
-                    p.catch(() => {});
-                }
-                media.pause();
-            }
-
+            if (media && media.paused) { const p = media.play(); if (p !== undefined) { p.catch(() => {}); } media.pause(); }
             const current = wavesurfer.getCurrentTime();
             const region = wsRegions.getRegions()[0]; 
-            
-            if (isCountEnabled && region && (current < region.start || current >= region.end - 0.05)) {
-                wavesurfer.setTime(region.start); 
-                lastTime = region.start;
-            }
-            
-            if (isCountEnabled) {
-                await runCountdown(); 
-            }
-            
+            if (isCountEnabled && region && (current < region.start || current >= region.end - 0.05)) { wavesurfer.setTime(region.start); lastTime = region.start; }
+            if (isCountEnabled) { await runCountdown(); }
             applySettings();
-            
-            setTimeout(() => {
-                wavesurfer.play().catch(e => console.error("Play interrupted:", e)); 
-            }, 10);
+            setTimeout(() => { wavesurfer.play().catch(e => console.error("Play interrupted:", e)); }, 10);
         }; 
 
-        wavesurfer.on('play', () => { 
-            document.getElementById('playIcon').innerText = 'pause'; 
-            if (recObjectURL && recWavesurfer) { 
-                const offset = wavesurfer.getCurrentTime() - lastRecStartPos; 
-                if (offset >= 0 && offset < recWavesurfer.getDuration()) { recWavesurfer.setTime(offset); recWavesurfer.play(); } 
-            } 
-        }); 
-
+        wavesurfer.on('play', () => { document.getElementById('playIcon').innerText = 'pause'; if (recObjectURL && recWavesurfer) { const offset = wavesurfer.getCurrentTime() - lastRecStartPos; if (offset >= 0 && offset < recWavesurfer.getDuration()) { recWavesurfer.setTime(offset); recWavesurfer.play(); } } }); 
         wavesurfer.on('pause', () => { document.getElementById('playIcon').innerText = 'play_arrow'; if (recWavesurfer) recWavesurfer.pause(); }); 
-        
-        wavesurfer.on('seeking', () => {
-            lastTime = wavesurfer.getCurrentTime();
-        });
-
-        wavesurfer.on('interaction', () => { 
-            if (recObjectURL && recWavesurfer) { 
-                const currentTime = wavesurfer.getCurrentTime(); 
-                const offset = currentTime - lastRecStartPos; 
-                if (offset >= 0 && offset < recWavesurfer.getDuration()) recWavesurfer.setTime(offset); else recWavesurfer.setTime(0); 
-                if (wavesurfer.isPlaying()) recWavesurfer.play(); 
-            } 
-            currentLoopCount = 0; 
-            lastTime = wavesurfer.getCurrentTime();
-        }); 
-
+        wavesurfer.on('seeking', () => { lastTime = wavesurfer.getCurrentTime(); });
+        wavesurfer.on('interaction', () => { if (recObjectURL && recWavesurfer) { const currentTime = wavesurfer.getCurrentTime(); const offset = currentTime - lastRecStartPos; if (offset >= 0 && offset < recWavesurfer.getDuration()) recWavesurfer.setTime(offset); else recWavesurfer.setTime(0); if (wavesurfer.isPlaying()) recWavesurfer.play(); } currentLoopCount = 0; lastTime = wavesurfer.getCurrentTime(); }); 
         recWavesurfer.on('interaction', () => { if (!recObjectURL) return; const recTime = recWavesurfer.getCurrentTime(); const targetMainTime = lastRecStartPos + recTime; if (targetMainTime <= wavesurfer.getDuration()) wavesurfer.setTime(targetMainTime); if (wavesurfer.isPlaying()) wavesurfer.play(); }); 
         
         wavesurfer.on('timeupdate', t => { 
             document.getElementById('currentTime').innerText = fmt(t); 
-            if (wavesurfer.isPlaying() && recObjectURL && recWavesurfer && recWavesurfer.isPlaying()) { 
-                const expectedRecTime = t - lastRecStartPos; 
-                const actualRecTime = recWavesurfer.getCurrentTime(); 
-                if (Math.abs(actualRecTime - expectedRecTime) > 0.2) { 
-                    if (expectedRecTime >= 0 && expectedRecTime < recWavesurfer.getDuration()) recWavesurfer.setTime(expectedRecTime); else recWavesurfer.pause(); 
-                } 
-            } 
+            if (wavesurfer.isPlaying() && recObjectURL && recWavesurfer && recWavesurfer.isPlaying()) { const expectedRecTime = t - lastRecStartPos; const actualRecTime = recWavesurfer.getCurrentTime(); if (Math.abs(actualRecTime - expectedRecTime) > 0.2) { if (expectedRecTime >= 0 && expectedRecTime < recWavesurfer.getDuration()) recWavesurfer.setTime(expectedRecTime); else recWavesurfer.pause(); } } 
             const r = wsRegions.getRegions()[0]; 
-            
             const isNaturalPlay = (t - lastTime) >= 0 && (t - lastTime) < 0.5;
-
             if(r && isNaturalPlay && lastTime <= r.end && t >= r.end) { 
-                if (isRecording) { 
-                    toggleRecording(); 
-                } else { 
-                    wavesurfer.setTime(r.start); 
-                    t = r.start; 
-                    
-                    if (recObjectURL && recWavesurfer) { 
-                        const loopOffset = r.start - lastRecStartPos; 
-                        if (loopOffset >= 0 && loopOffset < recWavesurfer.getDuration()) recWavesurfer.setTime(loopOffset); 
-                    } 
-                    if (isSpeedUpEnabled) { 
-                        currentLoopCount++; 
-                        const targetCount = parseInt(document.getElementById('speedUpCount').value); 
-                        if (currentLoopCount >= targetCount) { 
-                            const sInput = document.getElementById('speed'); 
-                            const currentVal = parseFloat(sInput.value); 
-                            if (currentVal < 1.0) { 
-                                sInput.value = Math.min(1.0, currentVal + 0.05).toFixed(2); 
-                                applySettings(); 
-                            } 
-                            currentLoopCount = 0; 
-                        } 
-                    } 
+                if (isRecording) { toggleRecording(); } else { 
+                    wavesurfer.setTime(r.start); t = r.start; 
+                    if (recObjectURL && recWavesurfer) { const loopOffset = r.start - lastRecStartPos; if (loopOffset >= 0 && loopOffset < recWavesurfer.getDuration()) recWavesurfer.setTime(loopOffset); } 
+                    if (isSpeedUpEnabled) { currentLoopCount++; const targetCount = parseInt(document.getElementById('speedUpCount').value); if (currentLoopCount >= targetCount) { const sInput = document.getElementById('speed'); const currentVal = parseFloat(sInput.value); if (currentVal < 1.0) { sInput.value = Math.min(1.0, currentVal + 0.05).toFixed(2); applySettings(); } currentLoopCount = 0; } } 
                 } 
             } 
             lastTime = t; 
@@ -1416,25 +1170,10 @@
 
         document.addEventListener('keydown', (e) => {
             if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
-
-            if (e.code === 'Space') {
-                e.preventDefault(); 
-                document.getElementById('playBtn').click();
-            } 
-            else if (e.code === 'ArrowLeft') {
-                e.preventDefault();
-                if (currentMode === 'file' && wavesurfer) wavesurfer.skip(-5);
-                if (currentMode === 'yt' && ytPlayer) ytPlayer.seekTo(Math.max(0, ytPlayer.getCurrentTime() - 5));
-            } 
-            else if (e.code === 'ArrowRight') {
-                e.preventDefault();
-                if (currentMode === 'file' && wavesurfer) wavesurfer.skip(5);
-                if (currentMode === 'yt' && ytPlayer) ytPlayer.seekTo(ytPlayer.getCurrentTime() + 5);
-            } 
-            else if ((e.code === 'KeyR' || e.key.toLowerCase() === 'r') && currentMode === 'file') {
-                e.preventDefault();
-                toggleRecording();
-            }
+            if (e.code === 'Space') { e.preventDefault(); document.getElementById('playBtn').click(); } 
+            else if (e.code === 'ArrowLeft') { e.preventDefault(); if (currentMode === 'file' && wavesurfer) wavesurfer.skip(-5); if (currentMode === 'yt' && ytPlayer) ytPlayer.seekTo(Math.max(0, ytPlayer.getCurrentTime() - 5)); } 
+            else if (e.code === 'ArrowRight') { e.preventDefault(); if (currentMode === 'file' && wavesurfer) wavesurfer.skip(5); if (currentMode === 'yt' && ytPlayer) ytPlayer.seekTo(ytPlayer.getCurrentTime() + 5); } 
+            else if ((e.code === 'KeyR' || e.key.toLowerCase() === 'r') && currentMode === 'file') { e.preventDefault(); toggleRecording(); }
         });
         
         setThemeColor(initColor);

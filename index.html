@@ -473,47 +473,58 @@
             <div id="ytHistoryList" style="display:flex; gap:8px; overflow-x:auto; padding-bottom:8px;" onclick="handleHistoryClick(event)"></div>
         </div>
         
-        <div id="ytPlayerContainer"><div id="player"></div></div>
-        
-        <div class="transport-controls" style="margin-top:15px; margin-bottom:15px;">
-            <button class="btn-ctrl" onclick="ytSkip(-5)"><span class="material-icons">replay_5</span></button>
-            <button class="btn-ctrl play-main" onclick="toggleYTPlay()"><span class="material-icons" id="ytPlayIcon" style="font-size:35px;">play_arrow</span></button>
-            <button class="btn-ctrl" onclick="ytSkip(5)"><span class="material-icons">forward_5</span></button>
+        <div id="ytPlayerContainer" style="max-width: 800px; margin: 0 auto;">
+            <div id="player"></div>
         </div>
         
-        <div class="panel" style="margin-bottom:15px;">
-            <div class="row">
-                <div style="min-width:65px; font-weight:bold; color:var(--text-dim); font-size:0.75rem;">Speed <button class="reset-btn" onclick="resetYTSpeed()">Reset</button></div>
-                <input type="range" id="ytSpeed" min="0.25" max="2.0" step="0.05" value="1.0" oninput="changeYTSpeed(this.value)">
-                <span id="ytSpeedTxt" class="val-display">x1.00</span>
+        <div class="panel" style="margin-top:15px; padding: 12px 15px; max-width: 800px; margin-left: auto; margin-right: auto;">
+            <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 12px;">
+                
+                <div class="transport-controls" style="margin:0; gap:12px;">
+                    <button class="btn-ctrl" style="width:40px; height:40px;" onclick="ytSkip(-5)"><span class="material-icons" style="font-size: 20px;">replay_5</span></button>
+                    <button class="btn-ctrl play-main" style="width:48px; height:48px;" onclick="toggleYTPlay()"><span class="material-icons" id="ytPlayIcon" style="font-size:28px;">play_arrow</span></button>
+                    <button class="btn-ctrl" style="width:40px; height:40px;" onclick="ytSkip(5)"><span class="material-icons" style="font-size: 20px;">forward_5</span></button>
+                </div>
+                
+                <div style="display:flex; align-items:center; gap:8px; flex-grow:1; max-width: 350px; justify-content: flex-end;">
+                    <div style="font-weight:bold; color:var(--text-dim); font-size:0.7rem; white-space:nowrap; display:flex; flex-direction:column; align-items:flex-end;">
+                        Speed
+                        <button class="reset-btn" onclick="resetYTSpeed()" style="font-size: 0.6rem; padding: 2px 6px; margin-top:2px;">Reset</button>
+                    </div>
+                    <input type="range" id="ytSpeed" min="0.25" max="2.0" step="0.05" value="1.0" oninput="changeYTSpeed(this.value)" style="min-width: 80px;">
+                    <span id="ytSpeedTxt" class="val-display" style="font-size:0.85rem; min-width: 45px;">x1.00</span>
+                </div>
             </div>
-        </div>
 
-        <div class="panel">
-            <div class="row" style="justify-content: center; flex-wrap: wrap; gap: 10px;">
-                <button class="loop-btn-main" id="setStartBtn" onclick="setLoopPoint('start')">SET START</button>
-                <div style="background:rgba(0,0,0,0.5); padding:5px; border-radius:8px; border:1px solid var(--border-color); display:flex; align-items:center; gap:5px;">
-                    <button class="adj-btn" onclick="adjustTime('start', -1)">-1s</button>
-                    <span id="loopStartTxt" class="time-display">00:00</span>
-                    <button class="adj-btn" onclick="adjustTime('start', 1)">+1s</button>
+            <div style="display: flex; flex-wrap: wrap; justify-content: center; align-items: stretch; gap: 8px;">
+                
+                <div style="display:flex; align-items:center; background:rgba(0,0,0,0.5); border-radius:8px; border:1px solid var(--border-color); padding:3px; flex: 1 1 200px; justify-content:space-between;">
+                    <button class="loop-btn-main" id="setStartBtn" onclick="setLoopPoint('start')" style="padding:6px 10px; border:none; margin-right:4px;">START</button>
+                    <div style="display:flex; align-items:center; gap:4px;">
+                        <button class="adj-btn" onclick="adjustTime('start', -1)">-1s</button>
+                        <span id="loopStartTxt" class="time-display" style="font-size:0.9rem;">00:00</span>
+                        <button class="adj-btn" onclick="adjustTime('start', 1)">+1s</button>
+                    </div>
                 </div>
-            </div>
-            <div class="row" style="justify-content: center; flex-wrap: wrap; gap: 10px;">
-                <button class="loop-btn-main" id="setEndBtn" onclick="setLoopPoint('end')">SET END</button>
-                <div style="background:rgba(0,0,0,0.5); padding:5px; border-radius:8px; border:1px solid var(--border-color); display:flex; align-items:center; gap:5px;">
-                    <button class="adj-btn" onclick="adjustTime('end', -1)">-1s</button>
-                    <span id="loopEndTxt" class="time-display">00:00</span>
-                    <button class="adj-btn" onclick="adjustTime('end', 1)">+1s</button>
+
+                <div style="display:flex; align-items:center; background:rgba(0,0,0,0.5); border-radius:8px; border:1px solid var(--border-color); padding:3px; flex: 1 1 200px; justify-content:space-between;">
+                    <button class="loop-btn-main" id="setEndBtn" onclick="setLoopPoint('end')" style="padding:6px 10px; border:none; margin-right:4px;">END</button>
+                    <div style="display:flex; align-items:center; gap:4px;">
+                        <button class="adj-btn" onclick="adjustTime('end', -1)">-1s</button>
+                        <span id="loopEndTxt" class="time-display" style="font-size:0.9rem;">00:00</span>
+                        <button class="adj-btn" onclick="adjustTime('end', 1)">+1s</button>
+                    </div>
                 </div>
-            </div>
-            <div class="row" style="justify-content: center; gap: 10px;">
-                <button id="toggleLoopBtn" class="yt-loop-btn-ui" onclick="toggleLoop()">LOOP OFF</button>
-                <button class="clear-btn-ja" onclick="saveLoop('yt')" id="saveLoopBtnYT" style="border: 1px solid var(--primary-color); border-radius: 8px; padding: 10px 15px; flex:none;">
-                    <span class="material-icons" style="font-size:16px;">bookmark_add</span> SAVE
-                </button>
+
+                <div style="display:flex; gap:6px; flex: 0 0 auto;">
+                    <button id="toggleLoopBtn" class="yt-loop-btn-ui" onclick="toggleLoop()" style="width: 100px; padding:6px 10px;">LOOP OFF</button>
+                    <button class="clear-btn-ja" onclick="saveLoop('yt')" id="saveLoopBtnYT" style="border: 1px solid var(--primary-color); border-radius: 8px; padding: 6px 15px;">
+                        <span class="material-icons" style="font-size:18px;">bookmark_add</span>
+                    </button>
+                </div>
             </div>
         </div>
-        <div id="loopListYT" class="loop-list-container"></div>
+        <div id="loopListYT" class="loop-list-container" style="max-width: 800px; margin: 0 auto;"></div>
     </div>
 </div>
 
@@ -882,7 +893,7 @@
         ko: { 
             langTitle: "언어 설정", helpTitle: "도움말 및 가이드", themeTitle: "테마 색상", guideFile: "오디오 파일 모드 가이드", guideYT: "YouTube 모드 가이드", close: "닫기", fit: "전체 보기", clear: "선택 해제", ready: "준비 완료", analyzing: "분석 중...", setStart: "시작", setEnd: "종료", loopOff: "루프 끄기", loopOn: "루프 켜기", fileSelect: "파일 선택", saveLoop: "루프 저장", speedUpLabel: "자동 BPM 업", recPlay: "녹음 재생", recStop: "재생 정지", privacyMenu: "개인정보처리방침", legalMenu: "특정상거래법 표기", authDesc: "계정으로 로그인", googleBtn: "Google로 로그인", authDiv: "또는", authEmail: "로그인 / 회원가입", subDesc: "이 기능을 사용하려면<br>구독이 필요합니다.", subStart: "구독 시작하기", subLogout: "다른 계정으로 로그인", historyTitle: "최근 기록", historyClear: "모두 지우기", ytLoad: "불러오기", recDel: "삭제", ytPlaceholder: "YouTube URL 또는 검색 키워드...",
             accInfo: "계정 정보", deleteAcc: "계정 삭제", accNameLabel: "계정 이름", accEmailLabel: "이메일", accPlanLabel: "플랜", resetPw: "비밀번호 재설정",
-            msgLoginReq: "먼저 로그인해 주세요.", msgEmptyAuth: "이메일과 비밀번호를 입력해 주세요.", msgRegConfirm: "계정을 찾을 수 정을 찾을 수 없습니다. 입력하신 이메일 주소로 확인 이메일이 발송됩니다. 계속하시겠습니까?\n\n※이메일 주소가 정확한지 확인해 주세요.", msgLoginErr: "오류: ", msgMailSent: "비밀번호 재설정 이메일을 보냈습니다. 받은 편지함을 확인하세요.", msgDelHist: "기록을 삭제하시겠습니까?", msgDelRec: "녹음을 삭제하시겠습니까?", msgDelAcc: "계정과 모든 저장된 데이터가 영구적으로 삭제됩니다.\n\n⚠️ 중요: 계정을 삭제해도 구독(결제)은 자동으로 해지되지 않습니다! 반드시 먼저 Square 결제 이메일에서 해지 절차를 진행해 주세요.\n\n정말 삭제하시겠습니까?", msgDelAccSuccess: "계정이 성공적으로 삭제되었습니다.", msgPwReset: "비밀번호 재설정 이메일을 보내시겠습니까?", msgRangeReq: "범위를 지정해 주세요", msgRangeInv: "잘못된 범위입니다", msgSubConfirm: "⚠️ 중요\nSquare 결제 페이지에서도 완전히 동일한 이메일 주소를 사용해 주세요.\n\n결제를 진행하시겠습니까?",
+            msgLoginReq: "먼저 로그인해 주세요.", msgEmptyAuth: "이메일과 비밀번호를 입력해 주세요.", msgRegConfirm: "계정을 찾을 수 없습니다. 입력하신 이메일 주소로 확인 이메일이 발송됩니다. 계속하시겠습니까?\n\n※이메일 주소가 정확한지 확인해 주세요.", msgLoginErr: "오류: ", msgMailSent: "비밀번호 재설정 이메일을 보냈습니다. 받은 편지함을 확인하세요.", msgDelHist: "기록을 삭제하시겠습니까?", msgDelRec: "녹음을 삭제하시겠습니까?", msgDelAcc: "계정과 모든 저장된 데이터가 영구적으로 삭제됩니다.\n\n⚠️ 중요: 계정을 삭제해도 구독(결제)은 자동으로 해지되지 않습니다! 반드시 먼저 Square 결제 이메일에서 해지 절차를 진행해 주세요.\n\n정말 삭제하시겠습니까?", msgDelAccSuccess: "계정이 성공적으로 삭제되었습니다.", msgPwReset: "비밀번호 재설정 이메일을 보내시겠습니까?", msgRangeReq: "범위를 지정해 주세요", msgRangeInv: "잘못된 범위입니다", msgSubConfirm: "⚠️ 중요\nSquare 결제 페이지에서도 완전히 동일한 이메일 주소를 사용해 주세요.\n\n결제를 진행하시겠습니까?",
             forgotPw: "비밀번호를 잊으셨나요?", msgUnverified: "이메일 주소가 확인되지 않았습니다. 인증 이메일의 링크를 클릭하여 인증을 완료해 주세요. (확인 이메일을 재발송했습니다)", msgVerifySent: "가입 확인 이메일을 발송했습니다. 이메일의 링크를 클릭하여 등록을 완료한 후 다시 로그인해 주세요.", msgEnterEmailPwReset: "비밀번호를 재설정하려면 이메일 주소를 입력해 주세요.", modalSubStartText: "구독 시작하기", manageSubText: "구독 관리 / 해지", msgManageSub: "구독을 관리하거나 해지하려면 Square 결제 영수증 이메일에 있는 '구독 관리' 링크를 이용해 주세요.",
             privacyInner: `<h2 style="color:var(--primary-color); margin-top:0;">개인정보처리방침</h2><p>Anderson Studios(이하 '당 스튜디오')가 운영하는 'AMS Music School'은 제공하는 애플리케이션 'AMS Practice Player'(이하 '본 앱')의 개인정보 처리에 대해 다음과 같이 정합니다.</p><h3>1. 수집하는 정보</h3><p>본 앱에서는 Google 인증을 통한 이메일 주소, 이름 및 서비스 이용에 필요한 결제 상태(Square 경유)를 수집합니다.</p><h3>2. 이용 목적</h3><p>수집한 정보는 계정 인증, 구독 관리, 사용자 지원 및 본 앱의 기능 제공 목적으로만 이용됩니다.</p><h3>3. 제3자 제공</h3><p>법령에 의한 경우를 제외하고, 동의 없이 제3자에게 제공하지 않습니다. 본 앱은 인프라로 Google Firebase를, 결제 시스템으로 Square 정합니다.</p><h3>4. 문의처</h3><p>운영: Anderson Studios (AMS Music School)<br>연락처: ams.guitar.school@gmail.com</p><button class="clear-btn-ja" style="width:100%; margin-top:20px; padding:12px;" onclick="togglePolicy('privacy', false)">닫기</button>`,
             legalInner: `<h2 style="color:var(--primary-color); margin-top:0;">특정상거래법 표기 / 법적 고지</h2><h3>운영자명</h3><p>Koichi Ashida (Anderson Studios / AMS Music School)</p><h3>연락처</h3><p>ams.guitar.school@gmail.com</p><h3>판매 가격</h3><p>구매 절차 시 화면에 표시되는 금액 (세금 포함)</p><h3>대금 결제 시기 및 방법</h3><p>Square 결제(신용카드 등)를 통한 즉시 결제. 구독은 매 갱신일에 과금됩니다.</p><h3>서비스 제공 시기</h3><p>결제 완료 후 즉시 이용 가능합니다.</p><h3>해지 및 환불 정책</h3><p>・상품의 특성상, 결제 완료 후의 환불 및 반품은 원칙적으로 불가능합니다.<br>・구독 해지는 언제든지 가능합니다. 해지 후에도 유효기간까지는 계속해서 서비스를 이용하실 수 있습니다.<br>・일할 계산에 의한 환불은 진행하지 않습니다.</p><button class="clear-btn-ja" style="width:100%; margin-top:20px; padding:12px;" onclick="togglePolicy('legal', false)">닫기</button>`,
@@ -1036,7 +1047,6 @@
     
     const tag = document.createElement('script'); tag.src = "https://www.youtube.com/iframe_api"; document.head.appendChild(tag);
     
-    // ★ 検索結果の表示/非表示を切り替える関数
     window.toggleYTResults = () => {
         const res = document.getElementById('ytSearchResults');
         res.style.display = (res.style.display === 'none' || res.style.display === '') ? 'block' : 'none';
@@ -1063,7 +1073,6 @@
                 const lang = document.getElementById('langSelect').value || 'ja'; 
                 if(b) { b.innerText = translations[lang].loopOff; b.classList.remove('active'); } 
                 
-                // 動画読み込み時に速度をリセットする
                 resetYTSpeed();
 
                 if (ytPlayer && ytPlayer.loadVideoById) {
@@ -1155,7 +1164,6 @@
         }
     }
     
-    // ★ 追加: YouTube用の再生/一時停止トグル
     window.toggleYTPlay = () => {
         if (!ytPlayer || !ytPlayer.getPlayerState) return;
         const state = ytPlayer.getPlayerState();
@@ -1166,14 +1174,12 @@
         }
     };
 
-    // ★ 追加: YouTube用のスキップ機能
     window.ytSkip = (seconds) => {
         if (!ytPlayer || !ytPlayer.getCurrentTime) return;
         const currentTime = ytPlayer.getCurrentTime();
         ytPlayer.seekTo(currentTime + seconds, true);
     };
 
-    // ★ 追加: YouTube用の速度変更機能
     window.changeYTSpeed = (val) => {
         if (!ytPlayer || !ytPlayer.setPlaybackRate) return;
         const rate = parseFloat(val);
@@ -1306,7 +1312,6 @@
         changeLanguage(); 
         renderYTHistory(); 
 
-        // ★ YouTubeモードでのキーボード操作（スペース・矢印キー）にも対応
         document.addEventListener('keydown', (e) => {
             if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
             if (e.code === 'Space') { 

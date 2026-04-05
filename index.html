@@ -472,8 +472,24 @@
             </div>
             <div id="ytHistoryList" style="display:flex; gap:8px; overflow-x:auto; padding-bottom:8px;" onclick="handleHistoryClick(event)"></div>
         </div>
+        
         <div id="ytPlayerContainer"><div id="player"></div></div>
-        <div class="panel" style="margin-top:15px;">
+        
+        <div class="transport-controls" style="margin-top:15px; margin-bottom:15px;">
+            <button class="btn-ctrl" onclick="ytSkip(-5)"><span class="material-icons">replay_5</span></button>
+            <button class="btn-ctrl play-main" onclick="toggleYTPlay()"><span class="material-icons" id="ytPlayIcon" style="font-size:35px;">play_arrow</span></button>
+            <button class="btn-ctrl" onclick="ytSkip(5)"><span class="material-icons">forward_5</span></button>
+        </div>
+        
+        <div class="panel" style="margin-bottom:15px;">
+            <div class="row">
+                <div style="min-width:65px; font-weight:bold; color:var(--text-dim); font-size:0.75rem;">Speed <button class="reset-btn" onclick="resetYTSpeed()">Reset</button></div>
+                <input type="range" id="ytSpeed" min="0.25" max="2.0" step="0.05" value="1.0" oninput="changeYTSpeed(this.value)">
+                <span id="ytSpeedTxt" class="val-display">x1.00</span>
+            </div>
+        </div>
+
+        <div class="panel">
             <div class="row" style="justify-content: center; flex-wrap: wrap; gap: 10px;">
                 <button class="loop-btn-main" id="setStartBtn" onclick="setLoopPoint('start')">SET START</button>
                 <div style="background:rgba(0,0,0,0.5); padding:5px; border-radius:8px; border:1px solid var(--border-color); display:flex; align-items:center; gap:5px;">
@@ -866,12 +882,12 @@
         ko: { 
             langTitle: "언어 설정", helpTitle: "도움말 및 가이드", themeTitle: "테마 색상", guideFile: "오디오 파일 모드 가이드", guideYT: "YouTube 모드 가이드", close: "닫기", fit: "전체 보기", clear: "선택 해제", ready: "준비 완료", analyzing: "분석 중...", setStart: "시작", setEnd: "종료", loopOff: "루프 끄기", loopOn: "루프 켜기", fileSelect: "파일 선택", saveLoop: "루프 저장", speedUpLabel: "자동 BPM 업", recPlay: "녹음 재생", recStop: "재생 정지", privacyMenu: "개인정보처리방침", legalMenu: "특정상거래법 표기", authDesc: "계정으로 로그인", googleBtn: "Google로 로그인", authDiv: "또는", authEmail: "로그인 / 회원가입", subDesc: "이 기능을 사용하려면<br>구독이 필요합니다.", subStart: "구독 시작하기", subLogout: "다른 계정으로 로그인", historyTitle: "최근 기록", historyClear: "모두 지우기", ytLoad: "불러오기", recDel: "삭제", ytPlaceholder: "YouTube URL 또는 검색 키워드...",
             accInfo: "계정 정보", deleteAcc: "계정 삭제", accNameLabel: "계정 이름", accEmailLabel: "이메일", accPlanLabel: "플랜", resetPw: "비밀번호 재설정",
-            msgLoginReq: "먼저 로그인해 주세요.", msgEmptyAuth: "이메일과 비밀번호를 입력해 주세요.", msgRegConfirm: "계정을 찾을 수 없습니다. 입력하신 이메일 주소로 확인 이메일이 발송됩니다. 계속하시겠습니까?\n\n※이메일 주소가 정확한지 확인해 주세요.", msgLoginErr: "오류: ", msgMailSent: "비밀번호 재설정 이메일을 보냈습니다. 받은 편지함을 확인하세요.", msgDelHist: "기록을 삭제하시겠습니까?", msgDelRec: "녹음을 삭제하시겠습니까?", msgDelAcc: "계정과 모든 저장된 데이터가 영구적으로 삭제됩니다.\n\n⚠️ 중요: 계정을 삭제해도 구독(결제)은 자동으로 해지되지 않습니다! 반드시 먼저 Square 결제 이메일에서 해지 절차를 진행해 주세요.\n\n정말 삭제하시겠습니까?", msgDelAccSuccess: "계정이 성공적으로 삭제되었습니다.", msgPwReset: "비밀번호 재설정 이메일을 보내시겠습니까?", msgRangeReq: "범위를 지정해 주세요", msgRangeInv: "잘못된 범위입니다", msgSubConfirm: "⚠️ 중요\nSquare 결제 페이지에서도 완전히 동일한 이메일 주소를 사용해 주세요.\n\n결제를 진행하시겠습니까?",
+            msgLoginReq: "먼저 로그인해 주세요.", msgEmptyAuth: "이메일과 비밀번호를 입력해 주세요.", msgRegConfirm: "계정을 찾을 수 정을 찾을 수 없습니다. 입력하신 이메일 주소로 확인 이메일이 발송됩니다. 계속하시겠습니까?\n\n※이메일 주소가 정확한지 확인해 주세요.", msgLoginErr: "오류: ", msgMailSent: "비밀번호 재설정 이메일을 보냈습니다. 받은 편지함을 확인하세요.", msgDelHist: "기록을 삭제하시겠습니까?", msgDelRec: "녹음을 삭제하시겠습니까?", msgDelAcc: "계정과 모든 저장된 데이터가 영구적으로 삭제됩니다.\n\n⚠️ 중요: 계정을 삭제해도 구독(결제)은 자동으로 해지되지 않습니다! 반드시 먼저 Square 결제 이메일에서 해지 절차를 진행해 주세요.\n\n정말 삭제하시겠습니까?", msgDelAccSuccess: "계정이 성공적으로 삭제되었습니다.", msgPwReset: "비밀번호 재설정 이메일을 보내시겠습니까?", msgRangeReq: "범위를 지정해 주세요", msgRangeInv: "잘못된 범위입니다", msgSubConfirm: "⚠️ 중요\nSquare 결제 페이지에서도 완전히 동일한 이메일 주소를 사용해 주세요.\n\n결제를 진행하시겠습니까?",
             forgotPw: "비밀번호를 잊으셨나요?", msgUnverified: "이메일 주소가 확인되지 않았습니다. 인증 이메일의 링크를 클릭하여 인증을 완료해 주세요. (확인 이메일을 재발송했습니다)", msgVerifySent: "가입 확인 이메일을 발송했습니다. 이메일의 링크를 클릭하여 등록을 완료한 후 다시 로그인해 주세요.", msgEnterEmailPwReset: "비밀번호를 재설정하려면 이메일 주소를 입력해 주세요.", modalSubStartText: "구독 시작하기", manageSubText: "구독 관리 / 해지", msgManageSub: "구독을 관리하거나 해지하려면 Square 결제 영수증 이메일에 있는 '구독 관리' 링크를 이용해 주세요.",
             privacyInner: `<h2 style="color:var(--primary-color); margin-top:0;">개인정보처리방침</h2><p>Anderson Studios(이하 '당 스튜디오')가 운영하는 'AMS Music School'은 제공하는 애플리케이션 'AMS Practice Player'(이하 '본 앱')의 개인정보 처리에 대해 다음과 같이 정합니다.</p><h3>1. 수집하는 정보</h3><p>본 앱에서는 Google 인증을 통한 이메일 주소, 이름 및 서비스 이용에 필요한 결제 상태(Square 경유)를 수집합니다.</p><h3>2. 이용 목적</h3><p>수집한 정보는 계정 인증, 구독 관리, 사용자 지원 및 본 앱의 기능 제공 목적으로만 이용됩니다.</p><h3>3. 제3자 제공</h3><p>법령에 의한 경우를 제외하고, 동의 없이 제3자에게 제공하지 않습니다. 본 앱은 인프라로 Google Firebase를, 결제 시스템으로 Square 정합니다.</p><h3>4. 문의처</h3><p>운영: Anderson Studios (AMS Music School)<br>연락처: ams.guitar.school@gmail.com</p><button class="clear-btn-ja" style="width:100%; margin-top:20px; padding:12px;" onclick="togglePolicy('privacy', false)">닫기</button>`,
             legalInner: `<h2 style="color:var(--primary-color); margin-top:0;">특정상거래법 표기 / 법적 고지</h2><h3>운영자명</h3><p>Koichi Ashida (Anderson Studios / AMS Music School)</p><h3>연락처</h3><p>ams.guitar.school@gmail.com</p><h3>판매 가격</h3><p>구매 절차 시 화면에 표시되는 금액 (세금 포함)</p><h3>대금 결제 시기 및 방법</h3><p>Square 결제(신용카드 등)를 통한 즉시 결제. 구독은 매 갱신일에 과금됩니다.</p><h3>서비스 제공 시기</h3><p>결제 완료 후 즉시 이용 가능합니다.</p><h3>해지 및 환불 정책</h3><p>・상품의 특성상, 결제 완료 후의 환불 및 반품은 원칙적으로 불가능합니다.<br>・구독 해지는 언제든지 가능합니다. 해지 후에도 유효기간까지는 계속해서 서비스를 이용하실 수 있습니다.<br>・일할 계산에 의한 환불은 진행하지 않습니다.</p><button class="clear-btn-ja" style="width:100%; margin-top:20px; padding:12px;" onclick="togglePolicy('legal', false)">닫기</button>`,
             guideFileContent: `<b>【오디오 파일 모드】 전체 가이드</b><span class="guide-sub">1. 파일 불러오기</span><ul><li>기기 내의 음악 파일을 선택하여 분석합니다. 불러올 때 BPM이 자동으로 계산됩니다.</li></ul><span class="guide-sub">2. AB 루프 (범위 지정)</span><ul><li>파형을 드래그하여 범위를 선택합니다. 재생 중 범위의 끝에 도달하면 자동으로 시작점으로 돌아갑니다.</li><li>'선택 해제'로 루프를 해제합니다. '루프 저장'으로 곡마다 여러 범위를 저장하고, 아래 목록에서 즉시 전환할 수 있습니다.</li></ul><span class="guide-sub">3. BPM 및 피치 변경</span><ul><li>BPM 슬라이더로 속도를 변경합니다 (0.5x〜1.5x).</li><li>피치 슬라이더로 키를 반음 단위로 변경합니다 (±6). ※피치 변경에는 구독이 필요합니다.</li></ul><span class="guide-sub">4. 자동 스피드 업 기능</span><ul><li>'⚡(번개)' 버튼을 켜고 '자동 BPM 업'을 선택합니다. 지정한 횟수만큼 루프를 반복할 때마다 자동으로 BPM이 +0.05씩 올라갑니다 (원래 BPM까지).</li></ul><span class="guide-sub">5. 셀프 녹음 체크</span><ul><li>'mic' 버튼으로 재생하면서 자신의 소리를 녹음합니다.</li><li>녹음 데이터는 파형 아래에 표시되며, 메인 음원과 녹음의 볼륨을 개별적으로 조절할 수 조절할 수 있습니다.</li><li>'S(솔로)' 버튼을 켜면 녹음한 소리만 들을 수 있습니다.</li><li class="guide-note">※정확한 녹음과 동기화를 위해 PC와 오디오 인터페이스 사용을 권장합니다.</li><li class="guide-note">※모바일 기기(스마트폰/태블릿)에서는 브라우저의 제한으로 인해 초기 동작이나 녹음 동작이 불안정할 수 있습니다.</li></ul><span class="guide-sub">6. 동작 새로고침(리프레시)</span><ul><li>모바일 기기 등에서 오디오 재생이나 파형 동작이 불안정해질 경우, 파형 상단의 'FIT' 버튼 오른쪽에 있는 '새로고침' 버튼을 눌러주세요.</li><li>불러온 파일과 루프 설정을 유지한 채 오디오 엔진을 안전하게 재시작하여 동작을 안정시킵니다.</li></ul><span class="guide-sub">【자주 묻는 질문 (FAQ)】</span><ul><li><b>이메일 주소 변경에 대하여:</b><br>이메일 주소를 변경하시려면 현재 구독을 먼저 해지하시고, 유효기간이 만료된 후 새로운 이메일 주소로 다시 신규 가입(재결제)해 주시기 바랍니다.</li></ul>`,
-            guideYTContent: `<b>【YouTube 모드】 전체 가이드</b><span class="guide-sub">1. 동영상 불러오기</span><ul><li>YouTube의 URL을 붙여넣거나 키워드를 입력하고 'LOAD'를 탭합니다.</li><li>불러온 동영상은 'RECENT HISTORY'에 저장되어 기록에서 빠르게 다시 불러올 수 있습니다.</li></ul><span class="guide-sub">2. AB 루프 설정</span><ul><li>'START' 및 'END' 버튼으로 현재 재생 위치를 루프 범위로 설정합니다.</li><li>'-1 / +1 미세 조정할 수 있습니다.</li><li>'LOOP ON/OFF' 버튼으로 루프 활성화/비활성화를 전환합니다.</li></ul><span class="guide-sub">3. 루프 저장</span><ul><li>'SAVE' 버튼으로 설정한 루프 범위를 저장합니다.</li><li>저장된 루프는 동영상별로 목록화되며, 숫자 아이콘을 탭하는 것만으로 즉시 불러올 수 있습니다.</li></ul><span class="guide-sub">【자주 묻는 질문 (FAQ)】</span><ul><li><b>이메일 주소 변경에 대하여:</b><br>이메일 주소를 변경하시려면 현재 구독을 먼저 해지하시고, 유효기간이 만료된 후 새로운 이메일 주소로 다시 신규 가입(재결제)해 주시기 바랍니다.</li></ul>`,
+            guideYTContent: `<b>【YouTube 모드】 전체 가이드</b><span class="guide-sub">1. 동영상 불러오기</span><ul><li>YouTube의 URL을 붙여넣거나 키워드를 입력하고 'LOAD'를 탭합니다.</li><li>불러온 동영상은 'RECENT HISTORY'에 저장되어 기록에서 빠르게 다시 불러올 수 있습니다.</li></ul><span class="guide-sub">2. AB 루프 설정</span><ul><li>'START' 및 'END' 버튼으로 현재 재생 위치를 루프 범위로 설정합니다.</li><li>'-1 / +1' 버튼으로 미세 조정할 수 있습니다.</li><li>'LOOP ON/OFF' 버튼으로 루프 활성화/비활성화를 전환합니다.</li></ul><span class="guide-sub">3. 루프 저장</span><ul><li>'SAVE' 버튼으로 설정한 루프 범위를 저장합니다.</li><li>저장된 루프는 동영상별로 목록화되며, 숫자 아이콘을 탭하는 것만으로 즉시 불러올 수 있습니다.</li></ul><span class="guide-sub">【자주 묻는 질문 (FAQ)】</span><ul><li><b>이메일 주소 변경에 대하여:</b><br>이메일 주소를 변경하시려면 현재 구독을 먼저 해지하시고, 유효기간이 만료된 후 새로운 이메일 주소로 다시 신규 가입(재결제)해 주시기 바랍니다.</li></ul>`,
             installMobile: "홈 화면에 추가", installDesktop: "데스크톱에 추가", iosInstallGuide: "Safari 하단의 공유 버튼 [↑]을 탭하고 '홈 화면에 추가'를 선택하세요.", installNotAvailable: "이 브라우저에서는 설치가 지원되지 않거나 이미 설치되어 있습니다."
         },
         es: { 
@@ -944,7 +960,6 @@
         const recDel = document.getElementById('recDelBtnTxt'); 
         if(recDel) recDel.innerHTML = `<span class="material-icons" style="font-size:14px;">delete</span> ${t.recDel}`; 
         
-        // 検索欄のプレースホルダー翻訳
         const ytInput = document.getElementById('ytUrl');
         if (ytInput) ytInput.placeholder = t.ytPlaceholder || "YouTube URL or Search Keyword...";
 
@@ -1048,6 +1063,9 @@
                 const lang = document.getElementById('langSelect').value || 'ja'; 
                 if(b) { b.innerText = translations[lang].loopOff; b.classList.remove('active'); } 
                 
+                // 動画読み込み時に速度をリセットする
+                resetYTSpeed();
+
                 if (ytPlayer && ytPlayer.loadVideoById) {
                     ytPlayer.loadVideoById(videoId); 
                 } else {
@@ -1067,7 +1085,6 @@
         const resultsContainer = document.getElementById('ytSearchResults');
         const toggleBtn = document.getElementById('ytToggleResultsBtn');
         
-        // 検索実行時は一旦トグルボタンを隠す
         toggleBtn.style.display = 'none';
         
         if (!YOUTUBE_API_KEY) {
@@ -1085,10 +1102,8 @@
             const data = await res.json();
 
             if (data.items && data.items.length > 0) {
-                // 検索結果が出たのでトグルボタンを表示
                 toggleBtn.style.display = 'flex';
                 
-                // ヘッダー（閉じるボタン）付きで結果を描画
                 resultsContainer.innerHTML = `
                     <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 12px; border-bottom:1px solid rgba(255,255,255,0.1); position:sticky; top:0; background:rgba(15,15,20,0.95); z-index:10; backdrop-filter:blur(5px);">
                         <span style="font-size:0.7rem; color:var(--text-dim); font-weight:bold; letter-spacing:1px;">SEARCH RESULTS</span>
@@ -1140,13 +1155,59 @@
         }
     }
     
+    // ★ 追加: YouTube用の再生/一時停止トグル
+    window.toggleYTPlay = () => {
+        if (!ytPlayer || !ytPlayer.getPlayerState) return;
+        const state = ytPlayer.getPlayerState();
+        if (state === YT.PlayerState.PLAYING) {
+            ytPlayer.pauseVideo();
+        } else {
+            ytPlayer.playVideo();
+        }
+    };
+
+    // ★ 追加: YouTube用のスキップ機能
+    window.ytSkip = (seconds) => {
+        if (!ytPlayer || !ytPlayer.getCurrentTime) return;
+        const currentTime = ytPlayer.getCurrentTime();
+        ytPlayer.seekTo(currentTime + seconds, true);
+    };
+
+    // ★ 追加: YouTube用の速度変更機能
+    window.changeYTSpeed = (val) => {
+        if (!ytPlayer || !ytPlayer.setPlaybackRate) return;
+        const rate = parseFloat(val);
+        ytPlayer.setPlaybackRate(rate);
+        document.getElementById('ytSpeedTxt').innerText = 'x' + rate.toFixed(2);
+    };
+
+    window.resetYTSpeed = () => {
+        document.getElementById('ytSpeed').value = 1.0;
+        changeYTSpeed(1.0);
+    };
+
     function saveToHistory(id, title) { let history = JSON.parse(localStorage.getItem('ams_yt_history') || "[]"); history = history.filter(item => item.id !== id); history.unshift({ id: id, title: title || id, url: `https://www.youtube.com/watch?v=${id}`, time: Date.now() }); if (history.length > 20) history.pop(); localStorage.setItem('ams_yt_history', JSON.stringify(history)); renderYTHistory(); syncToCloud(); }
     function renderYTHistory() { const historyList = document.getElementById('ytHistoryList'); const container = document.getElementById('ytHistoryContainer'); if(!historyList || !container) return; const history = JSON.parse(localStorage.getItem('ams_yt_history') || "[]"); if (history.length === 0) { container.style.display = 'none'; return; } container.style.display = 'block'; historyList.innerHTML = ""; history.forEach(item => { const card = document.createElement('div'); card.style = "background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 8px 12px; min-width: 180px; flex-shrink: 0; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: background 0.2s; backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);"; card.onmouseover = () => card.style.background = "rgba(255,255,255,0.1)"; card.onmouseout = () => card.style.background = "rgba(0,0,0,0.4)"; card.setAttribute('data-url', item.url); card.innerHTML = `<span style="font-size:0.7rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:#e0e0e0;">${item.title}</span><span class="material-icons" style="color:#ff5555; font-size:16px; transition:transform 0.2s;" onmouseover="this.style.transform='scale(1.2)'" onmouseout="this.style.transform='scale(1)'" onclick="event.stopPropagation(); deleteHistoryItem('${item.id}')">cancel</span>`; historyList.appendChild(card); }); }
     function handleHistoryClick(event) { const card = event.target.closest('div[data-url]'); if (card) { if (!isSubscribed) { document.getElementById('subscription-overlay').style.display = 'flex'; return; } loadYouTube(card.getAttribute('data-url')); } }
     window.deleteHistoryItem = (id) => { let history = JSON.parse(localStorage.getItem('ams_yt_history') || "[]"); history = history.filter(item => item.id !== id); localStorage.setItem('ams_yt_history', JSON.stringify(history)); renderYTHistory(); syncToCloud(); };
     window.clearYTHistory = () => { if (confirm(getMsg('msgDelHist'))) { localStorage.removeItem('ams_yt_history'); renderYTHistory(); syncToCloud(); } };
     function updateYTInfo() { const data = ytPlayer.getVideoData(); if (data && data.video_id) { saveToHistory(data.video_id, data.title); renderLoopList('yt'); } }
-    function onPlayerStateChange(e) { if (e.data === YT.PlayerState.PLAYING) { updateYTInfo(); loopInterval = setInterval(() => { if (isLooping && ytPlayer.getCurrentTime() >= loopEnd) ytPlayer.seekTo(loopStart); }, 200); } else clearInterval(loopInterval); }
+    
+    function onPlayerStateChange(e) { 
+        const playIcon = document.getElementById('ytPlayIcon');
+        
+        if (e.data === YT.PlayerState.PLAYING) { 
+            if (playIcon) playIcon.innerText = 'pause';
+            updateYTInfo(); 
+            loopInterval = setInterval(() => { 
+                if (isLooping && ytPlayer.getCurrentTime() >= loopEnd) ytPlayer.seekTo(loopStart); 
+            }, 200); 
+        } else { 
+            if (playIcon) playIcon.innerText = 'play_arrow';
+            clearInterval(loopInterval); 
+        } 
+    }
+    
     const fmt = (s) => `${Math.floor(s/60).toString().padStart(2,'0')}:${Math.floor(s%60).toString().padStart(2,'0')}`;
     window.setLoopPoint = (t) => { const now = ytPlayer.getCurrentTime(); if (t === 'start') { loopStart = Math.floor(now); document.getElementById('loopStartTxt').innerText = fmt(loopStart); } else { loopEnd = Math.ceil(now); document.getElementById('loopEndTxt').innerText = fmt(loopEnd); } };
     window.adjustTime = (t, a) => { if (t === 'start') { loopStart = Math.max(0, loopStart + a); document.getElementById('loopStartTxt').innerText = fmt(loopStart); ytPlayer.seekTo(loopStart); } else { loopEnd = Math.max(loopStart + 1, loopEnd + a); document.getElementById('loopEndTxt').innerText = fmt(loopEnd); } };
@@ -1245,12 +1306,28 @@
         changeLanguage(); 
         renderYTHistory(); 
 
+        // ★ YouTubeモードでのキーボード操作（スペース・矢印キー）にも対応
         document.addEventListener('keydown', (e) => {
             if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
-            if (e.code === 'Space') { e.preventDefault(); document.getElementById('playBtn').click(); } 
-            else if (e.code === 'ArrowLeft') { e.preventDefault(); if (currentMode === 'file' && wavesurfer) wavesurfer.skip(-5); if (currentMode === 'yt' && ytPlayer) ytPlayer.seekTo(Math.max(0, ytPlayer.getCurrentTime() - 5)); } 
-            else if (e.code === 'ArrowRight') { e.preventDefault(); if (currentMode === 'file' && wavesurfer) wavesurfer.skip(5); if (currentMode === 'yt' && ytPlayer) ytPlayer.seekTo(ytPlayer.getCurrentTime() + 5); } 
-            else if ((e.code === 'KeyR' || e.key.toLowerCase() === 'r') && currentMode === 'file') { e.preventDefault(); toggleRecording(); }
+            if (e.code === 'Space') { 
+                e.preventDefault(); 
+                if (currentMode === 'file') document.getElementById('playBtn').click(); 
+                else if (currentMode === 'yt') toggleYTPlay(); 
+            } 
+            else if (e.code === 'ArrowLeft') { 
+                e.preventDefault(); 
+                if (currentMode === 'file' && wavesurfer) wavesurfer.skip(-5); 
+                if (currentMode === 'yt' && ytPlayer) ytSkip(-5); 
+            } 
+            else if (e.code === 'ArrowRight') { 
+                e.preventDefault(); 
+                if (currentMode === 'file' && wavesurfer) wavesurfer.skip(5); 
+                if (currentMode === 'yt' && ytPlayer) ytSkip(5); 
+            } 
+            else if ((e.code === 'KeyR' || e.key.toLowerCase() === 'r') && currentMode === 'file') { 
+                e.preventDefault(); 
+                toggleRecording(); 
+            }
         });
         
         setThemeColor(initColor);

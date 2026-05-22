@@ -653,6 +653,7 @@ async function forceRefreshPlayer() {
         const currentRegions = wsRegions.getRegions().map(r => ({ start: r.start, end: r.end }));
         
         wavesurfer.pause(); wavesurfer.empty(); wsRegions.clearRegions();
+        if (isMobile) await new Promise(r => setTimeout(r, 150));
         wavesurfer.load(currentObjectURL);
         wavesurfer.once('ready', () => {
             const currentColor = localStorage.getItem('ams_theme_color') || '#d4a373';
@@ -885,30 +886,49 @@ function startApp() {
     document.getElementById('mainVolume').oninput = applyVolumes; 
     document.getElementById('recVolume').oninput = applyVolumes; 
     
-    // モバイル向け: ファイル読み込み改善
-    // iOSではAudioContextをユーザー操作タイミング（onchange）で確実に起動する
+    // =========================================================
+    // モバイル向けファイル読み込み（安定化対応版）
+    // =========================================================
     const audioFileInput = document.getElementById('audioFile');
     const fileSelectBtn = document.getElementById('fileSelectBtn');
+    let isLoadingFile = false; // 二重ロード防止フラグ
 
-    // iOSのAudioContext自動停止対策: タッチ時に事前アンロック
+    // iOSのAudioContext事前アンロック
+    // touchend のみで処理し、click では何もしない（二重発火防止）
     if (isMobile) {
-        fileSelectBtn.addEventListener('touchend', () => {
-            // タッチ操作のタイミングでAudioContextを初期化・再開しておく
+        let touchFired = false;
+        fileSelectBtn.addEventListener('touchstart', () => {
+            touchFired = true;
+            // タッチ操作タイミングでAudioContextを起動・再開
             const ctx = initAudioContext();
             if (ctx && ctx.state === 'suspended') ctx.resume();
         }, { passive: true });
+
+        // touchend: value リセット（同一ファイル再選択対応）
+        fileSelectBtn.addEventListener('touchend', (e) => {
+            audioFileInput.value = '';
+        }, { passive: true });
+
+        // click イベントは touchend の直後にも発火するため、
+        // touch 操作の場合は click での value リセットをスキップ
+        fileSelectBtn.addEventListener('click', () => {
+            if (touchFired) { touchFired = false; return; }
+            audioFileInput.value = '';
+        });
+    } else {
+        // PC: click のみで value リセット
+        fileSelectBtn.addEventListener('click', () => {
+            audioFileInput.value = '';
+        });
     }
 
-    // iOS Safari: 同じファイルを再選択したとき change が発火しないバグの対策
-    // labelクリック時にinputのvalueをリセットしておく
-    fileSelectBtn.addEventListener('click', () => {
-        audioFileInput.value = '';
-    });
-
     audioFileInput.addEventListener('change', async (e) => {
+        // 二重ロード防止
+        if (isLoadingFile) return;
         const file = e.target.files && e.target.files[0];
         if (!file) return;
 
+        isLoadingFile = true;
         const lang = document.getElementById('langSelect').value || 'ja';
         const t = translations[lang] || translations['ja'];
         const statusEl = document.getElementById('loadStatus');
@@ -919,11 +939,11 @@ function startApp() {
             if (ctx && ctx.state === 'suspended') await ctx.resume();
 
             currentFileName = file.name;
-            // ファイル名が長い場合は短縮表示
             const displayName = file.name.length > 30 ? file.name.substring(0, 28) + '…' : file.name;
             fileSelectBtn.innerText = displayName;
-            statusEl.innerText = isMobile ? (lang === 'ja' ? '読み込み中...' : 'Loading...') : (t.analyzing || 'LOADING...');
+            statusEl.innerText = lang === 'ja' ? '読み込み中...' : 'Loading...';
 
+            // 再生停止・リージョンクリア
             if (wavesurfer.isPlaying()) wavesurfer.pause();
             wsRegions.clearRegions();
 
@@ -933,36 +953,44 @@ function startApp() {
                 currentObjectURL = null;
             }
 
-            // Blobコピー不要: ファイルから直接ObjectURL生成（メモリ効率化）
+            // wavesurfer の内部状態をリセット（前のファイルの残骸を除去）
+            wavesurfer.empty();
+
+            // モバイルは empty() 後に少し待機してDOMを安定させる
+            if (isMobile) await new Promise(r => setTimeout(r, 150));
+
             currentObjectURL = URL.createObjectURL(file);
 
-            // モバイルではwavesurfer.loadの前に少し待つ（DOM安定化）
-            if (isMobile) await new Promise(r => setTimeout(r, 80));
-
-            wavesurfer.load(currentObjectURL);
-            wavesurfer.once('decode', () => {
+            // 読み込み完了・エラー時のハンドラを一度だけ登録
+            const onDecode = () => {
+                wavesurfer.un('error', onError);
                 analyzeAudio(file);
                 renderLoopList('file');
-            });
-
-            // エラーハンドリング（ロード失敗時にユーザーへ通知）
-            wavesurfer.once('error', (err) => {
+                isLoadingFile = false;
+            };
+            const onError = (err) => {
+                wavesurfer.un('decode', onDecode);
                 console.error('Wavesurfer load error:', err);
                 statusEl.innerText = lang === 'ja' ? '読み込みエラー' : 'Load Error';
                 fileSelectBtn.innerText = t.fileSelect || 'ファイルを選択';
-                currentObjectURL = null;
+                if (currentObjectURL) { URL.revokeObjectURL(currentObjectURL); currentObjectURL = null; }
                 currentFileName = '';
-                // inputをリセットして再選択できるようにする
                 audioFileInput.value = '';
-            });
+                isLoadingFile = false;
+            };
+            wavesurfer.once('decode', onDecode);
+            wavesurfer.once('error', onError);
+
+            wavesurfer.load(currentObjectURL);
 
         } catch (err) {
             console.error('File load error:', err);
             statusEl.innerText = lang === 'ja' ? '読み込みエラー' : 'Load Error';
             fileSelectBtn.innerText = t.fileSelect || 'ファイルを選択';
             audioFileInput.value = '';
+            isLoadingFile = false;
         }
-    }); 
+    });
 
     const applySettings = () => { 
         const s = parseFloat(document.getElementById('speed').value);

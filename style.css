@@ -109,8 +109,9 @@ input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; height: 16
 .solo-btn { width: 32px; height: 32px; border-radius: 4px; font-weight: bold; font-size: 0.8rem; background: rgba(0,0,0,0.4); color: var(--text-dim); border: 1px solid var(--border-color); transition: all 0.2s; }
 .solo-btn.active { background: var(--solo-yellow); color: #000; border-color: var(--solo-yellow); box-shadow: 0 0 10px rgba(255, 204, 0, 0.4); }
 
-.custom-file-upload { display: block; width: 100%; padding: 14px; border: 1px dashed var(--primary-color); border-radius: 10px; margin-bottom: 12px; background: rgba(0,0,0,0.4); color: var(--text-main); font-size: 0.85rem; text-align: center; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; transition: all 0.3s; backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px); }
+.custom-file-upload { display: block; width: 100%; padding: 14px; border: 1px dashed var(--primary-color); border-radius: 10px; margin-bottom: 12px; background: rgba(0,0,0,0.4); color: var(--text-main); font-size: 0.85rem; text-align: center; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; transition: all 0.3s; backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px); -webkit-tap-highlight-color: transparent; touch-action: manipulation; user-select: none; -webkit-user-select: none; }
 .custom-file-upload:hover { background: rgba(212, 163, 115, 0.15); }
+.custom-file-upload:active { background: rgba(212, 163, 115, 0.3); transform: scale(0.98); }
 input[type="file"] { display: none; }
 #countdown-overlay { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 80px; color: var(--primary-color); font-weight: bold; z-index: 1000; display: none; text-shadow: 0 0 20px rgba(0,0,0,0.8); pointer-events: none; }
 

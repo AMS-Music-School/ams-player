@@ -885,21 +885,84 @@ function startApp() {
     document.getElementById('mainVolume').oninput = applyVolumes; 
     document.getElementById('recVolume').oninput = applyVolumes; 
     
-    document.getElementById('audioFile').onchange = async e => { 
-        const file = e.target.files[0]; 
-        if(file) { 
-            initAudioContext(); 
-            currentFileName = file.name; 
-            document.getElementById('fileSelectBtn').innerText = currentFileName; 
-            const blob = new Blob([file], { type: file.type }); 
-            if (currentObjectURL) URL.revokeObjectURL(currentObjectURL); 
-            currentObjectURL = URL.createObjectURL(blob); 
-            if(wavesurfer.isPlaying()) wavesurfer.pause();
+    // モバイル向け: ファイル読み込み改善
+    // iOSではAudioContextをユーザー操作タイミング（onchange）で確実に起動する
+    const audioFileInput = document.getElementById('audioFile');
+    const fileSelectBtn = document.getElementById('fileSelectBtn');
+
+    // iOSのAudioContext自動停止対策: タッチ時に事前アンロック
+    if (isMobile) {
+        fileSelectBtn.addEventListener('touchend', () => {
+            // タッチ操作のタイミングでAudioContextを初期化・再開しておく
+            const ctx = initAudioContext();
+            if (ctx && ctx.state === 'suspended') ctx.resume();
+        }, { passive: true });
+    }
+
+    // iOS Safari: 同じファイルを再選択したとき change が発火しないバグの対策
+    // labelクリック時にinputのvalueをリセットしておく
+    fileSelectBtn.addEventListener('click', () => {
+        audioFileInput.value = '';
+    });
+
+    audioFileInput.addEventListener('change', async (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+
+        const lang = document.getElementById('langSelect').value || 'ja';
+        const t = translations[lang] || translations['ja'];
+        const statusEl = document.getElementById('loadStatus');
+
+        try {
+            // ユーザー操作イベント内でAudioContextを起動（iOS必須）
+            const ctx = initAudioContext();
+            if (ctx && ctx.state === 'suspended') await ctx.resume();
+
+            currentFileName = file.name;
+            // ファイル名が長い場合は短縮表示
+            const displayName = file.name.length > 30 ? file.name.substring(0, 28) + '…' : file.name;
+            fileSelectBtn.innerText = displayName;
+            statusEl.innerText = isMobile ? (lang === 'ja' ? '読み込み中...' : 'Loading...') : (t.analyzing || 'LOADING...');
+
+            if (wavesurfer.isPlaying()) wavesurfer.pause();
             wsRegions.clearRegions();
-            wavesurfer.load(currentObjectURL); 
-            wavesurfer.once('decode', () => { analyzeAudio(blob); renderLoopList('file'); }); 
-        } 
-    }; 
+
+            // 古いObjectURLを解放
+            if (currentObjectURL) {
+                URL.revokeObjectURL(currentObjectURL);
+                currentObjectURL = null;
+            }
+
+            // Blobコピー不要: ファイルから直接ObjectURL生成（メモリ効率化）
+            currentObjectURL = URL.createObjectURL(file);
+
+            // モバイルではwavesurfer.loadの前に少し待つ（DOM安定化）
+            if (isMobile) await new Promise(r => setTimeout(r, 80));
+
+            wavesurfer.load(currentObjectURL);
+            wavesurfer.once('decode', () => {
+                analyzeAudio(file);
+                renderLoopList('file');
+            });
+
+            // エラーハンドリング（ロード失敗時にユーザーへ通知）
+            wavesurfer.once('error', (err) => {
+                console.error('Wavesurfer load error:', err);
+                statusEl.innerText = lang === 'ja' ? '読み込みエラー' : 'Load Error';
+                fileSelectBtn.innerText = t.fileSelect || 'ファイルを選択';
+                currentObjectURL = null;
+                currentFileName = '';
+                // inputをリセットして再選択できるようにする
+                audioFileInput.value = '';
+            });
+
+        } catch (err) {
+            console.error('File load error:', err);
+            statusEl.innerText = lang === 'ja' ? '読み込みエラー' : 'Load Error';
+            fileSelectBtn.innerText = t.fileSelect || 'ファイルを選択';
+            audioFileInput.value = '';
+        }
+    }); 
 
     const applySettings = () => { 
         const s = parseFloat(document.getElementById('speed').value);

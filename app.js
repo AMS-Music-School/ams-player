@@ -957,14 +957,33 @@ function startApp() {
             wavesurfer.empty();
 
             // モバイルは empty() 後に少し待機してDOMを安定させる
-            if (isMobile) await new Promise(r => setTimeout(r, 150));
+            if (isMobile) await new Promise(r => setTimeout(r, 200));
 
-            currentObjectURL = URL.createObjectURL(file);
+            // Google DriveなどクラウドストレージのファイルはArrayBufferとして
+            // 先に完全読み込みしてからObjectURLを生成する（モバイル安定化）
+            let fileBlob;
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                const mimeType = (file.type && file.type.startsWith('audio/')) ? file.type : 'audio/mpeg';
+                fileBlob = new Blob([arrayBuffer], { type: mimeType });
+            } catch (readErr) {
+                fileBlob = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = e => {
+                        const mimeType = (file.type && file.type.startsWith('audio/')) ? file.type : 'audio/mpeg';
+                        resolve(new Blob([e.target.result], { type: mimeType }));
+                    };
+                    reader.onerror = reject;
+                    reader.readAsArrayBuffer(file);
+                });
+            }
+
+            currentObjectURL = URL.createObjectURL(fileBlob);
 
             // 読み込み完了・エラー時のハンドラを一度だけ登録
             const onDecode = () => {
                 wavesurfer.un('error', onError);
-                analyzeAudio(file);
+                analyzeAudio(fileBlob);
                 renderLoopList('file');
                 isLoadingFile = false;
             };
@@ -1012,7 +1031,8 @@ function startApp() {
     document.getElementById('pitch').oninput = applySettings; 
     
     document.getElementById('playBtn').onclick = async () => { 
-        initAudioContext(); 
+        const ctx = initAudioContext();
+        if (ctx && ctx.state === 'suspended') await ctx.resume();
         if (wavesurfer.isPlaying()) { wavesurfer.pause(); return; } 
         const media = wavesurfer.getMediaElement();
         if (media && media.paused) { const p = media.play(); if (p !== undefined) { p.catch(() => {}); } media.pause(); }
@@ -1021,6 +1041,7 @@ function startApp() {
         if (isCountEnabled && region && (current < region.start || current >= region.end - 0.05)) { wavesurfer.setTime(region.start); lastTime = region.start; }
         if (isCountEnabled) { await runCountdown(); }
         applySettings();
+        if (ctx && ctx.state === 'suspended') await ctx.resume();
         setTimeout(() => { wavesurfer.play().catch(e => console.error("Play interrupted:", e)); }, 10);
     }; 
 
@@ -1074,5 +1095,12 @@ function startApp() {
     
     setThemeColor(initColor);
     updateInstallButton();
+
+    // バックグラウンドから復帰した際にAudioContextを自動再開（モバイル安定化）
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible' && audioCtx && audioCtx.state === 'suspended') {
+            audioCtx.resume();
+        }
+    });
 }
 window.addEventListener('DOMContentLoaded', startApp);

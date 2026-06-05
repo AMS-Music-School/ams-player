@@ -20,6 +20,51 @@
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     
     <link rel="stylesheet" href="style.css">
+    <style>
+        /* プレイリスト - アイテム */
+        .playlist-item-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 10px;
+            border-radius: 8px;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.05);
+            cursor: pointer;
+            min-height: 44px;
+            transition: background 0.2s, border-color 0.2s;
+        }
+        .playlist-item-row:active { background: rgba(255,255,255,0.1); }
+        .playlist-item-row.active {
+            background: rgba(0,0,0,0.5);
+            border-color: var(--primary-color);
+        }
+        .playlist-item-row .pl-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 36px;
+            min-height: 36px;
+            flex-shrink: 0;
+        }
+        /* モバイル対応強化 */
+        @media (max-width: 600px) {
+            .btn-ctrl { min-width: 46px !important; min-height: 46px !important; }
+            .play-main { min-width: 58px !important; min-height: 58px !important; }
+            .adj-btn { min-width: 44px; min-height: 40px; font-size: 0.85rem; }
+            .action-row-container { gap: 8px; }
+            #ytPlayerContainer { margin: 0 -5px; }
+            .loop-btn-main { font-size: 0.85rem !important; }
+            .val-display { font-size: 0.85rem; }
+            .panel { padding: 10px 12px !important; }
+            .mode-tabs { gap: 6px; }
+            .tab-btn { font-size: 0.78rem; padding: 8px 10px; }
+        }
+    </style>
 </head>
 <body>
 
@@ -189,8 +234,29 @@
     </div>
 
     <div id="file-section" class="content-section active">
-        <label for="audioFile" class="custom-file-upload" id="fileSelectBtn">ファイルを選択</label>
-        <input type="file" id="audioFile" accept="audio/*,.mp3,.wav,.m4a,.aac,.ogg,.flac,.webm,.mp4,.m4b,.opus,.aiff,.aif">
+        <div style="display:flex; gap:8px; align-items:stretch; margin-bottom:5px;">
+            <label for="audioFile" class="custom-file-upload" id="fileSelectBtn" style="flex:1; margin-bottom:0; justify-content:center;">ファイルを選択</label>
+            <button onclick="togglePlaylistPanel()" class="clear-btn-ja" id="playlistToggleBtn" title="プレイリスト" style="flex:none; padding:0 14px; border:1px solid var(--border-color); border-radius:8px; display:flex; align-items:center; justify-content:center; min-height:44px;">
+                <span class="material-icons" style="font-size:22px;">queue_music</span>
+            </button>
+        </div>
+        <input type="file" id="audioFile" accept="audio/*,.mp3,.wav,.m4a,.aac,.ogg,.flac,.webm,.mp4,.m4b,.opus,.aiff,.aif" multiple>
+
+        <div id="playlistPanel" style="display:none; margin-bottom:10px; background:rgba(0,0,0,0.45); border:1px solid var(--border-color); border-radius:12px; padding:12px; backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                <span style="font-size:0.75rem; color:var(--primary-color); font-weight:bold; letter-spacing:1px;">🎵 PLAYLIST</span>
+                <div style="display:flex; gap:6px; align-items:center;">
+                    <label for="playlistAddInput" style="display:flex; align-items:center; gap:4px; padding:6px 12px; border:1px solid rgba(255,255,255,0.2); border-radius:6px; cursor:pointer; font-size:0.72rem; color:#ddd; background:rgba(255,255,255,0.05); user-select:none; min-height:32px;">
+                        <span class="material-icons" style="font-size:14px;">add</span> 追加
+                    </label>
+                    <input type="file" id="playlistAddInput" accept="audio/*,.mp3,.wav,.m4a,.aac,.ogg,.flac,.webm,.mp4,.m4b,.opus,.aiff,.aif" multiple style="display:none;">
+                    <button onclick="clearAllPlaylist()" style="display:flex; align-items:center; gap:4px; padding:6px 12px; border:1px solid rgba(255,100,100,0.3); border-radius:6px; cursor:pointer; font-size:0.72rem; color:#ff7777; background:rgba(255,100,100,0.05); min-height:32px;">
+                        <span class="material-icons" style="font-size:14px;">delete_sweep</span> クリア
+                    </button>
+                </div>
+            </div>
+            <div id="playlistItems" style="max-height:240px; overflow-y:auto; display:flex; flex-direction:column; gap:4px; -webkit-overflow-scrolling:touch;"></div>
+        </div>
 
         <div class="waveform-label">
             <span id="loadStatus" style="font-weight:bold; color:var(--text-main);">READY</span>

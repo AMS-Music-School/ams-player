@@ -20,6 +20,51 @@
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     
     <link rel="stylesheet" href="style.css">
+    <style>
+        /* プレイリスト - アイテム */
+        .playlist-item-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 10px;
+            border-radius: 8px;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.05);
+            cursor: pointer;
+            min-height: 44px;
+            transition: background 0.2s, border-color 0.2s;
+        }
+        .playlist-item-row:active { background: rgba(255,255,255,0.1); }
+        .playlist-item-row.active {
+            background: rgba(0,0,0,0.5);
+            border-color: var(--primary-color);
+        }
+        .playlist-item-row .pl-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 36px;
+            min-height: 36px;
+            flex-shrink: 0;
+        }
+        /* モバイル対応強化 */
+        @media (max-width: 600px) {
+            .btn-ctrl { min-width: 46px !important; min-height: 46px !important; }
+            .play-main { min-width: 58px !important; min-height: 58px !important; }
+            .adj-btn { min-width: 44px; min-height: 40px; font-size: 0.85rem; }
+            .action-row-container { gap: 8px; }
+            #ytPlayerContainer { margin: 0 -5px; }
+            .loop-btn-main { font-size: 0.85rem !important; }
+            .val-display { font-size: 0.85rem; }
+            .panel { padding: 10px 12px !important; }
+            .mode-tabs { gap: 6px; }
+            .tab-btn { font-size: 0.78rem; padding: 8px 10px; }
+        }
+    </style>
 </head>
 <body>
 
@@ -135,6 +180,7 @@
         <option value="zh">中文 (简体)</option>
         <option value="ko">한국어</option>
         <option value="es">Español</option>
+        <option value="pt">Português (BR)</option>
     </select>
     
     <span class="menu-section-title" id="helpTitle">Help & Guide</span>
@@ -189,8 +235,29 @@
     </div>
 
     <div id="file-section" class="content-section active">
-        <label for="audioFile" class="custom-file-upload" id="fileSelectBtn">ファイルを選択</label>
-        <input type="file" id="audioFile" accept="audio/*,.mp3,.wav,.m4a,.aac,.ogg,.flac,.webm,.mp4,.m4b,.opus,.aiff,.aif">
+        <div style="display:flex; gap:8px; align-items:stretch; margin-bottom:5px;">
+            <label for="audioFile" class="custom-file-upload" id="fileSelectBtn" style="flex:1; margin-bottom:0; justify-content:center;">ファイルを選択</label>
+            <button onclick="togglePlaylistPanel()" class="clear-btn-ja" id="playlistToggleBtn" title="プレイリスト" style="flex:none; padding:0 14px; border:1px solid var(--border-color); border-radius:8px; display:flex; align-items:center; justify-content:center; min-height:44px;">
+                <span class="material-icons" style="font-size:22px;">queue_music</span>
+            </button>
+        </div>
+        <input type="file" id="audioFile" accept="audio/*,.mp3,.wav,.m4a,.aac,.ogg,.flac,.webm,.mp4,.m4b,.opus,.aiff,.aif" multiple>
+
+        <div id="playlistPanel" style="display:none; margin-bottom:10px; background:rgba(0,0,0,0.45); border:1px solid var(--border-color); border-radius:12px; padding:12px; backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                <span style="font-size:0.75rem; color:var(--primary-color); font-weight:bold; letter-spacing:1px;">🎵 PLAYLIST</span>
+                <div style="display:flex; gap:6px; align-items:center;">
+                    <label for="playlistAddInput" style="display:flex; align-items:center; gap:4px; padding:6px 12px; border:1px solid rgba(255,255,255,0.2); border-radius:6px; cursor:pointer; font-size:0.72rem; color:#ddd; background:rgba(255,255,255,0.05); user-select:none; min-height:32px;">
+                        <span class="material-icons" style="font-size:14px;">add</span> 追加
+                    </label>
+                    <input type="file" id="playlistAddInput" accept="audio/*,.mp3,.wav,.m4a,.aac,.ogg,.flac,.webm,.mp4,.m4b,.opus,.aiff,.aif" multiple style="display:none;">
+                    <button onclick="clearAllPlaylist()" style="display:flex; align-items:center; gap:4px; padding:6px 12px; border:1px solid rgba(255,100,100,0.3); border-radius:6px; cursor:pointer; font-size:0.72rem; color:#ff7777; background:rgba(255,100,100,0.05); min-height:32px;">
+                        <span class="material-icons" style="font-size:14px;">delete_sweep</span> クリア
+                    </button>
+                </div>
+            </div>
+            <div id="playlistItems" style="max-height:240px; overflow-y:auto; display:flex; flex-direction:column; gap:4px; -webkit-overflow-scrolling:touch;"></div>
+        </div>
 
         <div class="waveform-label">
             <span id="loadStatus" style="font-weight:bold; color:var(--text-main);">READY</span>
@@ -286,23 +353,27 @@
         <div style="margin-bottom:10px; background:var(--panel-bg); padding:10px; border-radius:10px; border: 1px solid var(--border-color); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);">
             <div style="display:flex; gap:8px;">
                 <input type="text" id="ytUrl" placeholder="YouTube URL or Search Keyword..." style="flex-grow:1; padding:10px; border:1px solid rgba(255,255,255,0.1); background:rgba(0,0,0,0.4); color:#fff; border-radius:6px; font-size:0.8rem; outline:none; transition:border-color 0.3s;" onfocus="this.style.borderColor='var(--primary-color)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'" onkeydown="if(event.key === 'Enter') loadYouTube()">
-                
+
                 <button id="ytToggleResultsBtn" class="reset-btn" style="display:none; padding:0 12px; border-radius:6px; align-items:center; justify-content:center; border: 1px solid rgba(255,255,255,0.1); background:rgba(0,0,0,0.3);" onclick="toggleYTResults()" title="検索結果を表示/非表示">
                     <span class="material-icons" style="font-size:20px;">format_list_bulleted</span>
                 </button>
-                
+
+                <button id="ytHistoryToggleBtn" class="reset-btn" style="display:none; padding:0 12px; border-radius:6px; align-items:center; justify-content:center; border: 1px solid rgba(255,255,255,0.1); background:rgba(0,0,0,0.3);" onclick="toggleYTHistoryPanel()" title="履歴を表示/非表示">
+                    <span class="material-icons" style="font-size:20px;">history</span>
+                </button>
+
                 <button class="tab-btn active" style="flex:0; min-width:60px;" onclick="loadYouTube()" id="ytLoadBtnTxt">LOAD</button>
             </div>
-            
+
             <div id="ytSearchResults" style="display:none; margin-top:10px; max-height:250px; overflow-y:auto; border-radius:6px; background:rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.1); position:relative;"></div>
-        </div>
-        
-        <div id="ytHistoryContainer" style="margin-bottom: 15px; display: none;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
-                <span style="font-size:0.7rem; color:var(--primary-color); font-weight:bold;" id="historyTitle">最近の履歴</span>
-                <button class="reset-btn" onclick="clearYTHistory()" style="font-size:0.6rem;" id="historyClearBtn">すべてクリア</button>
+
+            <div id="ytHistoryContainer" style="display:none; margin-top:10px; border-radius:8px; background:rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.1); overflow:hidden;">
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 12px; border-bottom:1px solid rgba(255,255,255,0.08); background:rgba(15,15,20,0.8); position:sticky; top:0; z-index:1;">
+                    <span style="font-size:0.7rem; color:var(--primary-color); font-weight:bold; letter-spacing:1px;" id="historyTitle">最近の履歴</span>
+                    <button class="reset-btn" onclick="clearYTHistory()" style="font-size:0.6rem;" id="historyClearBtn">すべてクリア</button>
+                </div>
+                <div id="ytHistoryList" style="max-height:260px; overflow-y:auto; display:flex; flex-direction:column; -webkit-overflow-scrolling:touch;"></div>
             </div>
-            <div id="ytHistoryList" style="display:flex; gap:8px; overflow-x:auto; padding-bottom:8px;" onclick="handleHistoryClick(event)"></div>
         </div>
         
         <div id="ytPlayerContainer" style="max-width: 800px; margin: 0 auto;">

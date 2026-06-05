@@ -94,7 +94,85 @@ const auth = firebase.auth();
 const db = firebase.firestore();
 
 let isSubscribed = false;
-let lastTime = 0; 
+
+// ==================== サーバーサイド購読確認（セキュリティ強化）====================
+// isSubscribed 変数はコンソールから書き換え可能なため、
+// プレミアム機能の実行前に必ずFirestoreを再確認する
+let _subCache = null;
+let _subCacheTime = 0;
+const SUB_CACHE_MS = 30000; // 30秒キャッシュ（Firestoreアクセス頻度を抑制）
+
+async function requireSubscription() {
+    const user = auth.currentUser;
+    if (!user) { openSubOverlay(); return false; }
+    const now = Date.now();
+    // キャッシュが有効な場合は再利用
+    if (_subCache !== null && (now - _subCacheTime) < SUB_CACHE_MS) {
+        if (!_subCache) openSubOverlay();
+        return _subCache;
+    }
+    // Firestoreから最新のサブスク状態を取得
+    try {
+        const status = await checkSubscriptionStatus(user);
+        _subCache = status.active;
+        _subCacheTime = now;
+        isSubscribed = status.active; // ローカル変数も同期
+        if (!_subCache) openSubOverlay();
+        return _subCache;
+    } catch (e) {
+        console.warn('Subscription check failed, using cached value:', e);
+        if (!isSubscribed) openSubOverlay();
+        return isSubscribed;
+    }
+}
+
+function invalidateSubCache() { _subCache = null; _subCacheTime = 0; }
+// =============================================================================
+
+// ==================== TrialUsers コレクション管理 ====================
+// トライアル開始時にTrialUsersへ記録
+async function recordTrialStart(uEmail, uid, now) {
+    try {
+        const trialEndMs = now + (3 * 24 * 60 * 60 * 1000);
+        await db.collection('TrialUsers').doc(uEmail).set({
+            email: uEmail,
+            uid: uid,
+            trialStartMs: now,
+            trialEndMs: trialEndMs,
+            status: 'active',
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        console.log('TrialUsers: trial started for', uEmail);
+    } catch (e) {
+        console.error('TrialUsers write error:', e);
+    }
+}
+
+// トライアル・サブスク状態を更新（'active' | 'expired' | 'converted'）
+async function updateTrialStatus(uEmail, status) {
+    try {
+        await db.collection('TrialUsers').doc(uEmail).update({
+            status: status,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        console.log('TrialUsers: status updated to', status, 'for', uEmail);
+    } catch (e) {
+        // ドキュメントが存在しない場合（トライアルなしユーザー）は無視
+    }
+}
+
+// ログイン時にトライアル期限切れを自動検出・更新
+async function checkAndUpdateTrialExpiry(uEmail, trialStartMs) {
+    if (!trialStartMs) return;
+    const now = Date.now();
+    const trialEndMs = trialStartMs + (3 * 24 * 60 * 60 * 1000);
+    if (now > trialEndMs) {
+        await updateTrialStatus(uEmail, 'expired');
+    }
+}
+// =====================================================================
+
+let lastTime = 0;
 let isRegistering = false; 
 
 async function syncToCloud() {
@@ -359,7 +437,8 @@ async function updateAccountModalUI(user) {
 async function deleteUserAccount() { const user = auth.currentUser; if (!user || !user.email) return alert(getMsg('msgLoginReq')); const uEmail = user.email.toLowerCase().trim(); if (!confirm(getMsg('msgDelAcc'))) return; try { await db.collection('Users').doc(uEmail).delete(); await user.delete(); alert(getMsg('msgDelAccSuccess')); location.reload(); } catch (error) { alert(getMsg('msgLoginErr') + error.message); } }
 
 auth.onAuthStateChanged(async user => {
-    if (isRegistering) return; 
+    if (isRegistering) return;
+    invalidateSubCache(); // ログイン状態変化時はキャッシュをリセット
     
     if (user && user.providerData.some(p => p.providerId === 'password') && !user.emailVerified) { 
         return; 
@@ -394,25 +473,37 @@ auth.onAuthStateChanged(async user => {
             }
 
             if (!isAlreadyPremium && (!userDoc.exists || !userDoc.data().trialStartMs)) {
+                // 新規トライアル開始
                 const now = Date.now();
                 await userDocRef.set({ uid: user.uid, email: uEmail, trialStartMs: now }, { merge: true });
+                await recordTrialStart(uEmail, user.uid, now); // TrialUsersへ記録
                 showWelcomeTrialPopup();
             } else {
                 await userDocRef.set({ uid: user.uid, email: uEmail }, { merge: true });
+                // 既存トライアルユーザーの期限切れチェック
+                if (!isAlreadyPremium && userDoc.exists && userDoc.data().trialStartMs) {
+                    checkAndUpdateTrialExpiry(uEmail, userDoc.data().trialStartMs);
+                }
             }
         } catch (e) {}
 
-        db.collection('Users').doc(uEmail).onSnapshot(async () => { 
-            const subStatus = await checkSubscriptionStatus(user); 
-            isSubscribed = subStatus.active; 
-            if (isSubscribed) subOverlay.style.display = 'none'; 
-            updateAccountModalUI(user); 
+        db.collection('Users').doc(uEmail).onSnapshot(async () => {
+            const subStatus = await checkSubscriptionStatus(user);
+            isSubscribed = subStatus.active;
+            if (isSubscribed) {
+                subOverlay.style.display = 'none';
+                updateTrialStatus(uEmail, 'converted'); // 有料転換を記録
+            }
+            updateAccountModalUI(user);
         });
-        db.collection('SchoolMember').doc(uEmail).onSnapshot(async () => { 
-            const subStatus = await checkSubscriptionStatus(user); 
-            isSubscribed = subStatus.active; 
-            if (isSubscribed) subOverlay.style.display = 'none'; 
-            updateAccountModalUI(user); 
+        db.collection('SchoolMember').doc(uEmail).onSnapshot(async () => {
+            const subStatus = await checkSubscriptionStatus(user);
+            isSubscribed = subStatus.active;
+            if (isSubscribed) {
+                subOverlay.style.display = 'none';
+                updateTrialStatus(uEmail, 'converted'); // 有料転換を記録（SchoolMember経由）
+            }
+            updateAccountModalUI(user);
         });
 
         await syncFromCloud(user);
@@ -430,8 +521,8 @@ const translations = {
         authNote: "※新規登録時は確認メールが送信されます。メール内のリンクを開いて登録を完了してください。",
         msgLoginReq: "先にログインしてください。", msgEmptyAuth: "メールアドレスとパスワードを入力してください", msgRegConfirm: "アカウントが見つかりません。新規登録として、入力されたアドレス宛に【確認メール】を送信します。よろしいですか？\n\n※受信したメール内のURLをクリックするまで登録は完了しません。", msgLoginErr: "エラー: ", msgMailSent: "パスワード再設定メールを送信しました。メールボックスをご確認ください。", msgDelHist: "履歴を削除しますか？", msgDelRec: "録音を削除しますか？", msgDelAcc: "アカウントを完全に削除します。すべての保存データが消去され、元に戻せません。\n\n⚠️【重要】アカウントを削除してもサブスクリプション（支払い）は自動で解約されません！必ず先にSquareからの決済メールより解約手続きを行ってください。\n\n本当に削除しますか？", msgDelAccSuccess: "アカウントを削除しました。", msgPwReset: "パスワード再設定の案内メールを送信しますか？", msgRangeReq: "範囲を指定してください", msgRangeInv: "範囲が不正です", msgSubConfirm: "⚠️【超重要】\nSquareの決済画面でも、必ず今ログインしている同じメールアドレスを使用して決済してください。\n（Apple Pay等を使用すると別のアドレスになる場合があります）\n\n支払手続きを進めますか？",
         forgotPw: "パスワードをお忘れですか？", msgUnverified: "メールアドレスが確認されていません。登録時にお送りした確認メール内のリンクをクリックして認証を完了してください。（※念のため確認メールを再送信しました）", msgVerifySent: "新規登録の確認メールを送信しました。メール内のリンクをクリックして登録を完了し、再度ログインしてください。", msgEnterEmailPwReset: "パスワードをリセットするには、メールアドレスを入力してください。", modalSubStartText: "サブスクリプションを開始する", manageSubText: "サブスクリプションを管理・解約", msgManageSub: "サブスクリプションの解約や管理は、Squareからの「決済完了メール」に記載されている「サブスクリプションを管理する」リンクからお手続きいただけます。",
-        privacyInner: `<h2 style="color:var(--primary-color); margin-top:0;">プライバシーポリシー</h2><p>Anderson Studios（以下「当スタジオ」）が運営する「AMS Music School」は、提供するアプリケーション「AMS Practice Player」（以下「本アプリ」）における個人情報の取扱いについて、以下の通り定めます。</p><h3>1. 取得する情報</h3><p>本アプリでは、Google認証によるメールアドレス・氏名、およびサービス利用に必要な決済ステータス（Square経由）を取得します。</p><h3>2. 利用目的</h3><p>取得した情報は、アカウント認証、サブスクリプション管理、ユーザーサポート、および本アプリの機能提供のみに利用します。</p><h3>3. 第三者提供</h3><p>法令に基づく場合を除き、同意なく第三者に提供しません。本アプリはインフラとしてGoogle Firebase、決済としてSquareを利用します。</p><h3>4. お問い合わせ</h3><p>運営：Anderson Studios (AMS Music School)<br>連絡先：ams.guitar.school@gmail.com</p><button class="clear-btn-ja" style="width:100%; margin-top:20px; padding:12px;" onclick="togglePolicy('privacy', false)">閉じる</button>`,
-        legalInner: `<h2 style="color:var(--primary-color); margin-top:0;">特定商取引法に基づく表記</h2><h3>運営者名</h3><p>芦田幸一 (Anderson Studios / AMS Music School)</p><h3>連絡先</h3><p>ams.guitar.school@gmail.com</p><h3>販売価格</h3><p>購入手続きの際に画面に表示される金額（税込）</p><h3>代金の支払時期および方法</h3><p>Square決済（クレジットカード等）による即時決済。サブスクリプションは各更新日に課金されます。</p><h3>役務の提供時期</h3><p>決済完了後、直ちにご利用いただけます。</p><h3>解約・返金ポリシー</h3><p>・商品の性質上、決済完了後の返金・返品は原則としてお受けできません。<br>・サブスクリプションの解約はいつでも可能です。解約後も有効期限までは引き続きサービスをご利用いただけます。<br>・日割り計算による返金は行っておりません。</p><button class="clear-btn-ja" style="width:100%; margin-top:20px; padding:12px;" onclick="togglePolicy('legal', false)">閉じる</button>`,
+        privacyInner: `<h2 style="color:var(--primary-color); margin-top:0;">プライバシーポリシー</h2><p>Anderson Studios（以下「当スタジオ」）が運営する「AMS Music Studio」は、提供するアプリケーション「AMS Practice Player」（以下「本アプリ」）における個人情報の取扱いについて、以下の通り定めます。</p><h3>1. 取得する情報</h3><p>本アプリでは、Google認証によるメールアドレス・氏名、およびサービス利用に必要な決済ステータス（Square経由）を取得します。</p><h3>2. 利用目的</h3><p>取得した情報は、アカウント認証、サブスクリプション管理、ユーザーサポート、および本アプリの機能提供のみに利用します。</p><h3>3. 第三者提供</h3><p>法令に基づく場合を除き、同意なく第三者に提供しません。本アプリはインフラとしてGoogle Firebase、決済としてSquareを利用します。</p><h3>4. お問い合わせ</h3><p>運営：Anderson Studios (AMS Music Studio)<br>連絡先：ams.guitar.school@gmail.com</p><button class="clear-btn-ja" style="width:100%; margin-top:20px; padding:12px;" onclick="togglePolicy('privacy', false)">閉じる</button>`,
+        legalInner: `<h2 style="color:var(--primary-color); margin-top:0;">特定商取引法に基づく表記</h2><h3>運営者名</h3><p>芦田幸一 (Anderson Studios / AMS Music Studio)</p><h3>連絡先</h3><p>ams.guitar.school@gmail.com</p><h3>販売価格</h3><p>購入手続きの際に画面に表示される金額（税込）</p><h3>代金の支払時期および方法</h3><p>Square決済（クレジットカード等）による即時決済。サブスクリプションは各更新日に課金されます。</p><h3>役務の提供時期</h3><p>決済完了後、直ちにご利用いただけます。</p><h3>解約・返金ポリシー</h3><p>・商品の性質上、決済完了後の返金・返品は原則としてお受けできません。<br>・サブスクリプションの解約はいつでも可能です。解約後も有効期限までは引き続きサービスをご利用いただけます。<br>・日割り計算による返金は行っておりません。</p><button class="clear-btn-ja" style="width:100%; margin-top:20px; padding:12px;" onclick="togglePolicy('legal', false)">閉じる</button>`,
         guideFileContent: `<b>【Audio File Mode】フルガイド</b><span class="guide-sub">1. ファイル読み込み</span><ul><li>端末内の音楽ファイルを選択して解析。読み込み時にBPMが自動算出されます。</li></ul><span class="guide-sub">2. ABループ (範囲指定)</span><ul><li>波形をドラッグして範囲を選択。再生中、範囲の終端で自動的に始端へ戻ります。</li><li>「選択解除」でループを解除。「ループ保存」で楽曲ごとに複数の範囲を保存し、下のリストから瞬時に切り替え可能です。</li></ul><span class="guide-sub">3. BPMとPitchの変更</span><ul><li>BPMスライダーで速度を変更（0.5x〜1.5x）。</li><li>Pitchスライダーでキーを半音単位で変更（±6）。※Pitch変更にはサブスクが必要です。</li></ul><span class="guide-sub">4. 自動スピードアップ機能</span><ul><li>「⚡(ボルト)」ボタンをONにし「自動BPMアップ」を選択。ループを指定回数繰り返すごとに、自動でBPMが+0.05ずつ上がります（元のBPMまで）。</li></ul><span class="guide-sub">5. セルフ録音チェック</span><ul><li>「mic」ボタンで、再生しながら自分の音を録音。</li><li>録音データは波形の下に表示され、メイン音源と録音の音量を個別に調整できます。</li><li>「S(ソロ)」ボタンをONにすると、録音した音だけを聴くことができます。</li><li class="guide-note">※正確な録音と同期には、PCとオーディオインターフェースの利用を推奨します。</li><li class="guide-note">※モバイル端末（スマホ・タブレット）ではブラウザの仕様により、初期動作や録音動作が不安定になる場合があります。</li></ul><span class="guide-sub">6. 動作リフレッシュ機能</span><ul><li>モバイル端末などで音声の再生や波形の動作が不安定になった場合、波形上部の「FIT」ボタン右側にある「更新（リフレッシュ）ボタン」を押してください。</li><li>読み込んでいるファイルやループ設定を維持したまま、オーディオエンジンを安全に再起動して動作を安定させます。</li></ul><span class="guide-sub">【よくある質問 (FAQ)】</span><ul><li><b>メールアドレスの変更について:</b><br>メールアドレスを変更したい場合は、現在のサブスクリプションを一度解約し、有効期限が切れた後に新しいメールアドレスで再度新規登録（再決済）を行ってください。</li></ul>`,
         guideYTContent: `<b>【YouTube Mode】フルガイド</b><span class="guide-sub">1. 動画読み込み・検索</span><ul><li>YouTubeのURLを貼り付けて「LOAD」をタップ。</li><li>タイトルやアーティスト名を入力して検索することも可能です。（※コード内にAPIキーの設定が必要です。未設定時は別タブで検索画面が開きます）</li><li>読み込んだ動画は「RECENT HISTORY」に保存され、履歴から素早く再読み込みできます。</li></ul><span class="guide-sub">2. ABループ設定</span><ul><li>「START」と「END」ボタンで現在の再生位置をループ範囲に設定。</li><li>「-1 / +1」ボタンで、開始・終了位置を1秒単位で微調整できます。</li><li>「LOOP ON/OFF」ボタンでループの有効/無効を切り替えます。</li></ul><span class="guide-sub">3. ループの保存</span><ul><li>「SAVE」ボタンで設定したループ範囲を保存。</li><li>保存されたループは動画ごとにリスト化され、数字アイコンをタップするだけで瞬時に呼び出せます。</li></ul><span class="guide-sub">【よくある質問 (FAQ)】</span><ul><li><b>メールアドレスの変更について:</b><br>メールアドレスを変更したい場合は、現在のサブスクリプションを一度解約し、有効期限が切れた後に新しいメールアドレスで再度新規登録（再決済）を行ってください。</li></ul>`,
         installMobile: "ホーム画面に追加", installDesktop: "デスクトップに追加", iosInstallGuide: "Safari下部の共有ボタン [↑] から「ホーム画面に追加」を選択してください。", installNotAvailable: "このブラウザではインストール機能がサポートされていないか、すでにインストール済みです。",
@@ -456,8 +547,8 @@ const translations = {
         authNote: "*For new registrations, a verification email will be sent. Please open the link in the email to complete registration.",
         msgLoginReq: "Please login first.", msgEmptyAuth: "Please enter your email and password.", msgRegConfirm: "Account not found. A verification email will be sent to the entered address for new registration. Proceed?\n\n*Registration is NOT complete until you click the URL in the email.", msgLoginErr: "Error: ", msgMailSent: "Password reset email sent. Please check your inbox.", msgDelHist: "Clear history?", msgDelRec: "Delete recording?", msgDelAcc: "This will permanently delete your account and all saved data.\n\n⚠️ IMPORTANT: Deleting your account does NOT automatically cancel your subscription! Please cancel your billing via the Square receipt email first.\n\nAre you sure you want to delete?", msgDelAccSuccess: "Account successfully deleted.", msgPwReset: "Send password reset email?", msgRangeReq: "Please select a range", msgRangeInv: "Invalid range", msgSubConfirm: "⚠️ IMPORTANT\nPlease use the exact same email address on the Square payment page.\n(Using Apple Pay might change your address)\n\nProceed to checkout?",
         forgotPw: "Forgot Password?", msgUnverified: "Email address is not verified. Please click the link in the verification email to complete authentication. (A new verification email has been sent just in case)", msgVerifySent: "A verification email has been sent. Please click the link in the email to complete registration and log in again.", msgEnterEmailPwReset: "Please enter your email address to reset your password.", modalSubStartText: "Start Subscription", manageSubText: "Manage / Cancel Subscription", msgManageSub: "To manage or cancel your subscription, please use the 'Manage Subscription' link found in your Square payment receipt email.",
-        privacyInner: `<h2 style="color:var(--primary-color); margin-top:0;">Privacy Policy</h2><p>Anderson Studios ("We/Us") operating as "AMS Music School" establishes this Privacy Policy regarding the handling of personal information in the "AMS Practice Player" ("App").</p><h3>1. Collected Information</h3><p>The App collects email addresses and names via Google Authentication, and payment statuses via Square for subscription management.</p><h3>2. Purpose of Use</h3><p>Collected information is used solely for authentication, subscription management, user support, and delivering App features.</p><h3>3. Third-Party Sharing</h3><p>We do not share information with third parties without consent, except as required by law. The App utilizes Google Firebase and Square.</p><h3>4. Contact</h3><p>Operator: Anderson Studios (AMS Music School)<br>Contact: ams.guitar.school@gmail.com</p><button class="clear-btn-ja" style="width:100%; margin-top:20px; padding:12px;" onclick="togglePolicy('privacy', false)">Close</button>`,
-        legalInner: `<h2 style="color:var(--primary-color); margin-top:0;">Legal Notice</h2><h3>Operator</h3><p>Koichi Ashida (Anderson Studios / AMS Music School)</p><h3>Contact</h3><p>ams.guitar.school@gmail.com</p><h3>Pricing</h3><p>Displayed during the purchase process (Tax included).</p><h3>Payment</h3><p>Immediate payment via Square (Credit Card, etc.). Subscriptions are billed on each renewal date.</p><h3>Delivery</h3><p>Service is available immediately after payment completion.</p><h3>Refund Policy</h3><p>・Due to the nature of digital services, refunds are generally not accepted after payment.<br>・Subscriptions can be canceled at any time. The service remains active until the end of the current billing period.<br>・No pro-rated refunds are provided.</p><button class="clear-btn-ja" style="width:100%; margin-top:20px; padding:12px;" onclick="togglePolicy('legal', false)">Close</button>`,
+        privacyInner: `<h2 style="color:var(--primary-color); margin-top:0;">Privacy Policy</h2><p>Anderson Studios ("We/Us") operating as "AMS Music Studio" establishes this Privacy Policy regarding the handling of personal information in the "AMS Practice Player" ("App").</p><h3>1. Collected Information</h3><p>The App collects email addresses and names via Google Authentication, and payment statuses via Square for subscription management.</p><h3>2. Purpose of Use</h3><p>Collected information is used solely for authentication, subscription management, user support, and delivering App features.</p><h3>3. Third-Party Sharing</h3><p>We do not share information with third parties without consent, except as required by law. The App utilizes Google Firebase and Square.</p><h3>4. Contact</h3><p>Operator: Anderson Studios (AMS Music Studio)<br>Contact: ams.guitar.school@gmail.com</p><button class="clear-btn-ja" style="width:100%; margin-top:20px; padding:12px;" onclick="togglePolicy('privacy', false)">Close</button>`,
+        legalInner: `<h2 style="color:var(--primary-color); margin-top:0;">Legal Notice</h2><h3>Operator</h3><p>Koichi Ashida (Anderson Studios / AMS Music Studio)</p><h3>Contact</h3><p>ams.guitar.school@gmail.com</p><h3>Pricing</h3><p>Displayed during the purchase process (Tax included).</p><h3>Payment</h3><p>Immediate payment via Square (Credit Card, etc.). Subscriptions are billed on each renewal date.</p><h3>Delivery</h3><p>Service is available immediately after payment completion.</p><h3>Refund Policy</h3><p>・Due to the nature of digital services, refunds are generally not accepted after payment.<br>・Subscriptions can be canceled at any time. The service remains active until the end of the current billing period.<br>・No pro-rated refunds are provided.</p><button class="clear-btn-ja" style="width:100%; margin-top:20px; padding:12px;" onclick="togglePolicy('legal', false)">Close</button>`,
         guideFileContent: `<b>【Audio File Mode】Full Guide</b><span class="guide-sub">1. Load Audio</span><ul><li>Select a file to analyze BPM automatically.</li></ul><span class="guide-sub">2. AB Loop</span><ul><li>Drag waveform to select range. Use "Save Loop" to store segments.</li></ul><span class="guide-sub">3. BPM & Pitch</span><ul><li>Adjust speed (0.5x-1.5x) and Pitch (±6). *Pitch requires subscription.</li></ul><span class="guide-sub">4. Auto Speed Up</span><ul><li>Enable "Bolt" and select "Auto BPM Up". The BPM will automatically increase by +0.05 per interval.</li></ul><span class="guide-sub">5. Recording</span><ul><li>Record while playing. Adjust Main/Rec volume or use "Solo(S)" to hear only the recording.</li><li class="guide-note">*Using a PC and Audio Interface is highly recommended for stable sync.</li><li class="guide-note">*Mobile devices may experience unstable initial operation or recording due to browser limitations.</li></ul><span class="guide-sub">6. Refresh Player</span><ul><li>If audio playback or waveform interaction becomes unstable (especially on mobile devices), tap the "Refresh" button located to the right of the "FIT" button.</li><li>This safely restarts the audio engine while keeping your loaded file and loop settings intact.</li></ul><span class="guide-sub">FAQ</span><ul><li><b>Changing Email Address:</b><br>If you wish to change your email address, please cancel your current subscription and register again (re-subscribe) with your new email address after the current subscription expires.</li></ul>`,
         guideYTContent: `<b>【YouTube Mode】Full Guide</b><span class="guide-sub">1. Load Video</span><ul><li>Paste URL or search keywords and tap LOAD. Recently viewed videos are saved in History.</li></ul><span class="guide-sub">2. AB Loop</span><ul><li>Use START/END to define range. Fine-tune with -1/+1 buttons.</li><li>Toggle LOOP ON/OFF to control repetition.</li></ul><span class="guide-sub">3. Save Loops</span><ul><li>Save multiple loop ranges per video and recall them instantly via the loop list.</li></ul><span class="guide-sub">FAQ</span><ul><li><b>Changing Email Address:</b><br>If you wish to change your email address, please cancel your current subscription and register again (re-subscribe) with your new email address after the current subscription expires.</li></ul>`,
         installMobile: "Add to Home Screen", installDesktop: "Install App", iosInstallGuide: "Tap the Share button [↑] in Safari and select 'Add to Home Screen'.", installNotAvailable: "Installation is not supported in this browser or already installed.",
@@ -480,8 +571,8 @@ const translations = {
         authNote: "※新注册时将发送验证邮件。请打开邮件中的链接以完成注册。",
         msgLoginReq: "请先登录。", msgEmptyAuth: "请输入您的电子邮件和密码。", msgRegConfirm: "找不到帐户。系统将向您输入的地址发送一封验证邮件以进行新注册。是否继续？\n\n*在点击收到的邮件中的URL之前，注册不会完成。", msgLoginErr: "错误: ", msgMailSent: "密码重置邮件已发送。请检查您的收件箱。", msgDelHist: "要清除历史记录吗？", msgDelRec: "要删除录音吗？", msgDelAcc: "这将永久删除您的帐户和所有保存的数据。\n\n⚠️ 重要提示：删除帐户不会自动取消您的订阅！请务必先通过Square的付款电子邮件取消订阅。\n\n您确定要删除吗？", msgDelAccSuccess: "帐户已成功删除。", msgPwReset: "发送密码重置电子邮件吗？", msgRangeReq: "请选择一个范围", msgRangeInv: "范围无效", msgSubConfirm: "⚠️ 重要提示\n请在Square付款页面上使用完全相同的电子邮件地址。\n\n继续结帐吗？",
         forgotPw: "忘记密码？", msgUnverified: "电子邮件地址未验证。请点击验证邮件中的链接以完成身份验证。（已重新发送验证邮件）", msgVerifySent: "已发送验证邮件。请点击邮件中的链接完成注册并重新登录。", msgEnterEmailPwReset: "请输入您的电子邮件地址以重置密码。", modalSubStartText: "开始订阅", manageSubText: "管理 / 取消订阅", msgManageSub: "要管理或取消您的订阅，请使用Square付款收据电子邮件中的“管理订阅”链接。",
-        privacyInner: `<h2 style="color:var(--primary-color); margin-top:0;">隐私政策</h2><p>Anderson Studios（以下简称“本工作室”）运营的“AMS Music School”针对其提供的应用程序“AMS Practice Player”（以下简称“本应用”）中的个人信息处理，制定以下政策。</p><h3>1. 收集的信息</h3><p>本应用将通过Google身份验证获取您的电子邮件地址、姓名，以及提供服务所需的付款状态（通过Square）。</p><h3>2. 使用目的</h3><p>收集的信息仅用于帐户认证、订阅管理、用户支持以及提供本应用的功能。</p><h3>3. 向第三方提供</h3><p>除法律规定外，未经同意，我们不会向第三方提供您的信息。本应用使用Google Firebase作为基础设施，使用Square进行付款处理。</p><h3>4. 联系我们</h3><p>运营商：Anderson Studios (AMS Music School)<br>联系邮箱：ams.guitar.school@gmail.com</p><button class="clear-btn-ja" style="width:100%; margin-top:20px; padding:12px;" onclick="togglePolicy('privacy', false)">关闭</button>`,
-        legalInner: `<h2 style="color:var(--primary-color); margin-top:0;">特定商业交易法 / 法律声明</h2><h3>运营商名称</h3><p>芦田幸一 (Anderson Studios / AMS Music School)</p><h3>联系方式</h3><p>ams.guitar.school@gmail.com</p><h3>销售价格</h3><p>购买过程中屏幕上显示的金额（含税）</p><h3>付款时间及方式</h3><p>通过Square（信用卡等）即时付款。订阅将在每个续订日收费。</p><h3>服务提供时间</h3><p>付款完成后立即可用。</p><h3>取消与退款政策</h3><p>・由于数字产品的性质，付款完成后原则上不接受退款或退货。<br>・您可以随时取消订阅。取消后，您仍可在有效期内继续使用服务。<br>・我们不提供按比例退款。</p><button class="clear-btn-ja" style="width:100%; margin-top:20px; padding:12px;" onclick="togglePolicy('legal', false)">关闭</button>`,
+        privacyInner: `<h2 style="color:var(--primary-color); margin-top:0;">隐私政策</h2><p>Anderson Studios（以下简称“本工作室”）运营的“AMS Music Studio”针对其提供的应用程序“AMS Practice Player”（以下简称“本应用”）中的个人信息处理，制定以下政策。</p><h3>1. 收集的信息</h3><p>本应用将通过Google身份验证获取您的电子邮件地址、姓名，以及提供服务所需的付款状态（通过Square）。</p><h3>2. 使用目的</h3><p>收集的信息仅用于帐户认证、订阅管理、用户支持以及提供本应用的功能。</p><h3>3. 向第三方提供</h3><p>除法律规定外，未经同意，我们不会向第三方提供您的信息。本应用使用Google Firebase作为基础设施，使用Square进行付款处理。</p><h3>4. 联系我们</h3><p>运营商：Anderson Studios (AMS Music Studio)<br>联系邮箱：ams.guitar.school@gmail.com</p><button class="clear-btn-ja" style="width:100%; margin-top:20px; padding:12px;" onclick="togglePolicy('privacy', false)">关闭</button>`,
+        legalInner: `<h2 style="color:var(--primary-color); margin-top:0;">特定商业交易法 / 法律声明</h2><h3>运营商名称</h3><p>芦田幸一 (Anderson Studios / AMS Music Studio)</p><h3>联系方式</h3><p>ams.guitar.school@gmail.com</p><h3>销售价格</h3><p>购买过程中屏幕上显示的金额（含税）</p><h3>付款时间及方式</h3><p>通过Square（信用卡等）即时付款。订阅将在每个续订日收费。</p><h3>服务提供时间</h3><p>付款完成后立即可用。</p><h3>取消与退款政策</h3><p>・由于数字产品的性质，付款完成后原则上不接受退款或退货。<br>・您可以随时取消订阅。取消后，您仍可在有效期内继续使用服务。<br>・我们不提供按比例退款。</p><button class="clear-btn-ja" style="width:100%; margin-top:20px; padding:12px;" onclick="togglePolicy('legal', false)">关闭</button>`,
         guideFileContent: `<b>【音频文件模式】完整指南</b><span class="guide-sub">1. 加载文件</span><ul><li>选择设备中的音频文件进行解析。加载时将自动计算BPM。</li></ul><span class="guide-sub">2. AB循环（指定范围）</span><ul><li>拖动波形以选择范围。播放期间，到达范围末端时将自动返回起点。</li><li>使用“清除选择”取消循环。使用“保存循环”为每首歌曲保存多个范围，并从下方列表中立即切换。</li></ul><span class="guide-sub">3. 更改BPM和音调</span><ul><li>使用BPM滑块更改速度（0.5x〜1.5x）。</li><li>使用音调滑块以半音为单位更改音调（±6）。※更改音调需要订阅。</li></ul><span class="guide-sub">4. 自动加速功能</span><ul><li>打开“⚡（闪电）”按钮并选择“自动提速”。每当循环重复指定次数时，自动提速+0.05（最高回到原始BPM）。</li></ul><span class="guide-sub">5. 录音自我检查</span><ul><li>使用“mic”按钮在播放时录制自己的声音。</li><li>录音数据将显示在波形下方，您可以分别调整主音源和录音的音量。</li><li>打开“S（独奏）”按钮时，您只能听到录制的声音。</li><li class="guide-note">※为确保准确的录音和同步，建议使用PC和音频接口。</li><li class="guide-note">※在移动设备（智能手机/平板电脑）上，由于浏览器的限制，初始操作或录音操作可能会不稳定。</li></ul><span class="guide-sub">6. 刷新播放器</span><ul><li>如果音频播放或波形操作变得不稳定（尤其是在移动设备上），请点击“FIT”按钮右侧的“刷新”按钮。</li><li>这将在保留已加载文件和循环设置的同时，安全地重新启动音频引擎以稳定操作。</li></ul><span class="guide-sub">【常见问题 (FAQ)】</span><ul><li><b>关于更改电子邮件地址：</b><br>如果您想更改电子邮件地址，请先取消当前订阅，并在有效期结束后使用新电子邮件地址重新注册（重新付款）。</li></ul>`,
         guideYTContent: `<b>【YouTube模式】完整指南</b><span class="guide-sub">1. 加载视频</span><ul><li>粘贴YouTube的URL，或者输入关键字进行搜索，然后点击“LOAD”。</li><li>加载的视频将保存在“RECENT HISTORY”中，您可以从历史记录中快速重新加载。</li></ul><span class="guide-sub">2. AB循环设置</span><ul><li>使用“START”和“END”按钮将当前播放位置设置为循环范围。</li><li>使用“-1 / +1”按钮，可以微调起点和终点位置。</li><li>使用“LOOP ON/OFF”按钮切换循环。</li></ul><span class="guide-sub">3. 保存循环</span><ul><li>使用“SAVE”按钮保存设置的循环范围。</li><li>保存的循环将按视频列出，只需点击数字图标即可立即调用。</li></ul><span class="guide-sub">【常见问题 (FAQ)】</span><ul><li><b>关于更改电子邮件地址：</b><br>如果您想更改电子邮件地址，请先取消当前订阅，并在有效期结束后使用新电子邮件地址重新注册（重新付款）。</li></ul>`,
         installMobile: "添加到主屏幕", installDesktop: "安装到桌面", iosInstallGuide: "请点击Safari底部的分享按钮 [↑]，然后选择“添加到主屏幕”。", installNotAvailable: "此浏览器不支持安装功能，或已安装。",
@@ -504,8 +595,8 @@ const translations = {
         authNote: "※신규 가입 시 확인 이메일이 발송됩니다. 이메일의 링크를 열어 가입을 완료해 주세요.",
         msgLoginReq: "먼저 로그인해 주세요.", msgEmptyAuth: "이메일과 비밀번호를 입력해 주세요.", msgRegConfirm: "계정을 찾을 수 없습니다. 신규 가입을 위해 입력하신 주소로 확인 이메일이 발송됩니다. 계속하시겠습니까?\n\n※수신한 이메일의 URL을 클릭하기 전까지는 가입이 완료되지 않습니다.", msgLoginErr: "오류: ", msgMailSent: "비밀번호 재설정 이메일을 보냈습니다. 받은 편지함을 확인하세요.", msgDelHist: "기록을 삭제하시겠습니까?", msgDelRec: "녹음을 삭제하시겠습니까?", msgDelAcc: "계정과 모든 저장된 데이터가 영구적으로 삭제됩니다.\n\n⚠️ 중요: 계정을 삭제해도 구독(결제)은 자동으로 해지되지 않습니다! 반드시 먼저 Square 결제 이메일에서 해지 절차를 진행해 주세요.\n\n정말 삭제하시겠습니까?", msgDelAccSuccess: "계정이 성공적으로 삭제되었습니다.", msgPwReset: "비밀번호 재설정 이메일을 보내시겠습니까?", msgRangeReq: "범위를 지정해 주세요", msgRangeInv: "잘못된 범위입니다", msgSubConfirm: "⚠️ 중요\nSquare 결제 페이지에서도 완전히 동일한 이메일 주소를 사용해 주세요.\n\n결제를 진행하시겠습니까?",
         forgotPw: "비밀번호를 잊으셨나요?", msgUnverified: "이메일 주소가 확인되지 않았습니다. 인증 이메일의 링크를 클릭하여 인증을 완료해 주세요. (확인 이메일을 재발송했습니다)", msgVerifySent: "가입 확인 이메일을 발송했습니다. 이메일의 링크를 클릭하여 등록을 완료한 후 다시 로그인해 주세요.", msgEnterEmailPwReset: "비밀번호를 재설정하려면 이메일 주소를 입력해 주세요.", modalSubStartText: "구독 시작하기", manageSubText: "구독 관리 / 해지", msgManageSub: "구독을 관리하거나 해지하려면 Square 결제 영수증 이메일에 있는 '구독 관리' 링크를 이용해 주세요.",
-        privacyInner: `<h2 style="color:var(--primary-color); margin-top:0;">개인정보처리방침</h2><p>Anderson Studios(이하 '당 스튜디오')가 운영하는 'AMS Music School'은 제공하는 애플리케이션 'AMS Practice Player'(이하 '본 앱')의 개인정보 처리에 대해 다음과 같이 정합니다.</p><h3>1. 수집하는 정보</h3><p>본 앱에서는 Google 인증을 통한 이메일 주소, 이름 및 서비스 이용에 필요한 결제 상태(Square 경유)를 수집합니다.</p><h3>2. 이용 목적</h3><p>수집한 정보는 계정 인증, 구독 관리, 사용자 지원 및 본 앱의 기능 제공 목적으로만 이용됩니다.</p><h3>3. 제3자 제공</h3><p>법령에 의한 경우를 제외하고, 동의 없이 제3자에게 제공하지 않습니다. 본 앱은 인프라로 Google Firebase를, 결제 시스템으로 Square 정합니다.</p><h3>4. 문의처</h3><p>운영: Anderson Studios (AMS Music School)<br>연락처: ams.guitar.school@gmail.com</p><button class="clear-btn-ja" style="width:100%; margin-top:20px; padding:12px;" onclick="togglePolicy('privacy', false)">닫기</button>`,
-        legalInner: `<h2 style="color:var(--primary-color); margin-top:0;">특정상거래법 표기 / 법적 고지</h2><h3>운영자명</h3><p>Koichi Ashida (Anderson Studios / AMS Music School)</p><h3>연락처</h3><p>ams.guitar.school@gmail.com</p><h3>판매 가격</h3><p>구매 절차 시 화면에 표시되는 금액 (세금 포함)</p><h3>대금 결제 시기 및 방법</h3><p>Square 결제(신용카드 등)를 통한 즉시 결제. 구독은 매 갱신일에 과금됩니다.</p><h3>서비스 제공 시기</h3><p>결제 완료 후 즉시 이용 가능합니다.</p><h3>해지 및 환불 정책</h3><p>・상품의 특성상, 결제 완료 후의 환불 및 반품은 원칙적으로 불가능합니다.<br>・구독 해지는 언제든지 가능합니다. 해지 후에도 유효기간까지는 계속해서 서비스를 이용하실 수 있습니다.<br>・일할 계산에 의한 환불은 진행하지 않습니다.</p><button class="clear-btn-ja" style="width:100%; margin-top:20px; padding:12px;" onclick="togglePolicy('legal', false)">닫기</button>`,
+        privacyInner: `<h2 style="color:var(--primary-color); margin-top:0;">개인정보처리방침</h2><p>Anderson Studios(이하 '당 스튜디오')가 운영하는 'AMS Music Studio'은 제공하는 애플리케이션 'AMS Practice Player'(이하 '본 앱')의 개인정보 처리에 대해 다음과 같이 정합니다.</p><h3>1. 수집하는 정보</h3><p>본 앱에서는 Google 인증을 통한 이메일 주소, 이름 및 서비스 이용에 필요한 결제 상태(Square 경유)를 수집합니다.</p><h3>2. 이용 목적</h3><p>수집한 정보는 계정 인증, 구독 관리, 사용자 지원 및 본 앱의 기능 제공 목적으로만 이용됩니다.</p><h3>3. 제3자 제공</h3><p>법령에 의한 경우를 제외하고, 동의 없이 제3자에게 제공하지 않습니다. 본 앱은 인프라로 Google Firebase를, 결제 시스템으로 Square 정합니다.</p><h3>4. 문의처</h3><p>운영: Anderson Studios (AMS Music Studio)<br>연락처: ams.guitar.school@gmail.com</p><button class="clear-btn-ja" style="width:100%; margin-top:20px; padding:12px;" onclick="togglePolicy('privacy', false)">닫기</button>`,
+        legalInner: `<h2 style="color:var(--primary-color); margin-top:0;">특정상거래법 표기 / 법적 고지</h2><h3>운영자명</h3><p>Koichi Ashida (Anderson Studios / AMS Music Studio)</p><h3>연락처</h3><p>ams.guitar.school@gmail.com</p><h3>판매 가격</h3><p>구매 절차 시 화면에 표시되는 금액 (세금 포함)</p><h3>대금 결제 시기 및 방법</h3><p>Square 결제(신용카드 등)를 통한 즉시 결제. 구독은 매 갱신일에 과금됩니다.</p><h3>서비스 제공 시기</h3><p>결제 완료 후 즉시 이용 가능합니다.</p><h3>해지 및 환불 정책</h3><p>・상품의 특성상, 결제 완료 후의 환불 및 반품은 원칙적으로 불가능합니다.<br>・구독 해지는 언제든지 가능합니다. 해지 후에도 유효기간까지는 계속해서 서비스를 이용하실 수 있습니다.<br>・일할 계산에 의한 환불은 진행하지 않습니다.</p><button class="clear-btn-ja" style="width:100%; margin-top:20px; padding:12px;" onclick="togglePolicy('legal', false)">닫기</button>`,
         guideFileContent: `<b>【오디오 파일 모드】 전체 가이드</b><span class="guide-sub">1. 파일 불러오기</span><ul><li>기기 내의 음악 파일을 선택하여 분석합니다. 불러올 때 BPM이 자동으로 계산됩니다.</li></ul><span class="guide-sub">2. AB 루프 (범위 지정)</span><ul><li>파형을 드래그하여 범위를 선택합니다. 재생 중 범위의 끝에 도달하면 자동으로 시작점으로 돌아갑니다.</li><li>'선택 해제'로 루프를 해제합니다. '루프 저장'으로 곡마다 여러 범위를 저장하고, 아래 목록에서 즉시 전환할 수 있습니다.</li></ul><span class="guide-sub">3. BPM 및 피치 변경</span><ul><li>BPM 슬라이더로 속도를 변경합니다 (0.5x〜1.5x).</li><li>피치 슬라이더로 키를 반음 단위로 변경합니다 (±6). ※피치 변경에는 구독이 필요합니다.</li></ul><span class="guide-sub">4. 자동 스피드 업 기능</span><ul><li>'⚡(번개)' 버튼을 켜고 '자동 BPM 업'을 선택합니다. 지정한 횟수만큼 루프를 반복할 때마다 자동으로 BPM이 +0.05씩 올라갑니다 (원래 BPM까지).</li></ul><span class="guide-sub">5. 셀프 녹음 체크</span><ul><li>'mic 버튼으로 재생하면서 자신의 소리를 녹음합니다.</li><li>녹음 데이터는 파형 아래에 표시되며, 메인 음원과 녹음의 볼륨을 개별적으로 조절할 수 조절할 수 있습니다.</li><li>'S(솔로)' 버튼을 켜면 녹음한 소리만 들을 수 있습니다.</li><li class="guide-note">※정확한 녹음과 동기화를 위해 PC와 오디오 인터페이스 사용을 권장합니다.</li><li class="guide-note">※모바일 기기(스마트폰/태블릿)에서는 브라우저의 제한으로 인해 초기 동작이나 녹음 동작이 불안정할 수 있습니다.</li></ul><span class="guide-sub">6. 동작 새로고침(리프레시)</span><ul><li>모바일 기기 등에서 오디오 재생이나 파형 동작이 불안정해질 경우, 파형 상단의 'FIT' 버튼 오른쪽에 있는 '새로고침' 버튼을 눌러주세요.</li><li>불러온 파일과 루프 설정을 유지한 채 오디오 엔진을 안전하게 재시작하여 동작을 안정시킵니다.</li></ul><span class="guide-sub">【자주 묻는 질문 (FAQ)】</span><ul><li><b>이메일 주소 변경에 대하여:</b><br>이메일 주소를 변경하시려면 현재 구독을 먼저 해지하시고, 유효기간이 만료된 후 새로운 이메일 주소로 다시 신규 가입(재결제)해 주시기 바랍니다.</li></ul>`,
         guideYTContent: `<b>【YouTube 모드】 전체 가이드</b><span class="guide-sub">1. 동영상 불러오기</span><ul><li>YouTube의 URL을 붙여넣거나 키워드를 입력하고 'LOAD'를 탭합니다.</li><li>불러온 동영상은 'RECENT HISTORY'에 저장되어 기록에서 빠르게 다시 불러올 수 있습니다.</li></ul><span class="guide-sub">2. AB 루프 설정</span><ul><li>'START' 및 'END' 버튼으로 현재 재생 위치를 루프 범위로 설정합니다.</li><li>'-1 / +1' 버튼으로 미세 조정할 수 있습니다.</li><li>'LOOP ON/OFF' 버튼으로 루프 활성화/비활성화를 전환합니다.</li></ul><span class="guide-sub">3. 루프 저장</span><ul><li>'SAVE' 버튼으로 설정한 루프 범위를 저장합니다.</li><li>저장된 루프는 동영상별로 목록화되며, 숫자 아이콘을 탭하는 것만으로 즉시 불러올 수 있습니다.</li></ul><span class="guide-sub">【자주 묻는 질문 (FAQ)】</span><ul><li><b>이메일 주소 변경에 대하여:</b><br>이메일 주소를 변경하시려면 현재 구독을 먼저 해지하시고, 유효기간이 만료된 후 새로운 이메일 주소로 다시 신규 가입(재결제)해 주시기 바랍니다.</li></ul>`,
         installMobile: "홈 화면에 추가", installDesktop: "데스크톱에 추가", iosInstallGuide: "Safari 하단의 공유 버튼 [↑]을 탭하고 '홈 화면에 추가'를 선택하세요.", installNotAvailable: "이 브라우저에서는 설치가 지원되지 않거나 이미 설치되어 있습니다.",
@@ -528,8 +619,8 @@ const translations = {
         authNote: "*Para nuevos registros, se enviará un correo de verificación. Abra el enlace en el correo para completar el registro.",
         msgLoginReq: "Inicie sesión primero.", msgEmptyAuth: "Ingrese su correo y contraseña.", msgRegConfirm: "Cuenta no encontrada. Se enviará un correo de verificación a la dirección ingresada para un nuevo registro. ¿Continuar?\n\n*El registro NO se completará hasta que haga clic en la URL del correo.", msgLoginErr: "Error: ", msgMailSent: "Correo de restablecimiento enviado. Revise su bandeja.", msgDelHist: "¿Borrar historial?", msgDelRec: "¿Eliminar grabación?", msgDelAcc: "Esto eliminará permanentemente su cuenta y datos.\n\n⚠️ IMPORTANTE: ¡Eliminar su cuenta NO cancelará automáticamente su suscripción! Por favor, cancele su facturación a través del correo de recibo de Square primero.\n\n¿Está seguro de que desea eliminar?", msgDelAccSuccess: "Cuenta eliminada con éxito.", msgPwReset: "¿Enviar correo para restablecer contraseña?", msgRangeReq: "Seleccione un rango", msgRangeInv: "Rango inválido", msgSubConfirm: "⚠️ IMPORTANTE\nUse exactamente el mismo correo en la página de pago de Square.\n\n¿Proceder al pago?",
         forgotPw: "¿Olvidaste tu contraseña?", msgUnverified: "La dirección de correo no está verificada. Haga clic en el enlace del correo de verificación para completar la autenticación. (Se ha reenviado un correo de verificación)", msgVerifySent: "Se ha enviado un correo de verificación. Haga clic en el enlace del correo para completar el registro y vuelva a iniciar sesión.", msgEnterEmailPwReset: "Ingrese su dirección de correo electrónico para restablecer su contraseña.", modalSubStartText: "Suscribirse", manageSubText: "Administrar / Cancelar Suscripción", msgManageSub: "Para administrar o cancelar su suscripción, use el enlace 'Administrar suscripción' que se encuentra en el correo electrónico de recibo de pago de Square.",
-        privacyInner: `<h2 style="color:var(--primary-color); margin-top:0;">Política de Privacidad</h2><p>"AMS Music School", operada por Anderson Studios (en adelante "el Estudio"), establece la siguiente política con respecto al manejo de información personal en la aplicación "AMS Practice Player" (en adelante "la Aplicación").</p><h3>1. Información Recopilada</h3><p>Esta aplicación recopila su dirección de correo electrónico y nombre a través de la autenticación de Google, y el estado de pago necesario para utilizar el servicio (a través de Square).</p><h3>2. Propósito de Uso</h3><p>La información recopilada se utilizará únicamente para la autenticación de la cuenta, gestión de suscripciones, soporte al usuario y para proporcionar las funciones de esta aplicación.</p><h3>3. Provisión a Terceros</h3><p>A menos que lo exija la ley, no proporcionaremos su información a terceros sin su consentimiento. Esta aplicación utiliza Google Firebase como infraestructura y Square para los pagos.</p><h3>4. Contacto</h3><p>Operador: Anderson Studios (AMS Music School)<br>Correo: ams.guitar.school@gmail.com</p><button class="clear-btn-ja" style="width:100%; margin-top:20px; padding:12px;" onclick="togglePolicy('privacy', false)">Cerrar</button>`,
-        legalInner: `<h2 style="color:var(--primary-color); margin-top:0;">Aviso Legal / Ley de Transacciones Comerciales</h2><h3>Nombre del Operador</h3><p>Koichi Ashida (Anderson Studios / AMS Music School)</p><h3>Contacto</h3><p>ams.guitar.school@gmail.com</p><h3>Precio de Venta</h3><p>El monto mostrado en pantalla durante el proceso de compra (impuestos incluidos).</p><h3>Momento y Método de Pago</h3><p>Pago inmediato a través de Square (tarjeta de crédito, etc.). Las suscripciones se cobrarán en cada fecha de renovación.</p><h3>Tiempo de Provisión del Servicio</h3><p>El servicio estará disponible inmediatamente después de completar el pago.</p><h3>Política de Cancelación y Reembolso</h3><p>・Debido a la naturaleza de los productos digitales, por regla general no se aceptan reembolsos ni devoluciones una vez completado el pago.<br>・Puede cancelar su suscripción en cualquier momento. Seguirá teniendo acceso al servicio hasta la fecha de expiración, incluso después de cancelar.<br>・No ofrecemos reembolsos prorrateados.</p><button class="clear-btn-ja" style="width:100%; margin-top:20px; padding:12px;" onclick="togglePolicy('legal', false)">Cerrar</button>`,
+        privacyInner: `<h2 style="color:var(--primary-color); margin-top:0;">Política de Privacidad</h2><p>"AMS Music Studio", operada por Anderson Studios (en adelante "el Estudio"), establece la siguiente política con respecto al manejo de información personal en la aplicación "AMS Practice Player" (en adelante "la Aplicación").</p><h3>1. Información Recopilada</h3><p>Esta aplicación recopila su dirección de correo electrónico y nombre a través de la autenticación de Google, y el estado de pago necesario para utilizar el servicio (a través de Square).</p><h3>2. Propósito de Uso</h3><p>La información recopilada se utilizará únicamente para la autenticación de la cuenta, gestión de suscripciones, soporte al usuario y para proporcionar las funciones de esta aplicación.</p><h3>3. Provisión a Terceros</h3><p>A menos que lo exija la ley, no proporcionaremos su información a terceros sin su consentimiento. Esta aplicación utiliza Google Firebase como infraestructura y Square para los pagos.</p><h3>4. Contacto</h3><p>Operador: Anderson Studios (AMS Music Studio)<br>Correo: ams.guitar.school@gmail.com</p><button class="clear-btn-ja" style="width:100%; margin-top:20px; padding:12px;" onclick="togglePolicy('privacy', false)">Cerrar</button>`,
+        legalInner: `<h2 style="color:var(--primary-color); margin-top:0;">Aviso Legal / Ley de Transacciones Comerciales</h2><h3>Nombre del Operador</h3><p>Koichi Ashida (Anderson Studios / AMS Music Studio)</p><h3>Contacto</h3><p>ams.guitar.school@gmail.com</p><h3>Precio de Venta</h3><p>El monto mostrado en pantalla durante el proceso de compra (impuestos incluidos).</p><h3>Momento y Método de Pago</h3><p>Pago inmediato a través de Square (tarjeta de crédito, etc.). Las suscripciones se cobrarán en cada fecha de renovación.</p><h3>Tiempo de Provisión del Servicio</h3><p>El servicio estará disponible inmediatamente después de completar el pago.</p><h3>Política de Cancelación y Reembolso</h3><p>・Debido a la naturaleza de los productos digitales, por regla general no se aceptan reembolsos ni devoluciones una vez completado el pago.<br>・Puede cancelar su suscripción en cualquier momento. Seguirá teniendo acceso al servicio hasta la fecha de expiración, incluso después de cancelar.<br>・No ofrecemos reembolsos prorrateados.</p><button class="clear-btn-ja" style="width:100%; margin-top:20px; padding:12px;" onclick="togglePolicy('legal', false)">Cerrar</button>`,
         guideFileContent: `<b>【Guía Completa: Modo Archivo】</b><span class="guide-sub">1. Cargar Archivo</span><ul><li>Seleccione un archivo de música de su dispositivo para analizarlo. Los BPM se calcularán automáticamente.</li></ul><span class="guide-sub">2. Bucle AB (Selección de Rango)</span><ul><li>Arrastre en la onda para seleccionar un rango. Durante la reproducción, volverá automáticamente al inicio al llegar al final del rango.</li><li>Use "Borrar" para cancelar el bucle. Use "Guardar" para almacenar múltiples rangos por canción y cambiar entre ellos instantáneamente desde la lista de abajo.</li></ul><span class="guide-sub">3. Cambiar BPM y Tono</span><ul><li>Use el control de BPM para cambiar la velocidad (0.5x〜1.5x).</li><li>Use el control de Tono (Pitch) para cambiar la tonalidad en semitonos (±6). *Cambiar el tono requiere una suscripción.</li></ul><span class="guide-sub">4. Aceleración Automática</span><ul><li>Active el botón "⚡ (rayo)" y seleccione "Auto BPM Up". El BPM aumentará automáticamente en +0.05 cada vez que el bucle se repita el número de veces especificado (hasta volver al BPM original).</li></ul><span class="guide-sub">5. Grabación Propia</span><ul><li>Use el botón "mic" para grabar su propio sonido mientras reproduce.</li><li>Los datos grabados se muestran debajo de la onda, y puede ajustar el volumen de la pista principal y la grabación por separado.</li><li>Al activar el botón "S (Solo)", solo escuchará el sonido grabado.</li><li class="guide-note">*Para una grabación y sincronización precisas, recomendamos usar una PC y una interfaz de audio.</li><li class="guide-note">*En dispositivos móviles (teléfonos/tabletas), la operación inicial o la grabación pueden ser inestables debido a las limitaciones del navegador.</li></ul><span class="guide-sub">6. Actualizar Reproductor</span><ul><li>Si la reproducción de audio o la interacción de la forma de onda se vuelven inestables (especialmente en dispositivos móviles), toque el botón "Refresh" ubicado a la derecha del botón "FIT".</li><li>Esto reiniciará de forma segura el motor de audio manteniendo intactos su archivo cargado y la configuración de bucle.</li></ul><span class="guide-sub">【Preguntas Frecuentes (FAQ)】</span><ul><li><b>Sobre el cambio de correo electrónico:</b><br>Si desea cambiar su dirección de correo electrónico, cancele primero su suscripción actual y, una vez expire, regístrese nuevamente (nuevo pago) usando la nueva dirección de correo electrónico.</li></ul>`,
         guideYTContent: `<b>【Guía Completa: Modo YouTube】</b><span class="guide-sub">1. Cargar Video</span><ul><li>Pegue la URL de YouTube o busque una palabra clave y toque "CARGAR".</li><li>Los videos cargados se guardan en "HISTORIAL", lo que permite recargarlos rápidamente.</li></ul><span class="guide-sub">2. Configurar Bucle AB</span><ul><li>Use los botones "INICIO" y "FIN" para establecer la posición actual como el rango del bucle.</li><li>Con los botones "-1 / +1", puede ajustar finamente las posiciones de inicio y fin.</li><li>Use el botón "BUCLE ON/OFF" para activar o desactivar el bucle.</li></ul><span class="guide-sub">3. Guardar Bucles</span><ul><li>Use el botón "GUARDAR" para almacenar el rango configurado.</li><li>Los bucles guardados se enumeran por video y se pueden cargar instantáneamente tocando el icono del número.</li></ul><span class="guide-sub">【Preguntas Frecuentes (FAQ)】</span><ul><li><b>Sobre el cambio de correo electrónico:</b><br>Si desea cambiar su dirección de correo electrónico, cancele primero su suscripción actual y, una vez expire, regístrese nuevamente (nuevo pago) usando la nueva dirección de correo electrónico.</li></ul>`,
         installMobile: "Añadir a inicio", installDesktop: "Instalar en escritorio", iosInstallGuide: "Toca el botón Compartir [↑] en Safari y selecciona 'Añadir a la pantalla de inicio'.", installNotAvailable: "La instalación no es compatible en este navegador o ya está instalada.",
@@ -545,6 +636,30 @@ const translations = {
         planExpired: "GRATIS (Prueba Expirada)",
         subStart: "Suscribirse",
         subLogout: "Usar otra cuenta"
+    },
+    pt: {
+        langTitle: "Idioma", helpTitle: "Ajuda e Guia", themeTitle: "Cor do Tema", guideFile: "Guia Modo Arquivo", guideYT: "Guia Modo YouTube", close: "Fechar", fit: "Ajustar", clear: "Limpar", ready: "PRONTO", analyzing: "ANALISANDO...", setStart: "INÍCIO", setEnd: "FIM", loopOff: "LOOP OFF", loopOn: "LOOP ON", fileSelect: "Selecionar Arquivo", saveLoop: "Salvar Loop", speedUpLabel: "Auto BPM Up", recPlay: "Reproduzir Grav.", recStop: "Parar", privacyMenu: "Política de Privacidade", legalMenu: "Aviso Legal", authDesc: "Entre com sua conta", googleBtn: "Entrar com Google", authDiv: "OU", authEmail: "Entrar / Cadastrar", historyTitle: "Histórico Recente", historyClear: "Limpar Tudo", ytLoad: "CARREGAR", recDel: "Excluir", ytPlaceholder: "URL do YouTube ou palavra-chave de busca...",
+        accInfo: "Informações da Conta", deleteAcc: "Excluir Conta", accNameLabel: "Nome", accEmailLabel: "E-mail", accPlanLabel: "Plano", resetPw: "Redefinir Senha",
+        authNote: "*Para novos cadastros, um e-mail de verificação será enviado. Abra o link no e-mail para concluir o cadastro.",
+        msgLoginReq: "Faça login primeiro.", msgEmptyAuth: "Digite seu e-mail e senha.", msgRegConfirm: "Conta não encontrada. Um e-mail de verificação será enviado ao endereço informado para novo cadastro. Continuar?\n\n*O cadastro NÃO estará concluído até você clicar no URL do e-mail.", msgLoginErr: "Erro: ", msgMailSent: "E-mail de redefinição enviado. Verifique sua caixa de entrada.", msgDelHist: "Limpar histórico?", msgDelRec: "Excluir gravação?", msgDelAcc: "Isso excluirá permanentemente sua conta e todos os dados salvos.\n\n⚠️ IMPORTANTE: Excluir sua conta NÃO cancela automaticamente sua assinatura! Por favor, cancele o pagamento pelo e-mail de recibo do Square primeiro.\n\nTem certeza que deseja excluir?", msgDelAccSuccess: "Conta excluída com sucesso.", msgPwReset: "Enviar e-mail de redefinição de senha?", msgRangeReq: "Selecione um intervalo", msgRangeInv: "Intervalo inválido", msgSubConfirm: "⚠️ IMPORTANTE\nUse exatamente o mesmo e-mail na página de pagamento do Square.\n\nProsseguir para o pagamento?",
+        forgotPw: "Esqueceu sua senha?", msgUnverified: "O endereço de e-mail não foi verificado. Clique no link do e-mail de verificação para concluir a autenticação. (Um novo e-mail de verificação foi reenviado)", msgVerifySent: "Um e-mail de verificação foi enviado. Clique no link do e-mail para concluir o cadastro e faça login novamente.", msgEnterEmailPwReset: "Digite seu endereço de e-mail para redefinir sua senha.", modalSubStartText: "Assinar", manageSubText: "Gerenciar / Cancelar Assinatura", msgManageSub: "Para gerenciar ou cancelar sua assinatura, use o link 'Gerenciar assinatura' no e-mail de recibo de pagamento do Square.",
+        privacyInner: `<h2 style="color:var(--primary-color); margin-top:0;">Política de Privacidade</h2><p>A "AMS Music Studio", operada pela Anderson Studios (doravante "o Estúdio"), estabelece esta Política de Privacidade sobre o tratamento de informações pessoais no aplicativo "AMS Practice Player" (doravante "o App").</p><h3>1. Informações Coletadas</h3><p>O App coleta endereços de e-mail e nomes via Google Authentication, e status de pagamento via Square para gerenciamento de assinatura.</p><h3>2. Finalidade de Uso</h3><p>As informações coletadas são usadas exclusivamente para autenticação, gerenciamento de assinatura, suporte ao usuário e fornecimento das funcionalidades do App.</p><h3>3. Compartilhamento com Terceiros</h3><p>Não compartilhamos informações com terceiros sem consentimento, exceto quando exigido por lei. O App utiliza Google Firebase e Square.</p><h3>4. Contato</h3><p>Operador: Anderson Studios (AMS Music Studio)<br>Contato: ams.guitar.school@gmail.com</p><button class="clear-btn-ja" style="width:100%; margin-top:20px; padding:12px;" onclick="togglePolicy('privacy', false)">Fechar</button>`,
+        legalInner: `<h2 style="color:var(--primary-color); margin-top:0;">Aviso Legal</h2><h3>Operador</h3><p>Koichi Ashida (Anderson Studios / AMS Music Studio)</p><h3>Contato</h3><p>ams.guitar.school@gmail.com</p><h3>Preço</h3><p>Valor exibido durante o processo de compra (impostos incluídos).</p><h3>Pagamento</h3><p>Pagamento imediato via Square (cartão de crédito, etc.). As assinaturas são cobradas em cada data de renovação.</p><h3>Entrega</h3><p>O serviço fica disponível imediatamente após a conclusão do pagamento.</p><h3>Política de Cancelamento e Reembolso</h3><p>・Devido à natureza dos serviços digitais, reembolsos geralmente não são aceitos após o pagamento.<br>・As assinaturas podem ser canceladas a qualquer momento. O serviço permanece ativo até o fim do período atual.<br>・Não são fornecidos reembolsos proporcionais.</p><button class="clear-btn-ja" style="width:100%; margin-top:20px; padding:12px;" onclick="togglePolicy('legal', false)">Fechar</button>`,
+        guideFileContent: `<b>【Guia Completo: Modo Arquivo】</b><span class="guide-sub">1. Carregar Arquivo</span><ul><li>Selecione um arquivo de música do seu dispositivo para análise. O BPM será calculado automaticamente.</li></ul><span class="guide-sub">2. Loop AB (Seleção de Intervalo)</span><ul><li>Arraste na forma de onda para selecionar um intervalo. Durante a reprodução, voltará automaticamente ao início ao atingir o fim do intervalo.</li><li>Use "Limpar" para cancelar o loop. Use "Salvar Loop" para armazenar vários intervalos por música e alternar entre eles instantaneamente.</li></ul><span class="guide-sub">3. Alterar BPM e Tom</span><ul><li>Use o controle de BPM para alterar a velocidade (0.5x〜1.5x).</li><li>Use o controle de Tom (Pitch) para alterar a tonalidade em semitons (±6). *Alterar o tom requer assinatura.</li></ul><span class="guide-sub">4. Aceleração Automática</span><ul><li>Ative o botão "⚡ (raio)" e selecione "Auto BPM Up". O BPM aumentará automaticamente +0.05 a cada vez que o loop se repetir o número de vezes especificado.</li></ul><span class="guide-sub">5. Gravação Própria</span><ul><li>Use o botão "mic" para gravar seu som enquanto reproduz.</li><li>Os dados gravados aparecem abaixo da forma de onda, e você pode ajustar o volume da faixa principal e da gravação separadamente.</li><li>Ao ativar o botão "S (Solo)", você ouvirá apenas o som gravado.</li><li class="guide-note">*Para gravação e sincronização precisas, recomendamos usar PC e interface de áudio.</li><li class="guide-note">*Em dispositivos móveis, a operação inicial ou gravação pode ser instável devido às limitações do navegador.</li></ul><span class="guide-sub">6. Atualizar Player</span><ul><li>Se a reprodução de áudio ou a interação com a forma de onda ficar instável (especialmente em dispositivos móveis), toque o botão "Refresh" à direita do botão "FIT".</li><li>Isso reinicia com segurança o mecanismo de áudio mantendo o arquivo carregado e as configurações de loop.</li></ul><span class="guide-sub">【Perguntas Frequentes (FAQ)】</span><ul><li><b>Sobre alteração de e-mail:</b><br>Se desejar alterar seu endereço de e-mail, cancele sua assinatura atual e, após o vencimento, cadastre-se novamente (novo pagamento) com o novo endereço.</li></ul>`,
+        guideYTContent: `<b>【Guia Completo: Modo YouTube】</b><span class="guide-sub">1. Carregar Vídeo</span><ul><li>Cole a URL do YouTube ou pesquise por palavra-chave e toque em "CARREGAR".</li><li>Os vídeos carregados são salvos no "HISTÓRICO" para recarregamento rápido.</li></ul><span class="guide-sub">2. Configurar Loop AB</span><ul><li>Use os botões "INÍCIO" e "FIM" para definir a posição atual como intervalo do loop.</li><li>Com os botões "-1 / +1", ajuste fino das posições de início e fim.</li><li>Use o botão "LOOP ON/OFF" para ativar ou desativar o loop.</li></ul><span class="guide-sub">3. Salvar Loops</span><ul><li>Use o botão "SAVE" para armazenar o intervalo configurado.</li><li>Os loops salvos são listados por vídeo e podem ser carregados instantaneamente tocando no ícone numérico.</li></ul><span class="guide-sub">【Perguntas Frequentes (FAQ)】</span><ul><li><b>Sobre alteração de e-mail:</b><br>Se desejar alterar seu endereço de e-mail, cancele sua assinatura atual e, após o vencimento, cadastre-se novamente (novo pagamento) com o novo endereço.</li></ul>`,
+        installMobile: "Adicionar à Tela Inicial", installDesktop: "Instalar no Desktop", iosInstallGuide: "Toque no botão Compartilhar [↑] no Safari e selecione 'Adicionar à Tela de Início'.", installNotAvailable: "A instalação não é suportada neste navegador ou o app já está instalado.",
+        trialWelcomeTitle: "Teste Grátis de 3 Dias Iniciado!",
+        trialWelcomeDesc: "Obrigado por se cadastrar! Você pode usar todas as funções premium gratuitamente pelos próximos 3 dias.",
+        trialStartBtn: "Começar",
+        subGuestTitle: "Premium / Teste Grátis 3 Dias",
+        subGuestDesc: "Cadastre-se agora para testar todas as funções premium gratuitamente por 3 dias!",
+        subGuestRegBtn: "Cadastrar e Testar Grátis",
+        subExpiredTitle: "Teste Expirado",
+        subExpiredDesc: "Seu teste gratuito terminou.<br>Por favor, assine para continuar usando todas as funções premium.",
+        planTrial: "Teste Grátis de 3 Dias ({days} dias restantes)",
+        planExpired: "GRÁTIS (Teste Expirado)",
+        subStart: "Assinar",
+        subLogout: "Entrar com outra conta"
     }
 };
 
@@ -557,8 +672,208 @@ let mediaRecorder, recordedChunks = [];
 let isRecording = false, isSolo = false;
 let recObjectURL = null, recordedAudioBuffer = null, lastRecStartPos = 0;
 let currentLoopCount = 0;
+let isLoadingFile = false;
 
-function changeLanguage() { 
+// ==================== PLAYLIST (IndexedDB) ====================
+let playlistDB = null;
+let currentPlaylistItemId = null;
+const PLAYLIST_DB_NAME = 'ams_playlist_v1';
+const PLAYLIST_STORE = 'tracks';
+
+async function openPlaylistDB() {
+    if (playlistDB) return playlistDB;
+    return new Promise((resolve, reject) => {
+        const req = indexedDB.open(PLAYLIST_DB_NAME, 1);
+        req.onupgradeneeded = (e) => {
+            const db = e.target.result;
+            if (!db.objectStoreNames.contains(PLAYLIST_STORE)) {
+                db.createObjectStore(PLAYLIST_STORE, { keyPath: 'id', autoIncrement: true });
+            }
+        };
+        req.onsuccess = (e) => { playlistDB = e.target.result; resolve(playlistDB); };
+        req.onerror = (e) => reject(e.target.error);
+    });
+}
+
+async function addFilesToPlaylist(files) {
+    const db = await openPlaylistDB();
+    const ids = [];
+    for (const file of files) {
+        try {
+            const arrayBuffer = await file.arrayBuffer();
+            const mimeType = (file.type && file.type.startsWith('audio/')) ? file.type : 'audio/mpeg';
+            const blob = new Blob([arrayBuffer], { type: mimeType });
+            const id = await new Promise((resolve, reject) => {
+                const tx = db.transaction(PLAYLIST_STORE, 'readwrite');
+                const req = tx.objectStore(PLAYLIST_STORE).add({ name: file.name, blob, addedAt: Date.now() });
+                req.onsuccess = (e) => resolve(e.target.result);
+                req.onerror = reject;
+            });
+            ids.push(id);
+        } catch (e) { console.error('Playlist add error:', file.name, e); }
+    }
+    renderPlaylist();
+    return ids;
+}
+
+async function addBlobToPlaylist(name, blob) {
+    const db = await openPlaylistDB();
+    const id = await new Promise((resolve, reject) => {
+        const tx = db.transaction(PLAYLIST_STORE, 'readwrite');
+        const req = tx.objectStore(PLAYLIST_STORE).add({ name, blob, addedAt: Date.now() });
+        req.onsuccess = (e) => resolve(e.target.result);
+        req.onerror = reject;
+    });
+    renderPlaylist();
+    return id;
+}
+
+async function getAllPlaylistItems() {
+    const db = await openPlaylistDB();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(PLAYLIST_STORE, 'readonly');
+        const req = tx.objectStore(PLAYLIST_STORE).getAll();
+        req.onsuccess = (e) => resolve(e.target.result);
+        req.onerror = (e) => reject(e.target.error);
+    });
+}
+
+async function getPlaylistItem(id) {
+    const db = await openPlaylistDB();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(PLAYLIST_STORE, 'readonly');
+        const req = tx.objectStore(PLAYLIST_STORE).get(id);
+        req.onsuccess = (e) => resolve(e.target.result);
+        req.onerror = (e) => reject(e.target.error);
+    });
+}
+
+window.deletePlaylistItem = async (id) => {
+    const db = await openPlaylistDB();
+    await new Promise((resolve, reject) => {
+        const tx = db.transaction(PLAYLIST_STORE, 'readwrite');
+        tx.objectStore(PLAYLIST_STORE).delete(id).onsuccess = resolve;
+        tx.onerror = reject;
+    });
+    if (currentPlaylistItemId === id) currentPlaylistItemId = null;
+    renderPlaylist();
+};
+
+async function clearAllPlaylist() {
+    const lang = document.getElementById('langSelect').value || 'ja';
+    const msg = lang === 'ja' ? 'プレイリストをすべて削除しますか？' : 'Clear all playlist items?';
+    if (!confirm(msg)) return;
+    const db = await openPlaylistDB();
+    await new Promise((resolve, reject) => {
+        const tx = db.transaction(PLAYLIST_STORE, 'readwrite');
+        tx.objectStore(PLAYLIST_STORE).clear().onsuccess = resolve;
+        tx.onerror = reject;
+    });
+    currentPlaylistItemId = null;
+    renderPlaylist();
+}
+
+async function renderPlaylist() {
+    const container = document.getElementById('playlistItems');
+    if (!container) return;
+    let items = [];
+    try { items = await getAllPlaylistItems(); } catch(e) { return; }
+
+    if (items.length === 0) {
+        container.innerHTML = '<div style="text-align:center; color:var(--text-dim); font-size:0.75rem; padding:20px 0; line-height:1.8;">プレイリストが空です。<br>ファイルを追加してください。</div>';
+        return;
+    }
+
+    container.innerHTML = '';
+    items.forEach((item) => {
+        const isActive = item.id === currentPlaylistItemId;
+        const div = document.createElement('div');
+        div.className = 'playlist-item-row' + (isActive ? ' active' : '');
+        const name = item.name.length > 36 ? item.name.substring(0, 34) + '…' : item.name;
+        div.innerHTML = `
+            <span class="material-icons" style="font-size:18px; color:${isActive ? 'var(--primary-color)' : 'var(--text-dim)'}; flex-shrink:0;">${isActive ? 'music_note' : 'audiotrack'}</span>
+            <span style="flex:1; font-size:0.75rem; color:${isActive ? '#fff' : '#ccc'}; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${item.name}">${name}</span>
+            <button class="pl-btn" onclick="event.stopPropagation(); loadPlaylistItem(${item.id})" title="再生" style="color:var(--primary-color);">
+                <span class="material-icons" style="font-size:22px;">play_circle</span>
+            </button>
+            <button class="pl-btn" onclick="event.stopPropagation(); deletePlaylistItem(${item.id})" title="削除" style="color:#ff5555;">
+                <span class="material-icons" style="font-size:20px;">cancel</span>
+            </button>
+        `;
+        div.onclick = () => loadPlaylistItem(item.id);
+        container.appendChild(div);
+    });
+}
+
+window.loadPlaylistItem = async (id) => {
+    if (isLoadingFile) return;
+    const item = await getPlaylistItem(id);
+    if (!item) return;
+
+    isLoadingFile = true;
+    const ctx = initAudioContext();
+    if (ctx && ctx.state === 'suspended') await ctx.resume();
+    currentPlaylistItemId = id;
+
+    const lang = document.getElementById('langSelect').value || 'ja';
+    const t = translations[lang] || translations['ja'];
+    const statusEl = document.getElementById('loadStatus');
+    const fileSelectBtn = document.getElementById('fileSelectBtn');
+
+    currentFileName = item.name;
+    fileSelectBtn.innerText = item.name.length > 30 ? item.name.substring(0, 28) + '…' : item.name;
+    statusEl.innerText = lang === 'ja' ? '読み込み中...' : 'Loading...';
+
+    if (wavesurfer.isPlaying()) wavesurfer.pause();
+    wsRegions.clearRegions();
+    if (currentObjectURL) { URL.revokeObjectURL(currentObjectURL); currentObjectURL = null; }
+    wavesurfer.empty();
+    if (isMobile) await new Promise(r => setTimeout(r, 200));
+
+    currentObjectURL = URL.createObjectURL(item.blob);
+
+    const onDecodeP = () => {
+        wavesurfer.un('error', onErrorP);
+        analyzeAudio(item.blob);
+        renderLoopList('file');
+        isLoadingFile = false;
+    };
+    const onErrorP = (err) => {
+        wavesurfer.un('decode', onDecodeP);
+        console.error('Playlist load error:', err);
+        statusEl.innerText = lang === 'ja' ? '読み込みエラー' : 'Load Error';
+        if (currentObjectURL) { URL.revokeObjectURL(currentObjectURL); currentObjectURL = null; }
+        isLoadingFile = false;
+    };
+    wavesurfer.once('decode', onDecodeP);
+    wavesurfer.once('error', onErrorP);
+    wavesurfer.load(currentObjectURL);
+    renderPlaylist();
+};
+
+async function playNextPlaylistItem() {
+    const items = await getAllPlaylistItems();
+    if (items.length === 0) return;
+    const currentIndex = items.findIndex(item => item.id === currentPlaylistItemId);
+    const nextIndex = currentIndex + 1;
+    if (nextIndex < items.length) {
+        await loadPlaylistItem(items[nextIndex].id);
+        wavesurfer.once('ready', () => {
+            setTimeout(() => { if (currentMode === 'file') wavesurfer.play().catch(() => {}); }, 300);
+        });
+    }
+}
+
+function togglePlaylistPanel() {
+    const panel = document.getElementById('playlistPanel');
+    if (!panel) return;
+    const isVisible = panel.style.display !== 'none';
+    panel.style.display = isVisible ? 'none' : 'block';
+    if (!isVisible) renderPlaylist();
+}
+// ==================== END PLAYLIST ====================
+
+function changeLanguage() {
     const lang = document.getElementById('langSelect').value || 'ja'; 
     const t = translations[lang] || translations['ja']; 
     
@@ -637,7 +952,7 @@ function closeModals() { document.getElementById('guideModalFile').style.display
 function initAudioContext() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); if (audioCtx.state === 'suspended') audioCtx.resume(); return audioCtx; }
 function toggleSolo() { isSolo = !isSolo; document.getElementById('soloBtn').classList.toggle('active', isSolo); applyVolumes(); }
 function applyVolumes() { if (!wavesurfer) return; const mVol = parseFloat(document.getElementById('mainVolume').value); const rVol = parseFloat(document.getElementById('recVolume').value); if (isSolo) wavesurfer.setMuted(true); else { wavesurfer.setMuted(false); wavesurfer.setVolume(mVol); } if (recWavesurfer && recObjectURL) recWavesurfer.setVolume(rVol); document.getElementById('mainVolTxt').innerText = Math.round(mVol * 100) + "%"; document.getElementById('recVolTxt').innerText = Math.round(rVol * 100) + "%"; }
-function toggleFeature(type) { if (type === 'count') { isCountEnabled = !isCountEnabled; document.getElementById('countToggleBtn').classList.toggle('active', isCountEnabled); } else if (type === 'speedup') { if (!isSubscribed) { openSubOverlay(); return; } isSpeedUpEnabled = !isSpeedUpEnabled; document.getElementById('speedUpToggleBtn').classList.toggle('active', isSpeedUpEnabled); const selectEl = document.getElementById('speedUpCount'); selectEl.disabled = !isSpeedUpEnabled; currentLoopCount = 0; } }
+async function toggleFeature(type) { if (type === 'count') { isCountEnabled = !isCountEnabled; document.getElementById('countToggleBtn').classList.toggle('active', isCountEnabled); } else if (type === 'speedup') { if (!await requireSubscription()) return; isSpeedUpEnabled = !isSpeedUpEnabled; document.getElementById('speedUpToggleBtn').classList.toggle('active', isSpeedUpEnabled); const selectEl = document.getElementById('speedUpCount'); selectEl.disabled = !isSpeedUpEnabled; currentLoopCount = 0; } }
 function switchMode(mode) { currentMode = mode; document.getElementById('file-section').classList.toggle('active', mode === 'file'); document.getElementById('yt-section').classList.toggle('active', mode === 'yt'); document.getElementById('tab-file').classList.toggle('active', mode === 'file'); document.getElementById('tab-yt').classList.toggle('active', mode === 'yt'); if(mode === 'yt') { if(wavesurfer) wavesurfer.pause(); renderYTHistory(); } if(mode === 'file' && ytPlayer && ytPlayer.pauseVideo) ytPlayer.pauseVideo(); }
 
 async function forceRefreshPlayer() {
@@ -688,7 +1003,7 @@ function updateBpmDisplay() { const currentSpeed = parseFloat(document.getElemen
 function detectBPM(buffer) { const data = buffer.getChannelData(0), sampleRate = buffer.sampleRate, step = 200, energy = []; for (let i = 0; i < data.length; i += step) { let sum = 0; for(let j=0; j<step && (i+j)<data.length; j++) sum += data[i+j] * data[i+j]; energy.push(Math.sqrt(sum/step)); } let bestBpm = 0, maxCorrelation = 0; const minInterval = Math.floor((60 / 200) * (sampleRate / step)), maxInterval = Math.floor((60 / 60) * (sampleRate / step)); for (let interval = minInterval; interval <= maxInterval; interval++) { let correlation = 0; for (let i = 0; i < Math.min(energy.length - interval, 10000); i++) correlation += energy[i] * energy[i + interval]; if (correlation > maxCorrelation) { maxCorrelation = correlation; bestBpm = 60 / (interval * step / sampleRate); } } return (bestBpm < 50 || bestBpm > 250) ? 0 : bestBpm; }
 function playBeep(isLast) { const ctx = initAudioContext(); const osc = ctx.createOscillator(), gain = ctx.createGain(); osc.frequency.setValueAtTime(isLast ? 880 : 440, ctx.currentTime); gain.gain.setValueAtTime(0.1, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1); osc.connect(gain); gain.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + 0.1); }
 async function runCountdown() { if (!isCountEnabled) return true; const currentSpeed = parseFloat(document.getElementById('speed').value); const interval = 60000 / (originalBpm * currentSpeed); const overlay = document.getElementById('countdown-overlay'); overlay.style.display = 'block'; for (let i = 1; i <= 4; i++) { overlay.innerText = i; playBeep(i === 4); await new Promise(r => setTimeout(r, interval)); } overlay.style.display = 'none'; return true; }
-async function toggleRecording() { if (!isSubscribed) { openSubOverlay(); return; } initAudioContext(); if (isRecording) { if (mediaRecorder) mediaRecorder.stop(); if (wavesurfer.isPlaying()) wavesurfer.pause(); isRecording = false; document.getElementById('recBtn').classList.remove('recording'); document.getElementById('recIcon').innerText = 'mic'; } else { try { const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } }); const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4'; mediaRecorder = new MediaRecorder(stream, { mimeType }); recordedChunks = []; mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); }; mediaRecorder.onstop = async () => { const blob = new Blob(recordedChunks, { type: mimeType }); if (recObjectURL) URL.revokeObjectURL(recObjectURL); recObjectURL = URL.createObjectURL(blob); const arrayBuffer = await blob.arrayBuffer(); const ctx = initAudioContext(); recordedAudioBuffer = await ctx.decodeAudioData(arrayBuffer); document.getElementById('rec-waveform-wrapper').style.display = 'block'; document.getElementById('recVolControl').style.display = 'flex'; document.getElementById('recControls').style.display = 'flex'; await recWavesurfer.load(recObjectURL); applyVolumes(); updateRecPlayBtnUI(); stream.getTracks().forEach(track => track.stop()); }; const region = wsRegions.getRegions()[0]; const startPos = region ? region.start : wavesurfer.getCurrentTime(); wavesurfer.setTime(startPos); lastRecStartPos = startPos; await runCountdown(); mediaRecorder.start(); await wavesurfer.play(); isRecording = true; document.getElementById('recBtn').classList.add('recording'); document.getElementById('recIcon').innerText = 'stop'; } catch (err) { alert("マイクを許可してください"); } } }
+async function toggleRecording() { if (!await requireSubscription()) return; initAudioContext(); if (isRecording) { if (mediaRecorder) mediaRecorder.stop(); if (wavesurfer.isPlaying()) wavesurfer.pause(); isRecording = false; document.getElementById('recBtn').classList.remove('recording'); document.getElementById('recIcon').innerText = 'mic'; } else { try { const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } }); const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4'; mediaRecorder = new MediaRecorder(stream, { mimeType }); recordedChunks = []; mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); }; mediaRecorder.onstop = async () => { const blob = new Blob(recordedChunks, { type: mimeType }); if (recObjectURL) URL.revokeObjectURL(recObjectURL); recObjectURL = URL.createObjectURL(blob); const arrayBuffer = await blob.arrayBuffer(); const ctx = initAudioContext(); recordedAudioBuffer = await ctx.decodeAudioData(arrayBuffer); document.getElementById('rec-waveform-wrapper').style.display = 'block'; document.getElementById('recVolControl').style.display = 'flex'; document.getElementById('recControls').style.display = 'flex'; await recWavesurfer.load(recObjectURL); applyVolumes(); updateRecPlayBtnUI(); stream.getTracks().forEach(track => track.stop()); }; const region = wsRegions.getRegions()[0]; const startPos = region ? region.start : wavesurfer.getCurrentTime(); wavesurfer.setTime(startPos); lastRecStartPos = startPos; await runCountdown(); mediaRecorder.start(); await wavesurfer.play(); isRecording = true; document.getElementById('recBtn').classList.add('recording'); document.getElementById('recIcon').innerText = 'stop'; } catch (err) { alert("マイクを許可してください"); } } }
 function playRecording() { if (!recWavesurfer || !recObjectURL) return; initAudioContext(); if (recWavesurfer.isPlaying()) { recWavesurfer.pause(); wavesurfer.pause(); } else { const currentTime = wavesurfer.getCurrentTime(); const offset = currentTime - lastRecStartPos; if (offset >= 0 && offset < recWavesurfer.getDuration()) { recWavesurfer.setTime(offset); wavesurfer.play(); recWavesurfer.play(); } else { wavesurfer.setTime(lastRecStartPos); recWavesurfer.setTime(0); wavesurfer.play(); recWavesurfer.play(); } } updateRecPlayBtnUI(); }
 function deleteRecording() { if (confirm(getMsg('msgDelRec'))) { document.getElementById('rec-waveform-wrapper').style.display = 'none'; document.getElementById('recControls').style.display = 'none'; document.getElementById('recVolControl').style.display = 'none'; if (recWavesurfer) { recWavesurfer.pause(); recWavesurfer.empty(); } if (recObjectURL) { URL.revokeObjectURL(recObjectURL); recObjectURL = null; } recordedAudioBuffer = null; isSolo = false; document.getElementById('soloBtn').classList.remove('active'); applyVolumes(); } }
 
@@ -840,7 +1155,53 @@ window.resetYTSpeed = () => {
 };
 
 function saveToHistory(id, title) { let history = JSON.parse(localStorage.getItem('ams_yt_history') || "[]"); history = history.filter(item => item.id !== id); history.unshift({ id: id, title: title || id, url: `https://www.youtube.com/watch?v=${id}`, time: Date.now() }); if (history.length > 20) history.pop(); localStorage.setItem('ams_yt_history', JSON.stringify(history)); renderYTHistory(); syncToCloud(); }
-function renderYTHistory() { const historyList = document.getElementById('ytHistoryList'); const container = document.getElementById('ytHistoryContainer'); if(!historyList || !container) return; const history = JSON.parse(localStorage.getItem('ams_yt_history') || "[]"); if (history.length === 0) { container.style.display = 'none'; return; } container.style.display = 'block'; historyList.innerHTML = ""; history.forEach(item => { const card = document.createElement('div'); card.style = "background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 8px 12px; min-width: 180px; flex-shrink: 0; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: background 0.2s; backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);"; card.onmouseover = () => card.style.background = "rgba(255,255,255,0.1)"; card.onmouseout = () => card.style.background = "rgba(0,0,0,0.4)"; card.setAttribute('data-url', item.url); card.innerHTML = `<span style="font-size:0.7rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:#e0e0e0;">${item.title}</span><span class="material-icons" style="color:#ff5555; font-size:16px; transition:transform 0.2s;" onmouseover="this.style.transform='scale(1.2)'" onmouseout="this.style.transform='scale(1)'" onclick="event.stopPropagation(); deleteHistoryItem('${item.id}')">cancel</span>`; historyList.appendChild(card); }); }
+function renderYTHistory() {
+    const historyList = document.getElementById('ytHistoryList');
+    const toggleBtn = document.getElementById('ytHistoryToggleBtn');
+    if (!historyList) return;
+    const history = JSON.parse(localStorage.getItem('ams_yt_history') || "[]");
+    if (toggleBtn) toggleBtn.style.display = history.length > 0 ? 'flex' : 'none';
+    if (history.length === 0) {
+        const container = document.getElementById('ytHistoryContainer');
+        if (container) container.style.display = 'none';
+        historyList.innerHTML = '';
+        return;
+    }
+    historyList.innerHTML = '';
+    history.forEach(item => {
+        const div = document.createElement('div');
+        div.style = 'display:flex; align-items:center; gap:10px; padding:8px 12px; border-bottom:1px solid rgba(255,255,255,0.04); cursor:pointer; transition:background 0.2s; min-height:52px;';
+        div.onmouseover = () => div.style.background = 'rgba(255,255,255,0.07)';
+        div.onmouseout = () => div.style.background = 'transparent';
+        const thumb = `https://img.youtube.com/vi/${item.id}/mqdefault.jpg`;
+        div.innerHTML = `
+            <img src="${thumb}" style="width:72px; height:40px; object-fit:cover; border-radius:5px; flex-shrink:0; background:#111;" onerror="this.style.display='none'">
+            <span style="flex:1; font-size:0.78rem; color:#e0e0e0; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; line-height:1.35;">${item.title}</span>
+            <button onclick="event.stopPropagation(); deleteHistoryItem('${item.id}')" style="background:none; border:none; color:#ff5555; cursor:pointer; padding:4px; display:flex; align-items:center; min-width:32px; min-height:32px; justify-content:center; flex-shrink:0;">
+                <span class="material-icons" style="font-size:18px;">cancel</span>
+            </button>
+        `;
+        div.onclick = async (e) => {
+            if (e.target.closest('button')) return;
+            if (!await requireSubscription()) return;
+            loadYouTube(item.url);
+            const container = document.getElementById('ytHistoryContainer');
+            if (container) container.style.display = 'none';
+        };
+        historyList.appendChild(div);
+    });
+}
+function toggleYTHistoryPanel() {
+    const container = document.getElementById('ytHistoryContainer');
+    if (!container) return;
+    const isVisible = container.style.display !== 'none';
+    if (isVisible) {
+        container.style.display = 'none';
+    } else {
+        document.getElementById('ytSearchResults').style.display = 'none';
+        container.style.display = 'block';
+    }
+}
 function handleHistoryClick(event) { const card = event.target.closest('div[data-url]'); if (card) { if (!isSubscribed) { openSubOverlay(); return; } loadYouTube(card.getAttribute('data-url')); } }
 window.deleteHistoryItem = (id) => { let history = JSON.parse(localStorage.getItem('ams_yt_history') || "[]"); history = history.filter(item => item.id !== id); localStorage.setItem('ams_yt_history', JSON.stringify(history)); renderYTHistory(); syncToCloud(); };
 window.clearYTHistory = () => { if (confirm(getMsg('msgDelHist'))) { localStorage.removeItem('ams_yt_history'); renderYTHistory(); syncToCloud(); } };
@@ -866,10 +1227,10 @@ window.setLoopPoint = (t) => { const now = ytPlayer.getCurrentTime(); if (t === 
 window.adjustTime = (t, a) => { if (t === 'start') { loopStart = Math.max(0, loopStart + a); document.getElementById('loopStartTxt').innerText = fmt(loopStart); ytPlayer.seekTo(loopStart); } else { loopEnd = Math.max(loopStart + 1, loopEnd + a); document.getElementById('loopEndTxt').innerText = fmt(loopEnd); } };
 window.toggleLoop = () => { isLooping = !isLooping; const lang = document.getElementById('langSelect').value || 'ja'; const b = document.getElementById('toggleLoopBtn'); if(b) { b.innerText = isLooping ? translations[lang].loopOn : translations[lang].loopOff; b.classList.toggle('active', isLooping); } };
 
-function saveLoop(mode) { if (!isSubscribed) { openSubOverlay(); return; } let start, end, key; if (mode === 'file') { const regions = wsRegions.getRegions(); if (regions.length === 0) return alert(getMsg('msgRangeReq')); start = regions[0].start; end = regions[0].end; key = currentFileName; } else { if (!currentYTId) return; start = loopStart; end = loopEnd; key = currentYTId; if (start >= end) return alert(getMsg('msgRangeInv')); } let storageKey = mode === 'file' ? 'ams_loops' : 'ams_yt_loops'; let allLoops = JSON.parse(localStorage.getItem(storageKey) || "{}"); if (!allLoops[key]) allLoops[key] = []; allLoops[key].push({ start, end }); localStorage.setItem(storageKey, JSON.stringify(allLoops)); renderLoopList(mode); syncToCloud(); }
+async function saveLoop(mode) { if (!await requireSubscription()) return; let start, end, key; if (mode === 'file') { const regions = wsRegions.getRegions(); if (regions.length === 0) return alert(getMsg('msgRangeReq')); start = regions[0].start; end = regions[0].end; key = currentFileName; } else { if (!currentYTId) return; start = loopStart; end = loopEnd; key = currentYTId; if (start >= end) return alert(getMsg('msgRangeInv')); } let storageKey = mode === 'file' ? 'ams_loops' : 'ams_yt_loops'; let allLoops = JSON.parse(localStorage.getItem(storageKey) || "{}"); if (!allLoops[key]) allLoops[key] = []; allLoops[key].push({ start, end }); localStorage.setItem(storageKey, JSON.stringify(allLoops)); renderLoopList(mode); syncToCloud(); }
 function getCircleNum(n) { const circles = ["①","②","③","④","⑤","⑥","⑦","⑧","⑨","⑩"]; return circles[n-1] || `(${n})`; }
 function renderLoopList(mode) { const container = mode === 'file' ? document.getElementById('loopListFile') : document.getElementById('loopListYT'); const key = mode === 'file' ? currentFileName : currentYTId; const storageKey = mode === 'file' ? 'ams_loops' : 'ams_yt_loops'; if(!container) return; container.innerHTML = ""; if (!key) return; let allLoops = JSON.parse(localStorage.getItem(storageKey) || "{}"); (allLoops[key] || []).forEach((loop, index) => { const badge = document.createElement('div'); badge.className = 'loop-badge'; badge.onclick = () => applyStoredLoop(mode, loop.start, loop.end); badge.innerHTML = `<span class="badge-num">${getCircleNum(index + 1)}</span><span class="material-icons badge-del" style="font-size:16px; transition:transform 0.2s;" onmouseover="this.style.transform='scale(1.2)'" onmouseout="this.style.transform='scale(1)'" onclick="event.stopPropagation(); deleteLoop('${mode}', ${index})">cancel</span>`; container.appendChild(badge); }); }
-window.applyStoredLoop = (mode, start, end) => { if (!isSubscribed) { openSubOverlay(); return; } initAudioContext(); if (mode === 'file') { wsRegions.clearRegions(); const currentColor = localStorage.getItem('ams_theme_color') || '#d4a373'; wsRegions.addRegion({ start, end, color: getRegionColor(currentColor) }); wavesurfer.setTime(start); } else { loopStart = start; loopEnd = end; document.getElementById('loopStartTxt').innerText = fmt(start); document.getElementById('loopEndTxt').innerText = fmt(end); ytPlayer.seekTo(start); if (!isLooping) toggleLoop(); } };
+window.applyStoredLoop = async (mode, start, end) => { if (!await requireSubscription()) return; initAudioContext(); if (mode === 'file') { wsRegions.clearRegions(); const currentColor = localStorage.getItem('ams_theme_color') || '#d4a373'; wsRegions.addRegion({ start, end, color: getRegionColor(currentColor) }); wavesurfer.setTime(start); } else { loopStart = start; loopEnd = end; document.getElementById('loopStartTxt').innerText = fmt(start); document.getElementById('loopEndTxt').innerText = fmt(end); ytPlayer.seekTo(start); if (!isLooping) toggleLoop(); } };
 window.deleteLoop = (mode, index) => { const storageKey = mode === 'file' ? 'ams_loops' : 'ams_yt_loops'; const key = mode === 'file' ? currentFileName : currentYTId; let allLoops = JSON.parse(localStorage.getItem(storageKey) || "{}"); if (allLoops[key]) { allLoops[key].splice(index, 1); localStorage.setItem(storageKey, JSON.stringify(allLoops)); renderLoopList(mode); syncToCloud(); } };
 
 function startApp() { 
@@ -891,7 +1252,6 @@ function startApp() {
     // =========================================================
     const audioFileInput = document.getElementById('audioFile');
     const fileSelectBtn = document.getElementById('fileSelectBtn');
-    let isLoadingFile = false; // 二重ロード防止フラグ
 
     // iOSのAudioContext事前アンロック
     // touchend のみで処理し、click では何もしない（二重発火防止）
@@ -925,9 +1285,27 @@ function startApp() {
     audioFileInput.addEventListener('change', async (e) => {
         // 二重ロード防止
         if (isLoadingFile) return;
-        const file = e.target.files && e.target.files[0];
-        if (!file) return;
+        const files = Array.from(e.target.files || []);
+        if (files.length === 0) return;
 
+        // 複数ファイル選択 → 全てプレイリストに追加して最初の曲を読み込む
+        if (files.length > 1) {
+            isLoadingFile = true;
+            const langM = document.getElementById('langSelect').value || 'ja';
+            document.getElementById('loadStatus').innerText = langM === 'ja' ? '追加中...' : 'Adding...';
+            try {
+                const ids = await addFilesToPlaylist(files);
+                if (ids.length > 0) {
+                    document.getElementById('playlistPanel').style.display = 'block';
+                    await loadPlaylistItem(ids[0]);
+                }
+            } catch(err) { console.error('Multi-file load error:', err); }
+            isLoadingFile = false;
+            e.target.value = '';
+            return;
+        }
+
+        const file = files[0];
         isLoadingFile = true;
         const lang = document.getElementById('langSelect').value || 'ja';
         const t = translations[lang] || translations['ja'];
@@ -985,6 +1363,11 @@ function startApp() {
                 wavesurfer.un('error', onError);
                 analyzeAudio(fileBlob);
                 renderLoopList('file');
+                // プレイリストにも追加（バックグラウンド）
+                addBlobToPlaylist(file.name, fileBlob).then(id => {
+                    currentPlaylistItemId = id;
+                    renderPlaylist();
+                }).catch(() => {});
                 isLoadingFile = false;
             };
             const onError = (err) => {
@@ -1024,10 +1407,11 @@ function startApp() {
         updateBpmDisplay(); document.getElementById('pitchTxt').innerText = (p > 0 ? "+" : "") + p; applyVolumes(); 
     }; 
 
-    wavesurfer.on('ready', () => { document.getElementById('totalTime').innerText = fmt(wavesurfer.getDuration()); applySettings(); }); 
-    recWavesurfer.on('finish', () => { wavesurfer.pause(); updateRecPlayBtnUI(); }); 
+    wavesurfer.on('ready', () => { document.getElementById('totalTime').innerText = fmt(wavesurfer.getDuration()); applySettings(); });
+    recWavesurfer.on('finish', () => { wavesurfer.pause(); updateRecPlayBtnUI(); });
+    wavesurfer.on('finish', async () => { document.getElementById('playIcon').innerText = 'play_arrow'; if (recWavesurfer) recWavesurfer.pause(); if (currentPlaylistItemId !== null) { await playNextPlaylistItem(); } });
     document.getElementById('speed').oninput = applySettings; 
-    document.getElementById('pitch').onmousedown = document.getElementById('pitch').ontouchstart = (e) => { if (!isSubscribed) { e.preventDefault(); openSubOverlay(); } }; 
+    document.getElementById('pitch').onmousedown = document.getElementById('pitch').ontouchstart = async (e) => { if (!await requireSubscription()) { e.preventDefault(); } }; 
     document.getElementById('pitch').oninput = applySettings; 
     
     document.getElementById('playBtn').onclick = async () => { 
@@ -1067,8 +1451,22 @@ function startApp() {
     }); 
 
     window.resetSetting = (id, val) => { document.getElementById(id).value = val; applySettings(); }; 
-    changeLanguage(); 
-    renderYTHistory(); 
+    openPlaylistDB().then(() => renderPlaylist()).catch(() => {});
+    const playlistAddInputEl = document.getElementById('playlistAddInput');
+    if (playlistAddInputEl) {
+        playlistAddInputEl.addEventListener('change', async (e) => {
+            const addFiles = Array.from(e.target.files || []);
+            if (addFiles.length === 0) return;
+            const langA = document.getElementById('langSelect').value || 'ja';
+            document.getElementById('loadStatus').innerText = langA === 'ja' ? '追加中...' : 'Adding...';
+            await addFilesToPlaylist(addFiles);
+            e.target.value = '';
+            document.getElementById('loadStatus').innerText = translations[langA]?.ready || 'READY';
+            document.getElementById('playlistPanel').style.display = 'block';
+        });
+    }
+    changeLanguage();
+    renderYTHistory();
 
     document.addEventListener('keydown', (e) => {
         if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;

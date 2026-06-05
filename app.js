@@ -1040,7 +1040,53 @@ window.resetYTSpeed = () => {
 };
 
 function saveToHistory(id, title) { let history = JSON.parse(localStorage.getItem('ams_yt_history') || "[]"); history = history.filter(item => item.id !== id); history.unshift({ id: id, title: title || id, url: `https://www.youtube.com/watch?v=${id}`, time: Date.now() }); if (history.length > 20) history.pop(); localStorage.setItem('ams_yt_history', JSON.stringify(history)); renderYTHistory(); syncToCloud(); }
-function renderYTHistory() { const historyList = document.getElementById('ytHistoryList'); const container = document.getElementById('ytHistoryContainer'); if(!historyList || !container) return; const history = JSON.parse(localStorage.getItem('ams_yt_history') || "[]"); if (history.length === 0) { container.style.display = 'none'; return; } container.style.display = 'block'; historyList.innerHTML = ""; history.forEach(item => { const card = document.createElement('div'); card.style = "background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 8px 12px; min-width: 180px; flex-shrink: 0; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: background 0.2s; backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);"; card.onmouseover = () => card.style.background = "rgba(255,255,255,0.1)"; card.onmouseout = () => card.style.background = "rgba(0,0,0,0.4)"; card.setAttribute('data-url', item.url); card.innerHTML = `<span style="font-size:0.7rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:#e0e0e0;">${item.title}</span><span class="material-icons" style="color:#ff5555; font-size:16px; transition:transform 0.2s;" onmouseover="this.style.transform='scale(1.2)'" onmouseout="this.style.transform='scale(1)'" onclick="event.stopPropagation(); deleteHistoryItem('${item.id}')">cancel</span>`; historyList.appendChild(card); }); }
+function renderYTHistory() {
+    const historyList = document.getElementById('ytHistoryList');
+    const toggleBtn = document.getElementById('ytHistoryToggleBtn');
+    if (!historyList) return;
+    const history = JSON.parse(localStorage.getItem('ams_yt_history') || "[]");
+    if (toggleBtn) toggleBtn.style.display = history.length > 0 ? 'flex' : 'none';
+    if (history.length === 0) {
+        const container = document.getElementById('ytHistoryContainer');
+        if (container) container.style.display = 'none';
+        historyList.innerHTML = '';
+        return;
+    }
+    historyList.innerHTML = '';
+    history.forEach(item => {
+        const div = document.createElement('div');
+        div.style = 'display:flex; align-items:center; gap:10px; padding:8px 12px; border-bottom:1px solid rgba(255,255,255,0.04); cursor:pointer; transition:background 0.2s; min-height:52px;';
+        div.onmouseover = () => div.style.background = 'rgba(255,255,255,0.07)';
+        div.onmouseout = () => div.style.background = 'transparent';
+        const thumb = `https://img.youtube.com/vi/${item.id}/mqdefault.jpg`;
+        div.innerHTML = `
+            <img src="${thumb}" style="width:72px; height:40px; object-fit:cover; border-radius:5px; flex-shrink:0; background:#111;" onerror="this.style.display='none'">
+            <span style="flex:1; font-size:0.78rem; color:#e0e0e0; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; line-height:1.35;">${item.title}</span>
+            <button onclick="event.stopPropagation(); deleteHistoryItem('${item.id}')" style="background:none; border:none; color:#ff5555; cursor:pointer; padding:4px; display:flex; align-items:center; min-width:32px; min-height:32px; justify-content:center; flex-shrink:0;">
+                <span class="material-icons" style="font-size:18px;">cancel</span>
+            </button>
+        `;
+        div.onclick = (e) => {
+            if (e.target.closest('button')) return;
+            if (!isSubscribed) { openSubOverlay(); return; }
+            loadYouTube(item.url);
+            const container = document.getElementById('ytHistoryContainer');
+            if (container) container.style.display = 'none';
+        };
+        historyList.appendChild(div);
+    });
+}
+function toggleYTHistoryPanel() {
+    const container = document.getElementById('ytHistoryContainer');
+    if (!container) return;
+    const isVisible = container.style.display !== 'none';
+    if (isVisible) {
+        container.style.display = 'none';
+    } else {
+        document.getElementById('ytSearchResults').style.display = 'none';
+        container.style.display = 'block';
+    }
+}
 function handleHistoryClick(event) { const card = event.target.closest('div[data-url]'); if (card) { if (!isSubscribed) { openSubOverlay(); return; } loadYouTube(card.getAttribute('data-url')); } }
 window.deleteHistoryItem = (id) => { let history = JSON.parse(localStorage.getItem('ams_yt_history') || "[]"); history = history.filter(item => item.id !== id); localStorage.setItem('ams_yt_history', JSON.stringify(history)); renderYTHistory(); syncToCloud(); };
 window.clearYTHistory = () => { if (confirm(getMsg('msgDelHist'))) { localStorage.removeItem('ams_yt_history'); renderYTHistory(); syncToCloud(); } };

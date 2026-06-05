@@ -557,8 +557,208 @@ let mediaRecorder, recordedChunks = [];
 let isRecording = false, isSolo = false;
 let recObjectURL = null, recordedAudioBuffer = null, lastRecStartPos = 0;
 let currentLoopCount = 0;
+let isLoadingFile = false;
 
-function changeLanguage() { 
+// ==================== PLAYLIST (IndexedDB) ====================
+let playlistDB = null;
+let currentPlaylistItemId = null;
+const PLAYLIST_DB_NAME = 'ams_playlist_v1';
+const PLAYLIST_STORE = 'tracks';
+
+async function openPlaylistDB() {
+    if (playlistDB) return playlistDB;
+    return new Promise((resolve, reject) => {
+        const req = indexedDB.open(PLAYLIST_DB_NAME, 1);
+        req.onupgradeneeded = (e) => {
+            const db = e.target.result;
+            if (!db.objectStoreNames.contains(PLAYLIST_STORE)) {
+                db.createObjectStore(PLAYLIST_STORE, { keyPath: 'id', autoIncrement: true });
+            }
+        };
+        req.onsuccess = (e) => { playlistDB = e.target.result; resolve(playlistDB); };
+        req.onerror = (e) => reject(e.target.error);
+    });
+}
+
+async function addFilesToPlaylist(files) {
+    const db = await openPlaylistDB();
+    const ids = [];
+    for (const file of files) {
+        try {
+            const arrayBuffer = await file.arrayBuffer();
+            const mimeType = (file.type && file.type.startsWith('audio/')) ? file.type : 'audio/mpeg';
+            const blob = new Blob([arrayBuffer], { type: mimeType });
+            const id = await new Promise((resolve, reject) => {
+                const tx = db.transaction(PLAYLIST_STORE, 'readwrite');
+                const req = tx.objectStore(PLAYLIST_STORE).add({ name: file.name, blob, addedAt: Date.now() });
+                req.onsuccess = (e) => resolve(e.target.result);
+                req.onerror = reject;
+            });
+            ids.push(id);
+        } catch (e) { console.error('Playlist add error:', file.name, e); }
+    }
+    renderPlaylist();
+    return ids;
+}
+
+async function addBlobToPlaylist(name, blob) {
+    const db = await openPlaylistDB();
+    const id = await new Promise((resolve, reject) => {
+        const tx = db.transaction(PLAYLIST_STORE, 'readwrite');
+        const req = tx.objectStore(PLAYLIST_STORE).add({ name, blob, addedAt: Date.now() });
+        req.onsuccess = (e) => resolve(e.target.result);
+        req.onerror = reject;
+    });
+    renderPlaylist();
+    return id;
+}
+
+async function getAllPlaylistItems() {
+    const db = await openPlaylistDB();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(PLAYLIST_STORE, 'readonly');
+        const req = tx.objectStore(PLAYLIST_STORE).getAll();
+        req.onsuccess = (e) => resolve(e.target.result);
+        req.onerror = (e) => reject(e.target.error);
+    });
+}
+
+async function getPlaylistItem(id) {
+    const db = await openPlaylistDB();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(PLAYLIST_STORE, 'readonly');
+        const req = tx.objectStore(PLAYLIST_STORE).get(id);
+        req.onsuccess = (e) => resolve(e.target.result);
+        req.onerror = (e) => reject(e.target.error);
+    });
+}
+
+window.deletePlaylistItem = async (id) => {
+    const db = await openPlaylistDB();
+    await new Promise((resolve, reject) => {
+        const tx = db.transaction(PLAYLIST_STORE, 'readwrite');
+        tx.objectStore(PLAYLIST_STORE).delete(id).onsuccess = resolve;
+        tx.onerror = reject;
+    });
+    if (currentPlaylistItemId === id) currentPlaylistItemId = null;
+    renderPlaylist();
+};
+
+async function clearAllPlaylist() {
+    const lang = document.getElementById('langSelect').value || 'ja';
+    const msg = lang === 'ja' ? 'プレイリストをすべて削除しますか？' : 'Clear all playlist items?';
+    if (!confirm(msg)) return;
+    const db = await openPlaylistDB();
+    await new Promise((resolve, reject) => {
+        const tx = db.transaction(PLAYLIST_STORE, 'readwrite');
+        tx.objectStore(PLAYLIST_STORE).clear().onsuccess = resolve;
+        tx.onerror = reject;
+    });
+    currentPlaylistItemId = null;
+    renderPlaylist();
+}
+
+async function renderPlaylist() {
+    const container = document.getElementById('playlistItems');
+    if (!container) return;
+    let items = [];
+    try { items = await getAllPlaylistItems(); } catch(e) { return; }
+
+    if (items.length === 0) {
+        container.innerHTML = '<div style="text-align:center; color:var(--text-dim); font-size:0.75rem; padding:20px 0; line-height:1.8;">プレイリストが空です。<br>ファイルを追加してください。</div>';
+        return;
+    }
+
+    container.innerHTML = '';
+    items.forEach((item) => {
+        const isActive = item.id === currentPlaylistItemId;
+        const div = document.createElement('div');
+        div.className = 'playlist-item-row' + (isActive ? ' active' : '');
+        const name = item.name.length > 36 ? item.name.substring(0, 34) + '…' : item.name;
+        div.innerHTML = `
+            <span class="material-icons" style="font-size:18px; color:${isActive ? 'var(--primary-color)' : 'var(--text-dim)'}; flex-shrink:0;">${isActive ? 'music_note' : 'audiotrack'}</span>
+            <span style="flex:1; font-size:0.75rem; color:${isActive ? '#fff' : '#ccc'}; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${item.name}">${name}</span>
+            <button class="pl-btn" onclick="event.stopPropagation(); loadPlaylistItem(${item.id})" title="再生" style="color:var(--primary-color);">
+                <span class="material-icons" style="font-size:22px;">play_circle</span>
+            </button>
+            <button class="pl-btn" onclick="event.stopPropagation(); deletePlaylistItem(${item.id})" title="削除" style="color:#ff5555;">
+                <span class="material-icons" style="font-size:20px;">cancel</span>
+            </button>
+        `;
+        div.onclick = () => loadPlaylistItem(item.id);
+        container.appendChild(div);
+    });
+}
+
+window.loadPlaylistItem = async (id) => {
+    if (isLoadingFile) return;
+    const item = await getPlaylistItem(id);
+    if (!item) return;
+
+    isLoadingFile = true;
+    const ctx = initAudioContext();
+    if (ctx && ctx.state === 'suspended') await ctx.resume();
+    currentPlaylistItemId = id;
+
+    const lang = document.getElementById('langSelect').value || 'ja';
+    const t = translations[lang] || translations['ja'];
+    const statusEl = document.getElementById('loadStatus');
+    const fileSelectBtn = document.getElementById('fileSelectBtn');
+
+    currentFileName = item.name;
+    fileSelectBtn.innerText = item.name.length > 30 ? item.name.substring(0, 28) + '…' : item.name;
+    statusEl.innerText = lang === 'ja' ? '読み込み中...' : 'Loading...';
+
+    if (wavesurfer.isPlaying()) wavesurfer.pause();
+    wsRegions.clearRegions();
+    if (currentObjectURL) { URL.revokeObjectURL(currentObjectURL); currentObjectURL = null; }
+    wavesurfer.empty();
+    if (isMobile) await new Promise(r => setTimeout(r, 200));
+
+    currentObjectURL = URL.createObjectURL(item.blob);
+
+    const onDecodeP = () => {
+        wavesurfer.un('error', onErrorP);
+        analyzeAudio(item.blob);
+        renderLoopList('file');
+        isLoadingFile = false;
+    };
+    const onErrorP = (err) => {
+        wavesurfer.un('decode', onDecodeP);
+        console.error('Playlist load error:', err);
+        statusEl.innerText = lang === 'ja' ? '読み込みエラー' : 'Load Error';
+        if (currentObjectURL) { URL.revokeObjectURL(currentObjectURL); currentObjectURL = null; }
+        isLoadingFile = false;
+    };
+    wavesurfer.once('decode', onDecodeP);
+    wavesurfer.once('error', onErrorP);
+    wavesurfer.load(currentObjectURL);
+    renderPlaylist();
+};
+
+async function playNextPlaylistItem() {
+    const items = await getAllPlaylistItems();
+    if (items.length === 0) return;
+    const currentIndex = items.findIndex(item => item.id === currentPlaylistItemId);
+    const nextIndex = currentIndex + 1;
+    if (nextIndex < items.length) {
+        await loadPlaylistItem(items[nextIndex].id);
+        wavesurfer.once('ready', () => {
+            setTimeout(() => { if (currentMode === 'file') wavesurfer.play().catch(() => {}); }, 300);
+        });
+    }
+}
+
+function togglePlaylistPanel() {
+    const panel = document.getElementById('playlistPanel');
+    if (!panel) return;
+    const isVisible = panel.style.display !== 'none';
+    panel.style.display = isVisible ? 'none' : 'block';
+    if (!isVisible) renderPlaylist();
+}
+// ==================== END PLAYLIST ====================
+
+function changeLanguage() {
     const lang = document.getElementById('langSelect').value || 'ja'; 
     const t = translations[lang] || translations['ja']; 
     
@@ -891,7 +1091,6 @@ function startApp() {
     // =========================================================
     const audioFileInput = document.getElementById('audioFile');
     const fileSelectBtn = document.getElementById('fileSelectBtn');
-    let isLoadingFile = false; // 二重ロード防止フラグ
 
     // iOSのAudioContext事前アンロック
     // touchend のみで処理し、click では何もしない（二重発火防止）
@@ -925,9 +1124,27 @@ function startApp() {
     audioFileInput.addEventListener('change', async (e) => {
         // 二重ロード防止
         if (isLoadingFile) return;
-        const file = e.target.files && e.target.files[0];
-        if (!file) return;
+        const files = Array.from(e.target.files || []);
+        if (files.length === 0) return;
 
+        // 複数ファイル選択 → 全てプレイリストに追加して最初の曲を読み込む
+        if (files.length > 1) {
+            isLoadingFile = true;
+            const langM = document.getElementById('langSelect').value || 'ja';
+            document.getElementById('loadStatus').innerText = langM === 'ja' ? '追加中...' : 'Adding...';
+            try {
+                const ids = await addFilesToPlaylist(files);
+                if (ids.length > 0) {
+                    document.getElementById('playlistPanel').style.display = 'block';
+                    await loadPlaylistItem(ids[0]);
+                }
+            } catch(err) { console.error('Multi-file load error:', err); }
+            isLoadingFile = false;
+            e.target.value = '';
+            return;
+        }
+
+        const file = files[0];
         isLoadingFile = true;
         const lang = document.getElementById('langSelect').value || 'ja';
         const t = translations[lang] || translations['ja'];
@@ -985,6 +1202,11 @@ function startApp() {
                 wavesurfer.un('error', onError);
                 analyzeAudio(fileBlob);
                 renderLoopList('file');
+                // プレイリストにも追加（バックグラウンド）
+                addBlobToPlaylist(file.name, fileBlob).then(id => {
+                    currentPlaylistItemId = id;
+                    renderPlaylist();
+                }).catch(() => {});
                 isLoadingFile = false;
             };
             const onError = (err) => {
@@ -1024,8 +1246,9 @@ function startApp() {
         updateBpmDisplay(); document.getElementById('pitchTxt').innerText = (p > 0 ? "+" : "") + p; applyVolumes(); 
     }; 
 
-    wavesurfer.on('ready', () => { document.getElementById('totalTime').innerText = fmt(wavesurfer.getDuration()); applySettings(); }); 
-    recWavesurfer.on('finish', () => { wavesurfer.pause(); updateRecPlayBtnUI(); }); 
+    wavesurfer.on('ready', () => { document.getElementById('totalTime').innerText = fmt(wavesurfer.getDuration()); applySettings(); });
+    recWavesurfer.on('finish', () => { wavesurfer.pause(); updateRecPlayBtnUI(); });
+    wavesurfer.on('finish', async () => { document.getElementById('playIcon').innerText = 'play_arrow'; if (recWavesurfer) recWavesurfer.pause(); if (currentPlaylistItemId !== null) { await playNextPlaylistItem(); } });
     document.getElementById('speed').oninput = applySettings; 
     document.getElementById('pitch').onmousedown = document.getElementById('pitch').ontouchstart = (e) => { if (!isSubscribed) { e.preventDefault(); openSubOverlay(); } }; 
     document.getElementById('pitch').oninput = applySettings; 
@@ -1067,8 +1290,22 @@ function startApp() {
     }); 
 
     window.resetSetting = (id, val) => { document.getElementById(id).value = val; applySettings(); }; 
-    changeLanguage(); 
-    renderYTHistory(); 
+    openPlaylistDB().then(() => renderPlaylist()).catch(() => {});
+    const playlistAddInputEl = document.getElementById('playlistAddInput');
+    if (playlistAddInputEl) {
+        playlistAddInputEl.addEventListener('change', async (e) => {
+            const addFiles = Array.from(e.target.files || []);
+            if (addFiles.length === 0) return;
+            const langA = document.getElementById('langSelect').value || 'ja';
+            document.getElementById('loadStatus').innerText = langA === 'ja' ? '追加中...' : 'Adding...';
+            await addFilesToPlaylist(addFiles);
+            e.target.value = '';
+            document.getElementById('loadStatus').innerText = translations[langA]?.ready || 'READY';
+            document.getElementById('playlistPanel').style.display = 'block';
+        });
+    }
+    changeLanguage();
+    renderYTHistory();
 
     document.addEventListener('keydown', (e) => {
         if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;

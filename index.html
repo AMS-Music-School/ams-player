@@ -352,23 +352,27 @@
         <div style="margin-bottom:10px; background:var(--panel-bg); padding:10px; border-radius:10px; border: 1px solid var(--border-color); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);">
             <div style="display:flex; gap:8px;">
                 <input type="text" id="ytUrl" placeholder="YouTube URL or Search Keyword..." style="flex-grow:1; padding:10px; border:1px solid rgba(255,255,255,0.1); background:rgba(0,0,0,0.4); color:#fff; border-radius:6px; font-size:0.8rem; outline:none; transition:border-color 0.3s;" onfocus="this.style.borderColor='var(--primary-color)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'" onkeydown="if(event.key === 'Enter') loadYouTube()">
-                
+
                 <button id="ytToggleResultsBtn" class="reset-btn" style="display:none; padding:0 12px; border-radius:6px; align-items:center; justify-content:center; border: 1px solid rgba(255,255,255,0.1); background:rgba(0,0,0,0.3);" onclick="toggleYTResults()" title="検索結果を表示/非表示">
                     <span class="material-icons" style="font-size:20px;">format_list_bulleted</span>
                 </button>
-                
+
+                <button id="ytHistoryToggleBtn" class="reset-btn" style="display:none; padding:0 12px; border-radius:6px; align-items:center; justify-content:center; border: 1px solid rgba(255,255,255,0.1); background:rgba(0,0,0,0.3);" onclick="toggleYTHistoryPanel()" title="履歴を表示/非表示">
+                    <span class="material-icons" style="font-size:20px;">history</span>
+                </button>
+
                 <button class="tab-btn active" style="flex:0; min-width:60px;" onclick="loadYouTube()" id="ytLoadBtnTxt">LOAD</button>
             </div>
-            
+
             <div id="ytSearchResults" style="display:none; margin-top:10px; max-height:250px; overflow-y:auto; border-radius:6px; background:rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.1); position:relative;"></div>
-        </div>
-        
-        <div id="ytHistoryContainer" style="margin-bottom: 15px; display: none;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
-                <span style="font-size:0.7rem; color:var(--primary-color); font-weight:bold;" id="historyTitle">最近の履歴</span>
-                <button class="reset-btn" onclick="clearYTHistory()" style="font-size:0.6rem;" id="historyClearBtn">すべてクリア</button>
+
+            <div id="ytHistoryContainer" style="display:none; margin-top:10px; border-radius:8px; background:rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.1); overflow:hidden;">
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 12px; border-bottom:1px solid rgba(255,255,255,0.08); background:rgba(15,15,20,0.8); position:sticky; top:0; z-index:1;">
+                    <span style="font-size:0.7rem; color:var(--primary-color); font-weight:bold; letter-spacing:1px;" id="historyTitle">最近の履歴</span>
+                    <button class="reset-btn" onclick="clearYTHistory()" style="font-size:0.6rem;" id="historyClearBtn">すべてクリア</button>
+                </div>
+                <div id="ytHistoryList" style="max-height:260px; overflow-y:auto; display:flex; flex-direction:column; -webkit-overflow-scrolling:touch;"></div>
             </div>
-            <div id="ytHistoryList" style="display:flex; gap:8px; overflow-x:auto; padding-bottom:8px;" onclick="handleHistoryClick(event)"></div>
         </div>
         
         <div id="ytPlayerContainer" style="max-width: 800px; margin: 0 auto;">

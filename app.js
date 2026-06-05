@@ -754,8 +754,24 @@ async function searchYouTube(keyword) {
     resultsContainer.style.display = 'block';
 
     try {
-        const res = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=10&q=${encodeURIComponent(keyword)}&type=video&key=${YOUTUBE_API_KEY}`);
+        const apiUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=10&q=${encodeURIComponent(keyword)}&type=video&key=${YOUTUBE_API_KEY}`;
+        const res = await fetch(apiUrl);
         const data = await res.json();
+
+        // DEV: APIエラー詳細をコンソールに出力
+        if (data.error) {
+            console.error("[DEV] YouTube API Error:", JSON.stringify(data.error));
+            resultsContainer.innerHTML = `
+                <div style="display:flex; justify-content:flex-end; padding:8px;">
+                    <button onclick="document.getElementById('ytSearchResults').style.display='none'" class="reset-btn"><span class="material-icons" style="font-size:16px;">close</span></button>
+                </div>
+                <div style='padding:15px; color:#ff5555; font-size:0.8rem; text-align:center;'>
+                    [DEV] APIエラー: ${data.error.code} - ${data.error.message}<br>
+                    <small style="color:#aaa;">理由: ${(data.error.errors||[]).map(e=>e.reason).join(', ')}</small>
+                </div>
+            `;
+            return;
+        }
 
         if (data.items && data.items.length > 0) {
             toggleBtn.style.display = 'flex';

@@ -129,6 +129,49 @@ async function requireSubscription() {
 function invalidateSubCache() { _subCache = null; _subCacheTime = 0; }
 // =============================================================================
 
+// ==================== TrialUsers コレクション管理 ====================
+// トライアル開始時にTrialUsersへ記録
+async function recordTrialStart(uEmail, uid, now) {
+    try {
+        const trialEndMs = now + (3 * 24 * 60 * 60 * 1000);
+        await db.collection('TrialUsers').doc(uEmail).set({
+            email: uEmail,
+            uid: uid,
+            trialStartMs: now,
+            trialEndMs: trialEndMs,
+            status: 'active',
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        console.log('TrialUsers: trial started for', uEmail);
+    } catch (e) {
+        console.error('TrialUsers write error:', e);
+    }
+}
+
+// トライアル・サブスク状態を更新（'active' | 'expired' | 'converted'）
+async function updateTrialStatus(uEmail, status) {
+    try {
+        await db.collection('TrialUsers').doc(uEmail).update({
+            status: status,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        console.log('TrialUsers: status updated to', status, 'for', uEmail);
+    } catch (e) {
+        // ドキュメントが存在しない場合（トライアルなしユーザー）は無視
+    }
+}
+
+// ログイン時にトライアル期限切れを自動検出・更新
+async function checkAndUpdateTrialExpiry(uEmail, trialStartMs) {
+    if (!trialStartMs) return;
+    const now = Date.now();
+    const trialEndMs = trialStartMs + (3 * 24 * 60 * 60 * 1000);
+    if (now > trialEndMs) {
+        await updateTrialStatus(uEmail, 'expired');
+    }
+}
+// =====================================================================
+
 let lastTime = 0;
 let isRegistering = false; 
 
@@ -430,25 +473,37 @@ auth.onAuthStateChanged(async user => {
             }
 
             if (!isAlreadyPremium && (!userDoc.exists || !userDoc.data().trialStartMs)) {
+                // 新規トライアル開始
                 const now = Date.now();
                 await userDocRef.set({ uid: user.uid, email: uEmail, trialStartMs: now }, { merge: true });
+                await recordTrialStart(uEmail, user.uid, now); // TrialUsersへ記録
                 showWelcomeTrialPopup();
             } else {
                 await userDocRef.set({ uid: user.uid, email: uEmail }, { merge: true });
+                // 既存トライアルユーザーの期限切れチェック
+                if (!isAlreadyPremium && userDoc.exists && userDoc.data().trialStartMs) {
+                    checkAndUpdateTrialExpiry(uEmail, userDoc.data().trialStartMs);
+                }
             }
         } catch (e) {}
 
-        db.collection('Users').doc(uEmail).onSnapshot(async () => { 
-            const subStatus = await checkSubscriptionStatus(user); 
-            isSubscribed = subStatus.active; 
-            if (isSubscribed) subOverlay.style.display = 'none'; 
-            updateAccountModalUI(user); 
+        db.collection('Users').doc(uEmail).onSnapshot(async () => {
+            const subStatus = await checkSubscriptionStatus(user);
+            isSubscribed = subStatus.active;
+            if (isSubscribed) {
+                subOverlay.style.display = 'none';
+                updateTrialStatus(uEmail, 'converted'); // 有料転換を記録
+            }
+            updateAccountModalUI(user);
         });
-        db.collection('SchoolMember').doc(uEmail).onSnapshot(async () => { 
-            const subStatus = await checkSubscriptionStatus(user); 
-            isSubscribed = subStatus.active; 
-            if (isSubscribed) subOverlay.style.display = 'none'; 
-            updateAccountModalUI(user); 
+        db.collection('SchoolMember').doc(uEmail).onSnapshot(async () => {
+            const subStatus = await checkSubscriptionStatus(user);
+            isSubscribed = subStatus.active;
+            if (isSubscribed) {
+                subOverlay.style.display = 'none';
+                updateTrialStatus(uEmail, 'converted'); // 有料転換を記録（SchoolMember経由）
+            }
+            updateAccountModalUI(user);
         });
 
         await syncFromCloud(user);

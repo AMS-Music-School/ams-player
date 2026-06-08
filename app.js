@@ -540,11 +540,10 @@ const translations = {
         subLogout: "別のカウントでログイン",
         historyTitle: "最近の履歴",
         historyClear: "すべてクリア",
-        keyLabel: "キー", majorKey: "メジャー", minorKey: "マイナー",
-        chordBtnLabel: "コード", chordAnalyze: "解析", chordAnalyzing: "解析中...", chordLoading: "Essentia.js 読み込み中...", chordPanelTitle: "コード一覧", chordNoFile: "先にファイルを読み込んでください", chordNone: "コードが検出されませんでした"
+        keyLabel: "キー", majorKey: "メジャー", minorKey: "マイナー"
     },
     en: { 
-        langTitle: "Language Settings", helpTitle: "Help & Guide", themeTitle: "Theme Color", guideFile: "Audio File Mode Guide", guideYT: "YouTube Mode Guide", close: "Close", fit: "FIT", clear: "Clear Loop", ready: "READY", analyzing: "ANALYZING...", setStart: "START", setEnd: "END", loopOff: "LOOP OFF", loopOn: "LOOP ON", fileSelect: "Select Audio File", saveLoop: "Save Loop", speedUpLabel: "Auto BPM Up", recPlay: "Play Rec", recStop: "Stop Rec", privacyMenu: "Privacy Policy", legalMenu: "Commercial Transactions Act", authDesc: "Log in with your account", googleBtn: "Login with Google", authDiv: "OR", authEmail: "Login / Register", historyTitle: "RECENT HISTORY", historyClear: "Clear All", keyLabel: "Key", majorKey: "major", minorKey: "minor", chordBtnLabel: "Chord", chordAnalyze: "Analyze", chordAnalyzing: "Analyzing...", chordLoading: "Loading Essentia.js...", chordPanelTitle: "Chord List", chordNoFile: "Please load a file first", chordNone: "No chords detected", ytLoad: "LOAD", recDel: "Delete", ytPlaceholder: "YouTube URL or Search Keyword...",
+        langTitle: "Language Settings", helpTitle: "Help & Guide", themeTitle: "Theme Color", guideFile: "Audio File Mode Guide", guideYT: "YouTube Mode Guide", close: "Close", fit: "FIT", clear: "Clear Loop", ready: "READY", analyzing: "ANALYZING...", setStart: "START", setEnd: "END", loopOff: "LOOP OFF", loopOn: "LOOP ON", fileSelect: "Select Audio File", saveLoop: "Save Loop", speedUpLabel: "Auto BPM Up", recPlay: "Play Rec", recStop: "Stop Rec", privacyMenu: "Privacy Policy", legalMenu: "Commercial Transactions Act", authDesc: "Log in with your account", googleBtn: "Login with Google", authDiv: "OR", authEmail: "Login / Register", historyTitle: "RECENT HISTORY", historyClear: "Clear All", keyLabel: "Key", majorKey: "major", minorKey: "minor", ytLoad: "LOAD", recDel: "Delete", ytPlaceholder: "YouTube URL or Search Keyword...",
         accInfo: "Account Info", deleteAcc: "Delete Account", accNameLabel: "Display Name", accEmailLabel: "Email", accPlanLabel: "Plan", resetPw: "Reset Password",
         authNote: "*For new registrations, a verification email will be sent. Please open the link in the email to complete registration.",
         msgLoginReq: "Please login first.", msgEmptyAuth: "Please enter your email and password.", msgRegConfirm: "Account not found. A verification email will be sent to the entered address for new registration. Proceed?\n\n*Registration is NOT complete until you click the URL in the email.", msgLoginErr: "Error: ", msgMailSent: "Password reset email sent. Please check your inbox.", msgDelHist: "Clear history?", msgDelRec: "Delete recording?", msgDelAcc: "This will permanently delete your account and all saved data.\n\n⚠️ IMPORTANT: Deleting your account does NOT automatically cancel your subscription! Please cancel your billing via the Square receipt email first.\n\nAre you sure you want to delete?", msgDelAccSuccess: "Account successfully deleted.", msgPwReset: "Send password reset email?", msgRangeReq: "Please select a range", msgRangeInv: "Invalid range", msgSubConfirm: "⚠️ IMPORTANT\nPlease use the exact same email address on the Square payment page.\n(Using Apple Pay might change your address)\n\nProceed to checkout?",
@@ -568,7 +567,7 @@ const translations = {
         subLogout: "Login with another account"
     },
     zh: { 
-        langTitle: "语言设置", helpTitle: "帮助与指南", themeTitle: "主题颜色", guideFile: "音频文件模式指南", guideYT: "YouTube模式指南", close: "关闭", fit: "适应视图", clear: "清除选择", ready: "准备就绪", analyzing: "分析中...", setStart: "起点", setEnd: "终点", loopOff: "循环 关", loopOn: "循环 开", fileSelect: "选择文件", saveLoop: "保存循环", speedUpLabel: "自动提速", recPlay: "播放录音", recStop: "停止播放", privacyMenu: "隐私政策", legalMenu: "特定商业交易法", authDesc: "使用您的帐户登录", googleBtn: "使用Google登录", authDiv: "或", authEmail: "登录 / 注册", historyTitle: "最近历史", historyClear: "全部清除", keyLabel: "调性", majorKey: "大调", minorKey: "小调", chordBtnLabel: "和弦", chordAnalyze: "分析", chordAnalyzing: "分析中...", chordLoading: "加载 Essentia.js...", chordPanelTitle: "和弦列表", chordNoFile: "请先加载文件", chordNone: "未检测到和弦", ytLoad: "加载", recDel: "删除", ytPlaceholder: "YouTube URL 或搜索关键字...",
+        langTitle: "语言设置", helpTitle: "帮助与指南", themeTitle: "主题颜色", guideFile: "音频文件模式指南", guideYT: "YouTube模式指南", close: "关闭", fit: "适应视图", clear: "清除选择", ready: "准备就绪", analyzing: "分析中...", setStart: "起点", setEnd: "终点", loopOff: "循环 关", loopOn: "循环 开", fileSelect: "选择文件", saveLoop: "保存循环", speedUpLabel: "自动提速", recPlay: "播放录音", recStop: "停止播放", privacyMenu: "隐私政策", legalMenu: "特定商业交易法", authDesc: "使用您的帐户登录", googleBtn: "使用Google登录", authDiv: "或", authEmail: "登录 / 注册", historyTitle: "最近历史", historyClear: "全部清除", keyLabel: "调性", majorKey: "大调", minorKey: "小调", ytLoad: "加载", recDel: "删除", ytPlaceholder: "YouTube URL 或搜索关键字...",
         accInfo: "帐户信息", deleteAcc: "删除帐户", accNameLabel: "帐户名称", accEmailLabel: "电子邮件", accPlanLabel: "计划", resetPw: "重置密码",
         authNote: "※新注册时将发送验证邮件。请打开邮件中的链接以完成注册。",
         msgLoginReq: "请先登录。", msgEmptyAuth: "请输入您的电子邮件和密码。", msgRegConfirm: "找不到帐户。系统将向您输入的地址发送一封验证邮件以进行新注册。是否继续？\n\n*在点击收到的邮件中的URL之前，注册不会完成。", msgLoginErr: "错误: ", msgMailSent: "密码重置邮件已发送。请检查您的收件箱。", msgDelHist: "要清除历史记录吗？", msgDelRec: "要删除录音吗？", msgDelAcc: "这将永久删除您的帐户和所有保存的数据。\n\n⚠️ 重要提示：删除帐户不会自动取消您的订阅！请务必先通过Square的付款电子邮件取消订阅。\n\n您确定要删除吗？", msgDelAccSuccess: "帐户已成功删除。", msgPwReset: "发送密码重置电子邮件吗？", msgRangeReq: "请选择一个范围", msgRangeInv: "范围无效", msgSubConfirm: "⚠️ 重要提示\n请在Square付款页面上使用完全相同的电子邮件地址。\n\n继续结帐吗？",
@@ -592,7 +591,7 @@ const translations = {
         subLogout: "使用其他帐户登录"
     },
     ko: { 
-        langTitle: "언어 설정", helpTitle: "도움말 및 가이드", themeTitle: "테마 색상", guideFile: "오디오 파일 모드 가이드", guideYT: "YouTube 모드 가이드", close: "닫기", fit: "전체 보기", clear: "선택 해제", ready: "준비 완료", analyzing: "분석 중...", setStart: "시작", setEnd: "종료", loopOff: "루프 끄기", loopOn: "루프 켜기", fileSelect: "파일 선택", saveLoop: "루프 저장", speedUpLabel: "자동 BPM 업", recPlay: "녹음 재생", recStop: "재생 정지", privacyMenu: "개인정보처리방침", legalMenu: "특정상거래법 표기", authDesc: "계정으로 로그인", googleBtn: "Google로 로그인", authDiv: "또는", authEmail: "로그인 / 회원가입", historyTitle: "최근 기록", historyClear: "모두 지우기", keyLabel: "조성", majorKey: "장조", minorKey: "단조", chordBtnLabel: "코드", chordAnalyze: "분석", chordAnalyzing: "분석 중...", chordLoading: "Essentia.js 로드 중...", chordPanelTitle: "코드 목록", chordNoFile: "먼저 파일을 불러오세요", chordNone: "코드가 감지되지 않았습니다", ytLoad: "불러오기", recDel: "삭제", ytPlaceholder: "YouTube URL 또는 검색 키워드...",
+        langTitle: "언어 설정", helpTitle: "도움말 및 가이드", themeTitle: "테마 색상", guideFile: "오디오 파일 모드 가이드", guideYT: "YouTube 모드 가이드", close: "닫기", fit: "전체 보기", clear: "선택 해제", ready: "준비 완료", analyzing: "분석 중...", setStart: "시작", setEnd: "종료", loopOff: "루프 끄기", loopOn: "루프 켜기", fileSelect: "파일 선택", saveLoop: "루프 저장", speedUpLabel: "자동 BPM 업", recPlay: "녹음 재생", recStop: "재생 정지", privacyMenu: "개인정보처리방침", legalMenu: "특정상거래법 표기", authDesc: "계정으로 로그인", googleBtn: "Google로 로그인", authDiv: "또는", authEmail: "로그인 / 회원가입", historyTitle: "최근 기록", historyClear: "모두 지우기", keyLabel: "조성", majorKey: "장조", minorKey: "단조", ytLoad: "불러오기", recDel: "삭제", ytPlaceholder: "YouTube URL 또는 검색 키워드...",
         accInfo: "계정 정보", deleteAcc: "계정 삭제", accNameLabel: "계정 이름", accEmailLabel: "이메일", accPlanLabel: "플랜", resetPw: "비밀번호 재설정",
         authNote: "※신규 가입 시 확인 이메일이 발송됩니다. 이메일의 링크를 열어 가입을 완료해 주세요.",
         msgLoginReq: "먼저 로그인해 주세요.", msgEmptyAuth: "이메일과 비밀번호를 입력해 주세요.", msgRegConfirm: "계정을 찾을 수 없습니다. 신규 가입을 위해 입력하신 주소로 확인 이메일이 발송됩니다. 계속하시겠습니까?\n\n※수신한 이메일의 URL을 클릭하기 전까지는 가입이 완료되지 않습니다.", msgLoginErr: "오류: ", msgMailSent: "비밀번호 재설정 이메일을 보냈습니다. 받은 편지함을 확인하세요.", msgDelHist: "기록을 삭제하시겠습니까?", msgDelRec: "녹음을 삭제하시겠습니까?", msgDelAcc: "계정과 모든 저장된 데이터가 영구적으로 삭제됩니다.\n\n⚠️ 중요: 계정을 삭제해도 구독(결제)은 자동으로 해지되지 않습니다! 반드시 먼저 Square 결제 이메일에서 해지 절차를 진행해 주세요.\n\n정말 삭제하시겠습니까?", msgDelAccSuccess: "계정이 성공적으로 삭제되었습니다.", msgPwReset: "비밀번호 재설정 이메일을 보내시겠습니까?", msgRangeReq: "범위를 지정해 주세요", msgRangeInv: "잘못된 범위입니다", msgSubConfirm: "⚠️ 중요\nSquare 결제 페이지에서도 완전히 동일한 이메일 주소를 사용해 주세요.\n\n결제를 진행하시겠습니까?",
@@ -616,7 +615,7 @@ const translations = {
         subLogout: "다른 계정으로 로그인"
     },
     es: { 
-        langTitle: "Idioma", helpTitle: "Ayuda y Guía", themeTitle: "Color del Tema", guideFile: "Guía Modo Archivo", guideYT: "Guía Modo YouTube", close: "Cerrar", fit: "Ajustar", clear: "Borrar", ready: "LISTO", analyzing: "ANALIZANDO...", setStart: "INICIO", setEnd: "FIN", loopOff: "BUCLE OFF", loopOn: "BUCLE ON", fileSelect: "Elegir Archivo", saveLoop: "Guardar", speedUpLabel: "Auto BPM Up", recPlay: "Reproducir", recStop: "Detener", privacyMenu: "Privacidad", legalMenu: "Aviso Legal", authDesc: "Inicia sesión con tu cuenta", googleBtn: "Iniciar con Google", authDiv: "O", authEmail: "Iniciar / Registrarse", historyTitle: "Historial", historyClear: "Borrar Todo", keyLabel: "Tonalidad", majorKey: "mayor", minorKey: "menor", chordBtnLabel: "Acorde", chordAnalyze: "Analizar", chordAnalyzing: "Analizando...", chordLoading: "Cargando Essentia.js...", chordPanelTitle: "Lista de Acordes", chordNoFile: "Cargue un archivo primero", chordNone: "No se detectaron acordes", ytLoad: "CARGAR", recDel: "Eliminar", ytPlaceholder: "URL de YouTube o palabra clave de búsqueda...",
+        langTitle: "Idioma", helpTitle: "Ayuda y Guía", themeTitle: "Color del Tema", guideFile: "Guía Modo Archivo", guideYT: "Guía Modo YouTube", close: "Cerrar", fit: "Ajustar", clear: "Borrar", ready: "LISTO", analyzing: "ANALIZANDO...", setStart: "INICIO", setEnd: "FIN", loopOff: "BUCLE OFF", loopOn: "BUCLE ON", fileSelect: "Elegir Archivo", saveLoop: "Guardar", speedUpLabel: "Auto BPM Up", recPlay: "Reproducir", recStop: "Detener", privacyMenu: "Privacidad", legalMenu: "Aviso Legal", authDesc: "Inicia sesión con tu cuenta", googleBtn: "Iniciar con Google", authDiv: "O", authEmail: "Iniciar / Registrarse", historyTitle: "Historial", historyClear: "Borrar Todo", keyLabel: "Tonalidad", majorKey: "mayor", minorKey: "menor", ytLoad: "CARGAR", recDel: "Eliminar", ytPlaceholder: "URL de YouTube o palabra clave de búsqueda...",
         accInfo: "Cuenta", deleteAcc: "Eliminar Cuenta", accNameLabel: "Nombre", accEmailLabel: "Correo", accPlanLabel: "Plan", resetPw: "Restablecer Contraseña",
         authNote: "*Para nuevos registros, se enviará un correo de verificación. Abra el enlace en el correo para completar el registro.",
         msgLoginReq: "Inicie sesión primero.", msgEmptyAuth: "Ingrese su correo y contraseña.", msgRegConfirm: "Cuenta no encontrada. Se enviará un correo de verificación a la dirección ingresada para un nuevo registro. ¿Continuar?\n\n*El registro NO se completará hasta que haga clic en la URL del correo.", msgLoginErr: "Error: ", msgMailSent: "Correo de restablecimiento enviado. Revise su bandeja.", msgDelHist: "¿Borrar historial?", msgDelRec: "¿Eliminar grabación?", msgDelAcc: "Esto eliminará permanentemente su cuenta y datos.\n\n⚠️ IMPORTANTE: ¡Eliminar su cuenta NO cancelará automáticamente su suscripción! Por favor, cancele su facturación a través del correo de recibo de Square primero.\n\n¿Está seguro de que desea eliminar?", msgDelAccSuccess: "Cuenta eliminada con éxito.", msgPwReset: "¿Enviar correo para restablecer contraseña?", msgRangeReq: "Seleccione un rango", msgRangeInv: "Rango inválido", msgSubConfirm: "⚠️ IMPORTANTE\nUse exactamente el mismo correo en la página de pago de Square.\n\n¿Proceder al pago?",
@@ -640,7 +639,7 @@ const translations = {
         subLogout: "Usar otra cuenta"
     },
     pt: {
-        langTitle: "Idioma", helpTitle: "Ajuda e Guia", themeTitle: "Cor do Tema", guideFile: "Guia Modo Arquivo", guideYT: "Guia Modo YouTube", close: "Fechar", fit: "Ajustar", clear: "Limpar", ready: "PRONTO", analyzing: "ANALISANDO...", setStart: "INÍCIO", setEnd: "FIM", loopOff: "LOOP OFF", loopOn: "LOOP ON", fileSelect: "Selecionar Arquivo", saveLoop: "Salvar Loop", speedUpLabel: "Auto BPM Up", recPlay: "Reproduzir Grav.", recStop: "Parar", privacyMenu: "Política de Privacidade", legalMenu: "Aviso Legal", authDesc: "Entre com sua conta", googleBtn: "Entrar com Google", authDiv: "OU", authEmail: "Entrar / Cadastrar", historyTitle: "Histórico Recente", historyClear: "Limpar Tudo", keyLabel: "Tonalidade", majorKey: "maior", minorKey: "menor", chordBtnLabel: "Acorde", chordAnalyze: "Analisar", chordAnalyzing: "Analisando...", chordLoading: "Carregando Essentia.js...", chordPanelTitle: "Lista de Acordes", chordNoFile: "Carregue um arquivo primeiro", chordNone: "Nenhum acorde detectado", ytLoad: "CARREGAR", recDel: "Excluir", ytPlaceholder: "URL do YouTube ou palavra-chave de busca...",
+        langTitle: "Idioma", helpTitle: "Ajuda e Guia", themeTitle: "Cor do Tema", guideFile: "Guia Modo Arquivo", guideYT: "Guia Modo YouTube", close: "Fechar", fit: "Ajustar", clear: "Limpar", ready: "PRONTO", analyzing: "ANALISANDO...", setStart: "INÍCIO", setEnd: "FIM", loopOff: "LOOP OFF", loopOn: "LOOP ON", fileSelect: "Selecionar Arquivo", saveLoop: "Salvar Loop", speedUpLabel: "Auto BPM Up", recPlay: "Reproduzir Grav.", recStop: "Parar", privacyMenu: "Política de Privacidade", legalMenu: "Aviso Legal", authDesc: "Entre com sua conta", googleBtn: "Entrar com Google", authDiv: "OU", authEmail: "Entrar / Cadastrar", historyTitle: "Histórico Recente", historyClear: "Limpar Tudo", keyLabel: "Tonalidade", majorKey: "maior", minorKey: "menor", ytLoad: "CARREGAR", recDel: "Excluir", ytPlaceholder: "URL do YouTube ou palavra-chave de busca...",
         accInfo: "Informações da Conta", deleteAcc: "Excluir Conta", accNameLabel: "Nome", accEmailLabel: "E-mail", accPlanLabel: "Plano", resetPw: "Redefinir Senha",
         authNote: "*Para novos cadastros, um e-mail de verificação será enviado. Abra o link no e-mail para concluir o cadastro.",
         msgLoginReq: "Faça login primeiro.", msgEmptyAuth: "Digite seu e-mail e senha.", msgRegConfirm: "Conta não encontrada. Um e-mail de verificação será enviado ao endereço informado para novo cadastro. Continuar?\n\n*O cadastro NÃO estará concluído até você clicar no URL do e-mail.", msgLoginErr: "Erro: ", msgMailSent: "E-mail de redefinição enviado. Verifique sua caixa de entrada.", msgDelHist: "Limpar histórico?", msgDelRec: "Excluir gravação?", msgDelAcc: "Isso excluirá permanentemente sua conta e todos os dados salvos.\n\n⚠️ IMPORTANTE: Excluir sua conta NÃO cancela automaticamente sua assinatura! Por favor, cancele o pagamento pelo e-mail de recibo do Square primeiro.\n\nTem certeza que deseja excluir?", msgDelAccSuccess: "Conta excluída com sucesso.", msgPwReset: "Enviar e-mail de redefinição de senha?", msgRangeReq: "Selecione um intervalo", msgRangeInv: "Intervalo inválido", msgSubConfirm: "⚠️ IMPORTANTE\nUse exatamente o mesmo e-mail na página de pagamento do Square.\n\nProsseguir para o pagamento?",
@@ -908,12 +907,6 @@ function changeLanguage() {
     if(histClearBtn) histClearBtn.innerText = t.historyClear;
     const keyLabelEl = document.getElementById('keyLabel');
     if(keyLabelEl) keyLabelEl.innerText = t.keyLabel || 'Key';
-    const chordBtnLabelEl = document.getElementById('chordBtnLabel');
-    if(chordBtnLabelEl) chordBtnLabelEl.innerText = t.chordBtnLabel || 'Chord';
-    const chordPanelTitleEl = document.getElementById('chordPanelTitle');
-    if(chordPanelTitleEl) chordPanelTitleEl.innerText = t.chordPanelTitle || 'Chord List';
-    const chordAnalyzeBtnTxt = document.getElementById('chordAnalyzeBtnTxt');
-    if(chordAnalyzeBtnTxt && !document.getElementById('chordAnalyzeBtn').disabled) chordAnalyzeBtnTxt.innerText = t.chordAnalyze || '解析'; 
     
     document.getElementById('guideFileContent').innerHTML = t.guideFileContent; 
     document.getElementById('guideYTContent').innerHTML = t.guideYTContent; 
@@ -1109,223 +1102,6 @@ function updateKeyDisplay(keyResult) {
     el.innerText = keyResult.key + ' ' + modeStr;
     rowEl.style.display = 'flex';
 }
-// ==================== Essentia.js Chord Analysis ====================
-
-let essentiaInstance = null;
-let essentiaLoading = false;
-
-async function loadEssentia() {
-    if (essentiaInstance) return essentiaInstance;
-    if (essentiaLoading) {
-        return new Promise((resolve, reject) => {
-            const t = setInterval(() => {
-                if (essentiaInstance) { clearInterval(t); resolve(essentiaInstance); }
-                else if (!essentiaLoading) { clearInterval(t); reject(new Error('Load failed')); }
-            }, 100);
-        });
-    }
-    essentiaLoading = true;
-    return new Promise((resolve, reject) => {
-        const fail = (e) => { essentiaLoading = false; reject(e instanceof Error ? e : new Error(String(e))); };
-        // Step 1: load Core UMD (defines global Essentia class)
-        const coreScript = document.createElement('script');
-        coreScript.src = 'https://cdn.jsdelivr.net/npm/essentia.js@0.1.3/dist/essentia.js-core.umd.js';
-        coreScript.onload = () => {
-            // Step 2: load WASM glue (defines global EssentiaWASM function)
-            const wasmScript = document.createElement('script');
-            wasmScript.src = 'https://cdn.jsdelivr.net/npm/essentia.js@0.1.3/dist/essentia-wasm.web.js';
-            wasmScript.onload = () => {
-                EssentiaWASM().then(module => {
-                    essentiaInstance = new Essentia(module);
-                    essentiaLoading = false;
-                    resolve(essentiaInstance);
-                }).catch(fail);
-            };
-            wasmScript.onerror = () => fail(new Error('Failed to load Essentia WASM'));
-            document.head.appendChild(wasmScript);
-        };
-        coreScript.onerror = () => fail(new Error('Failed to load Essentia Core'));
-        document.head.appendChild(coreScript);
-    });
-}
-
-// Chord templates: 12 pitch classes (C, C#, D, D#, E, F, F#, G, G#, A, A#, B)
-// Essentia ChordsDetection が返すコード名を表示用に整形
-// （"Am" → "Am", "C#" → "C#", "N" → スキップ）
-function _normalizeChordName(name) {
-    if (!name || name === 'N') return 'N';
-    return name; // Essentia は既にシャープ表記を使用
-}
-
-async function runChordAnalysis() {
-    const btn = document.getElementById('chordAnalyzeBtn');
-    const btnTxt = document.getElementById('chordAnalyzeBtnTxt');
-    const panel = document.getElementById('chordPanel');
-    const resultsEl = document.getElementById('chordResults');
-    const lang = document.getElementById('langSelect').value || 'ja';
-    const t = translations[lang] || translations['ja'];
-
-    if (!currentObjectURL) {
-        alert(t.chordNoFile || '先にファイルを読み込んでください');
-        return;
-    }
-
-    btn.disabled = true;
-    btnTxt.innerText = t.chordLoading || '読み込み中...';
-    panel.style.display = 'block';
-    resultsEl.innerHTML = `<div style="text-align:center;padding:16px;color:var(--text-dim);">${t.chordLoading || 'Essentia.js 読み込み中...'}</div>`;
-
-    try {
-        const essentia = await loadEssentia();
-        btnTxt.innerText = t.chordAnalyzing || '解析中...';
-        resultsEl.innerHTML = `<div style="text-align:center;padding:16px;color:var(--text-dim);">${t.chordAnalyzing || 'コードを解析中...'}</div>`;
-
-        // Re-decode audio from current URL
-        const resp = await fetch(currentObjectURL);
-        const arrayBuf = await resp.arrayBuffer();
-        const ctx = initAudioContext();
-        const audioBuf = await ctx.decodeAudioData(arrayBuf);
-
-        // Process in next tick to allow UI update
-        await new Promise(r => setTimeout(r, 30));
-
-        const grouped = _detectChordsEssentia(essentia, audioBuf);
-        _renderChordTimeline(grouped, t);
-
-    } catch (e) {
-        console.error('Chord analysis error:', e);
-        resultsEl.innerHTML = `<div style="color:#f88;padding:16px;">エラー: ${e.message}</div>`;
-    }
-
-    btn.disabled = false;
-    btnTxt.innerText = t.chordAnalyze || '解析';
-}
-
-function _detectChordsEssentia(essentia, audioBuffer) {
-    const sampleRate = audioBuffer.sampleRate;
-    const audioData  = audioBuffer.getChannelData(0);
-    const frameSize  = 8192;
-    const hopSize    = 2048;
-    const secPerHop  = hopSize / sampleRate;
-    const totalDur   = audioBuffer.duration;
-    const WM         = essentia.module; // WASM モジュール（VectorVectorFloat 等の型アクセス用）
-
-    // BPM から小節長を計算
-    const bpm    = (typeof originalBpm !== 'undefined' && originalBpm > 0) ? originalBpm : 120;
-    const barDur = (4 * 60) / bpm; // 1小節の秒数（4/4拍子）
-
-    // --- Step 1: HPCP フレームを VectorVectorFloat として収集 ---
-    const frames     = essentia.FrameGenerator(audioData, frameSize, hopSize);
-    const numFrames  = frames.size();
-    const pcpMatrix  = new WM.VectorVectorFloat(); // Essentia ChordsDetection の入力型
-    const frameTimes = [];
-
-    for (let i = 0; i < numFrames; i++) {
-        frameTimes.push(i * secPerHop);
-        const frame = frames.get(i);
-        try {
-            const windowed = essentia.Windowing(frame, true, frameSize, 'hann', 0, false);
-            const spec     = essentia.Spectrum(windowed.frame, frameSize);
-            const peaks    = essentia.SpectralPeaks(spec.spectrum, 0.0001, Math.min(5000, sampleRate / 2), 100, 40, 'frequency', sampleRate);
-            const hpcp     = essentia.HPCP(peaks.frequencies, peaks.magnitudes);
-            // hpcp.hpcp は既に VectorFloat → そのまま push_back
-            pcpMatrix.push_back(hpcp.hpcp);
-        } catch (e) {
-            // エラー時はゼロベクトルを挿入
-            const zero = new WM.VectorFloat();
-            for (let j = 0; j < 12; j++) zero.push_back(0);
-            pcpMatrix.push_back(zero);
-        }
-    }
-
-    // --- Step 2: Essentia ChordsDetection を実行 ---
-    // windowSize = barDur: 1小節分の HPCP を内部平均してコードを判定
-    // ChordsDetection(pcp, hopSize?, sampleRate?, windowSize?)
-    const result     = essentia.ChordsDetection(pcpMatrix, hopSize, sampleRate, barDur);
-    const numChords  = result.chords.size();
-
-    // フレームごとのコードを取得
-    const perFrame = [];
-    for (let i = 0; i < numChords; i++) {
-        const chord = _normalizeChordName(result.chords.get(i));
-        if (chord !== 'N') perFrame.push({ time: frameTimes[i] ?? (i * secPerHop), chord });
-    }
-
-    // --- Step 3: 小節境界でスナップ（各小節内の最多コードを採用）---
-    const barChords = [];
-    for (let barStart = 0; barStart < totalDur - (60 / bpm) * 0.5; barStart += barDur) {
-        const barEnd  = barStart + barDur;
-        const inBar   = perFrame.filter(f => f.time >= barStart && f.time < barEnd);
-        if (inBar.length === 0) continue;
-
-        // 最多数コード（多数決）
-        const counts = {};
-        let best = null, bestCount = 0;
-        for (const f of inBar) {
-            counts[f.chord] = (counts[f.chord] || 0) + 1;
-            if (counts[f.chord] > bestCount) { bestCount = counts[f.chord]; best = f.chord; }
-        }
-        if (best) barChords.push({ startTime: barStart, chord: best });
-    }
-
-    // --- Step 4: 連続する同一コードをまとめる ---
-    const grouped = [];
-    for (const entry of barChords) {
-        if (grouped.length === 0 || grouped[grouped.length - 1].chord !== entry.chord) {
-            grouped.push(entry);
-        }
-    }
-
-    return grouped;
-}
-
-let _chordTimeline = null;
-let _lastChordPillIdx = -1;
-
-function _updateChordHighlight(currentTime) {
-    if (!_chordTimeline || _chordTimeline.length === 0) return;
-    let idx = 0;
-    for (let i = 0; i < _chordTimeline.length; i++) {
-        if (_chordTimeline[i].startTime <= currentTime) idx = i;
-        else break;
-    }
-    if (idx === _lastChordPillIdx) return;
-    _lastChordPillIdx = idx;
-    const pills = document.querySelectorAll('.chord-pill');
-    pills.forEach((pill, i) => {
-        if (i === idx) {
-            pill.classList.add('active');
-            pill.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-        } else {
-            pill.classList.remove('active');
-        }
-    });
-}
-
-function _renderChordTimeline(grouped, t) {
-    const resultsEl = document.getElementById('chordResults');
-    const visible = grouped.filter(e => e.chord !== 'N');
-    if (visible.length === 0) {
-        _chordTimeline = null;
-        resultsEl.innerHTML = `<div style="padding:16px;color:var(--text-dim);">${t.chordNone || 'コードが検出されませんでした'}</div>`;
-        return;
-    }
-    _chordTimeline = visible;
-    _lastChordPillIdx = -1;
-    resultsEl.innerHTML = visible.map((entry, i) => {
-        const isMinor = entry.chord.endsWith('m');
-        const timeStr = fmt(entry.startTime);
-        return `<div class="chord-pill" data-idx="${i}" onclick="if(wavesurfer){wavesurfer.setTime(${entry.startTime});_updateChordHighlight(${entry.startTime});}" title="${timeStr}">
-            <span class="chord-pill-name" style="color:${isMinor ? '#88aaff' : ''}">${entry.chord}</span>
-            <span class="chord-pill-time">${timeStr}</span>
-        </div>`;
-    }).join('');
-    // Highlight current position immediately
-    if (wavesurfer) _updateChordHighlight(wavesurfer.getCurrentTime());
-}
-
-// =====================================================================
-
 function playBeep(isLast) { const ctx = initAudioContext(); const osc = ctx.createOscillator(), gain = ctx.createGain(); osc.frequency.setValueAtTime(isLast ? 880 : 440, ctx.currentTime); gain.gain.setValueAtTime(0.1, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1); osc.connect(gain); gain.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + 0.1); }
 async function runCountdown() { if (!isCountEnabled) return true; const currentSpeed = parseFloat(document.getElementById('speed').value); const interval = 60000 / (originalBpm * currentSpeed); const overlay = document.getElementById('countdown-overlay'); overlay.style.display = 'block'; for (let i = 1; i <= 4; i++) { overlay.innerText = i; playBeep(i === 4); await new Promise(r => setTimeout(r, interval)); } overlay.style.display = 'none'; return true; }
 async function toggleRecording() { if (!await requireSubscription()) return; initAudioContext(); if (isRecording) { if (mediaRecorder) mediaRecorder.stop(); if (wavesurfer.isPlaying()) wavesurfer.pause(); isRecording = false; document.getElementById('recBtn').classList.remove('recording'); document.getElementById('recIcon').innerText = 'mic'; } else { try { const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } }); const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4'; mediaRecorder = new MediaRecorder(stream, { mimeType }); recordedChunks = []; mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); }; mediaRecorder.onstop = async () => { const blob = new Blob(recordedChunks, { type: mimeType }); if (recObjectURL) URL.revokeObjectURL(recObjectURL); recObjectURL = URL.createObjectURL(blob); const arrayBuffer = await blob.arrayBuffer(); const ctx = initAudioContext(); recordedAudioBuffer = await ctx.decodeAudioData(arrayBuffer); document.getElementById('rec-waveform-wrapper').style.display = 'block'; document.getElementById('recVolControl').style.display = 'flex'; document.getElementById('recControls').style.display = 'flex'; await recWavesurfer.load(recObjectURL); applyVolumes(); updateRecPlayBtnUI(); stream.getTracks().forEach(track => track.stop()); }; const region = wsRegions.getRegions()[0]; const startPos = region ? region.start : wavesurfer.getCurrentTime(); wavesurfer.setTime(startPos); lastRecStartPos = startPos; await runCountdown(); mediaRecorder.start(); await wavesurfer.play(); isRecording = true; document.getElementById('recBtn').classList.add('recording'); document.getElementById('recIcon').innerText = 'stop'; } catch (err) { alert("マイクを許可してください"); } } }
@@ -1773,7 +1549,6 @@ function startApp() {
             } 
         } 
         lastTime = t;
-        _updateChordHighlight(t);
     });
 
     window.resetSetting = (id, val) => { document.getElementById(id).value = val; applySettings(); }; 

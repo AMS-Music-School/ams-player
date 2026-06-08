@@ -350,6 +350,20 @@
                 <div style="min-width:65px; font-weight:bold; color:var(--text-dim); font-size:0.75rem;" id="keyLabel">Key</div>
                 <span id="keyDisplay" style="color:var(--primary-color); font-size:1rem; font-weight:bold; letter-spacing:0.05em;">---</span>
             </div>
+            <div class="row" id="chordBtnRow">
+                <div style="min-width:65px; font-weight:bold; color:var(--text-dim); font-size:0.75rem;" id="chordBtnLabel">Chord</div>
+                <button id="chordAnalyzeBtn" onclick="runChordAnalysis()" style="padding:5px 16px; border-radius:6px; background:var(--primary-color); color:#000; border:none; cursor:pointer; font-size:0.8rem; font-weight:bold; opacity:0.85; transition:opacity 0.2s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.85'">
+                    <span id="chordAnalyzeBtnTxt">解析</span>
+                </button>
+            </div>
+        </div>
+
+        <div id="chordPanel" style="display:none; background:var(--panel-bg); border-radius:10px; border:1px solid var(--border-color); padding:10px; backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); margin-top:4px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <span style="font-weight:bold; font-size:0.85rem; color:var(--text-dim);" id="chordPanelTitle">Chord List</span>
+                <button class="reset-btn" onclick="document.getElementById('chordPanel').style.display='none'" style="font-size:0.75rem; padding:2px 8px;">✕</button>
+            </div>
+            <div id="chordResults" style="max-height:260px; overflow-y:auto; -webkit-overflow-scrolling:touch;"></div>
         </div>
     </div>
 

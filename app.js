@@ -1223,42 +1223,77 @@ async function runChordAnalysis() {
 
 function _detectChordsEssentia(essentia, audioBuffer) {
     const sampleRate = audioBuffer.sampleRate;
-    // FrameGenerator takes Float32Array directly (no arrayToVector needed)
     const audioData = audioBuffer.getChannelData(0);
-    const frameSize = 4096;
-    const hopSize = 2048;
+    // Larger hop = fewer frames = less noise
+    const frameSize = 8192;
+    const hopSize  = 8192;
 
     const frames = essentia.FrameGenerator(audioData, frameSize, hopSize);
     const numFrames = frames.size();
 
-    const entries = [];
+    const rawEntries = [];
     for (let i = 0; i < numFrames; i++) {
         const frame = frames.get(i);
         const time = (i * hopSize) / sampleRate;
         try {
-            // Windowing(frame, normalized?, size?, type?, zeroPadding?, zeroPhase?)
             const windowed = essentia.Windowing(frame, true, frameSize, 'hann', 0, false);
-            // Spectrum(frame, size?)
-            const spec = essentia.Spectrum(windowed.frame, frameSize);
-            // SpectralPeaks(spectrum, magnitudeThreshold?, maxFrequency?, maxPeaks?, minFrequency?, orderBy?, sampleRate?)
-            const peaks = essentia.SpectralPeaks(spec.spectrum, 0.0001, Math.min(5000, sampleRate / 2), 100, 40, 'frequency', sampleRate);
-            // HPCP(frequencies, magnitudes, bandPreset?, bandSplitFrequency?, harmonics?, maxFrequency?, maxShifted?, minFrequency?, nonLinear?, normalized?, referenceFrequency?, sampleRate?, size?, weightType?, windowSize?)
-            const hpcp = essentia.HPCP(peaks.frequencies, peaks.magnitudes);
-            const hpcpArr = Array.from(essentia.vectorToArray(hpcp.hpcp));
-            entries.push({ time, chord: _matchChord(hpcpArr) });
+            const spec     = essentia.Spectrum(windowed.frame, frameSize);
+            const peaks    = essentia.SpectralPeaks(spec.spectrum, 0.0001, Math.min(5000, sampleRate / 2), 100, 40, 'frequency', sampleRate);
+            const hpcp     = essentia.HPCP(peaks.frequencies, peaks.magnitudes);
+            const hpcpArr  = Array.from(essentia.vectorToArray(hpcp.hpcp));
+            rawEntries.push({ time, chord: _matchChord(hpcpArr) });
         } catch (e) {
-            entries.push({ time, chord: 'N' });
+            rawEntries.push({ time, chord: 'N' });
         }
     }
 
-    // Group consecutive same chords
+    // --- Step 1: Median filter (window=7) to remove single-frame noise ---
+    const WIN = 7, HALF = Math.floor(WIN / 2);
+    const smoothed = rawEntries.map((entry, i) => {
+        const slice = rawEntries.slice(Math.max(0, i - HALF), Math.min(rawEntries.length, i + HALF + 1));
+        const counts = {};
+        let maxCount = 0, mode = entry.chord;
+        for (const e of slice) { counts[e.chord] = (counts[e.chord] || 0) + 1; if (counts[e.chord] > maxCount) { maxCount = counts[e.chord]; mode = e.chord; } }
+        return { time: entry.time, chord: mode };
+    });
+
+    // --- Step 2: Group consecutive identical chords ---
     const grouped = [];
-    for (const entry of entries) {
-        if (grouped.length === 0 || grouped[grouped.length-1].chord !== entry.chord) {
+    for (const entry of smoothed) {
+        if (grouped.length === 0 || grouped[grouped.length - 1].chord !== entry.chord) {
             grouped.push({ startTime: entry.time, chord: entry.chord });
         }
     }
-    return grouped;
+
+    // --- Step 3: Remove chords shorter than minDur seconds ---
+    const minDur = 2.0;
+    const totalDur = audioBuffer.duration;
+    // Attach end times
+    const withEnd = grouped.map((g, i) => ({
+        startTime: g.startTime,
+        chord: g.chord,
+        endTime: i + 1 < grouped.length ? grouped[i + 1].startTime : totalDur
+    }));
+    // Iteratively merge short segments into predecessor
+    let changed = true;
+    while (changed) {
+        changed = false;
+        for (let i = 0; i < withEnd.length; i++) {
+            if (withEnd[i].endTime - withEnd[i].startTime < minDur) {
+                if (i === 0 && withEnd.length > 1) {
+                    withEnd[1].startTime = withEnd[0].startTime;
+                    withEnd.splice(0, 1);
+                } else if (i > 0) {
+                    withEnd[i - 1].endTime = withEnd[i].endTime;
+                    withEnd.splice(i, 1);
+                }
+                changed = true;
+                break;
+            }
+        }
+    }
+
+    return withEnd.map(e => ({ startTime: e.startTime, chord: e.chord }));
 }
 
 let _chordTimeline = null;

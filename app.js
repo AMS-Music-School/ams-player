@@ -1150,53 +1150,11 @@ async function loadEssentia() {
 }
 
 // Chord templates: 12 pitch classes (C, C#, D, D#, E, F, F#, G, G#, A, A#, B)
-// 重み付きコードテンプレート（根音1.0, 5度0.8, 3度0.5, 7度0.4）
-const CHORD_TEMPLATES = (() => {
-    const notes = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
-    const shapes = {
-        '':    { iv: [0,4,7],    w: [1.0, 0.5, 0.8] },          // Major
-        'm':   { iv: [0,3,7],    w: [1.0, 0.5, 0.8] },          // Minor
-        '7':   { iv: [0,4,7,10], w: [1.0, 0.5, 0.8, 0.4] },     // Dominant 7th
-        'maj7':{ iv: [0,4,7,11], w: [1.0, 0.5, 0.8, 0.4] },     // Major 7th
-        'm7':  { iv: [0,3,7,10], w: [1.0, 0.5, 0.8, 0.4] },     // Minor 7th
-        'sus2':{ iv: [0,2,7],    w: [1.0, 0.4, 0.8] },          // Sus2
-        'sus4':{ iv: [0,5,7],    w: [1.0, 0.4, 0.8] },          // Sus4
-    };
-    const tpl = {};
-    for (let r = 0; r < 12; r++) {
-        for (const [suffix, { iv, w }] of Object.entries(shapes)) {
-            const t = new Float32Array(12);
-            iv.forEach((interval, i) => { t[(r + interval) % 12] = w[i]; });
-            tpl[notes[r] + suffix] = t;
-        }
-    }
-    return tpl;
-})();
-
-// ピアソン相関でコードマッチング（ドット積より精度が高い）
-function _matchChord(hpcpArr) {
-    const n = hpcpArr.length;
-    const sumH = hpcpArr.reduce((a, v) => a + v, 0);
-    if (sumH < 0.01) return 'N';
-    const meanH = sumH / n;
-    let varH = 0;
-    for (let i = 0; i < n; i++) varH += (hpcpArr[i] - meanH) ** 2;
-    const stdH = Math.sqrt(varH / n) || 1e-9;
-
-    let best = 'N', bestScore = 0.5; // ピアソン相関の閾値
-    for (const [name, tmpl] of Object.entries(CHORD_TEMPLATES)) {
-        const sumT = tmpl.reduce((a, v) => a + v, 0);
-        const meanT = sumT / n;
-        let cov = 0, varT = 0;
-        for (let i = 0; i < n; i++) {
-            cov  += (hpcpArr[i] - meanH) * (tmpl[i] - meanT);
-            varT += (tmpl[i] - meanT) ** 2;
-        }
-        const stdT = Math.sqrt(varT / n) || 1e-9;
-        const r = (cov / n) / (stdH * stdT);
-        if (r > bestScore) { bestScore = r; best = name; }
-    }
-    return best;
+// Essentia ChordsDetection が返すコード名を表示用に整形
+// （"Am" → "Am", "C#" → "C#", "N" → スキップ）
+function _normalizeChordName(name) {
+    if (!name || name === 'N') return 'N';
+    return name; // Essentia は既にシャープ表記を使用
 }
 
 async function runChordAnalysis() {
@@ -1250,52 +1208,71 @@ function _detectChordsEssentia(essentia, audioBuffer) {
     const hopSize    = 2048;
     const secPerHop  = hopSize / sampleRate;
     const totalDur   = audioBuffer.duration;
+    const WM         = essentia.module; // WASM モジュール（VectorVectorFloat 等の型アクセス用）
 
-    // --- Step 1: 全フレームの HPCP を収集 ---
-    const frames    = essentia.FrameGenerator(audioData, frameSize, hopSize);
-    const numFrames = frames.size();
-    const hpcpFrames = []; // { time, hpcp: number[] }
+    // BPM から小節長を計算
+    const bpm    = (typeof originalBpm !== 'undefined' && originalBpm > 0) ? originalBpm : 120;
+    const barDur = (4 * 60) / bpm; // 1小節の秒数（4/4拍子）
+
+    // --- Step 1: HPCP フレームを VectorVectorFloat として収集 ---
+    const frames     = essentia.FrameGenerator(audioData, frameSize, hopSize);
+    const numFrames  = frames.size();
+    const pcpMatrix  = new WM.VectorVectorFloat(); // Essentia ChordsDetection の入力型
+    const frameTimes = [];
 
     for (let i = 0; i < numFrames; i++) {
+        frameTimes.push(i * secPerHop);
         const frame = frames.get(i);
-        const time  = i * secPerHop;
         try {
             const windowed = essentia.Windowing(frame, true, frameSize, 'hann', 0, false);
             const spec     = essentia.Spectrum(windowed.frame, frameSize);
             const peaks    = essentia.SpectralPeaks(spec.spectrum, 0.0001, Math.min(5000, sampleRate / 2), 100, 40, 'frequency', sampleRate);
             const hpcp     = essentia.HPCP(peaks.frequencies, peaks.magnitudes);
-            hpcpFrames.push({ time, hpcp: Array.from(essentia.vectorToArray(hpcp.hpcp)) });
+            // hpcp.hpcp は既に VectorFloat → そのまま push_back
+            pcpMatrix.push_back(hpcp.hpcp);
         } catch (e) {
-            hpcpFrames.push({ time, hpcp: new Array(12).fill(0) });
+            // エラー時はゼロベクトルを挿入
+            const zero = new WM.VectorFloat();
+            for (let j = 0; j < 12; j++) zero.push_back(0);
+            pcpMatrix.push_back(zero);
         }
     }
 
-    // --- Step 2: BPM から小節長を計算して小節ごとにコードを決定 ---
-    // originalBpm はグローバル変数（detectBPM が設定済み）
-    const bpm     = (typeof originalBpm !== 'undefined' && originalBpm > 0) ? originalBpm : 120;
-    const beatDur = 60 / bpm;          // 1拍の秒数
-    const barDur  = 4 * beatDur;       // 1小節の秒数（4/4拍子を仮定）
+    // --- Step 2: Essentia ChordsDetection を実行 ---
+    // windowSize = barDur: 1小節分の HPCP を内部平均してコードを判定
+    // ChordsDetection(pcp, hopSize?, sampleRate?, windowSize?)
+    const result     = essentia.ChordsDetection(pcpMatrix, hopSize, sampleRate, barDur);
+    const numChords  = result.chords.size();
 
-    const barChords = [];
-    for (let barStart = 0; barStart < totalDur - beatDur * 0.5; barStart += barDur) {
-        const barEnd = barStart + barDur;
-
-        // この小節に含まれるフレームの HPCP を平均
-        const inBar = hpcpFrames.filter(f => f.time >= barStart && f.time < barEnd);
-        if (inBar.length === 0) continue;
-
-        const avgHpcp = new Array(12).fill(0);
-        for (const f of inBar) for (let j = 0; j < 12; j++) avgHpcp[j] += f.hpcp[j] / inBar.length;
-
-        const chord = _matchChord(avgHpcp);
-        if (chord !== 'N') barChords.push({ startTime: barStart, chord });
+    // フレームごとのコードを取得
+    const perFrame = [];
+    for (let i = 0; i < numChords; i++) {
+        const chord = _normalizeChordName(result.chords.get(i));
+        if (chord !== 'N') perFrame.push({ time: frameTimes[i] ?? (i * secPerHop), chord });
     }
 
-    // --- Step 3: 連続する同一コードをまとめる（表示の簡略化） ---
+    // --- Step 3: 小節境界でスナップ（各小節内の最多コードを採用）---
+    const barChords = [];
+    for (let barStart = 0; barStart < totalDur - (60 / bpm) * 0.5; barStart += barDur) {
+        const barEnd  = barStart + barDur;
+        const inBar   = perFrame.filter(f => f.time >= barStart && f.time < barEnd);
+        if (inBar.length === 0) continue;
+
+        // 最多数コード（多数決）
+        const counts = {};
+        let best = null, bestCount = 0;
+        for (const f of inBar) {
+            counts[f.chord] = (counts[f.chord] || 0) + 1;
+            if (counts[f.chord] > bestCount) { bestCount = counts[f.chord]; best = f.chord; }
+        }
+        if (best) barChords.push({ startTime: barStart, chord: best });
+    }
+
+    // --- Step 4: 連続する同一コードをまとめる ---
     const grouped = [];
     for (const entry of barChords) {
         if (grouped.length === 0 || grouped[grouped.length - 1].chord !== entry.chord) {
-            grouped.push({ startTime: entry.startTime, chord: entry.chord });
+            grouped.push(entry);
         }
     }
 

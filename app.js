@@ -1261,21 +1261,49 @@ function _detectChordsEssentia(essentia, audioBuffer) {
     return grouped;
 }
 
+let _chordTimeline = null;
+let _lastChordPillIdx = -1;
+
+function _updateChordHighlight(currentTime) {
+    if (!_chordTimeline || _chordTimeline.length === 0) return;
+    let idx = 0;
+    for (let i = 0; i < _chordTimeline.length; i++) {
+        if (_chordTimeline[i].startTime <= currentTime) idx = i;
+        else break;
+    }
+    if (idx === _lastChordPillIdx) return;
+    _lastChordPillIdx = idx;
+    const pills = document.querySelectorAll('.chord-pill');
+    pills.forEach((pill, i) => {
+        if (i === idx) {
+            pill.classList.add('active');
+            pill.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+        } else {
+            pill.classList.remove('active');
+        }
+    });
+}
+
 function _renderChordTimeline(grouped, t) {
     const resultsEl = document.getElementById('chordResults');
     const visible = grouped.filter(e => e.chord !== 'N');
     if (visible.length === 0) {
+        _chordTimeline = null;
         resultsEl.innerHTML = `<div style="padding:16px;color:var(--text-dim);">${t.chordNone || 'コードが検出されませんでした'}</div>`;
         return;
     }
-    resultsEl.innerHTML = visible.map(entry => {
+    _chordTimeline = visible;
+    _lastChordPillIdx = -1;
+    resultsEl.innerHTML = visible.map((entry, i) => {
         const isMinor = entry.chord.endsWith('m');
         const timeStr = fmt(entry.startTime);
-        return `<div onclick="if(wavesurfer)wavesurfer.setTime(${entry.startTime})" style="display:flex;align-items:center;gap:12px;padding:7px 10px;border-radius:6px;cursor:pointer;transition:background 0.15s;" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='transparent'">
-            <span style="color:var(--text-dim);font-size:0.75rem;min-width:40px;font-variant-numeric:tabular-nums;">${timeStr}</span>
-            <span style="font-size:1.05rem;font-weight:bold;color:${isMinor ? '#88aaff' : 'var(--primary-color)'};">${entry.chord}</span>
+        return `<div class="chord-pill" data-idx="${i}" onclick="if(wavesurfer){wavesurfer.setTime(${entry.startTime});_updateChordHighlight(${entry.startTime});}" title="${timeStr}">
+            <span class="chord-pill-name" style="color:${isMinor ? '#88aaff' : ''}">${entry.chord}</span>
+            <span class="chord-pill-time">${timeStr}</span>
         </div>`;
     }).join('');
+    // Highlight current position immediately
+    if (wavesurfer) _updateChordHighlight(wavesurfer.getCurrentTime());
 }
 
 // =====================================================================
@@ -1726,8 +1754,9 @@ function startApp() {
                 if (isSpeedUpEnabled) { currentLoopCount++; const targetCount = parseInt(document.getElementById('speedUpCount').value); if (currentLoopCount >= targetCount) { const sInput = document.getElementById('speed'); const currentVal = parseFloat(sInput.value); if (currentVal < 1.0) { sInput.value = Math.min(1.0, currentVal + 0.05).toFixed(2); applySettings(); } currentLoopCount = 0; } } 
             } 
         } 
-        lastTime = t; 
-    }); 
+        lastTime = t;
+        _updateChordHighlight(t);
+    });
 
     window.resetSetting = (id, val) => { document.getElementById(id).value = val; applySettings(); }; 
     openPlaylistDB().then(() => renderPlaylist()).catch(() => {});

@@ -1126,17 +1126,26 @@ async function loadEssentia() {
     }
     essentiaLoading = true;
     return new Promise((resolve, reject) => {
-        const script = document.createElement('script');
-        script.src = 'https://cdn.jsdelivr.net/npm/essentia.js@0.1.3/dist/essentia-wasm.web.js';
-        script.onload = () => {
-            EssentiaWASM().then(module => {
-                essentiaInstance = new Essentia(module);
-                essentiaLoading = false;
-                resolve(essentiaInstance);
-            }).catch(e => { essentiaLoading = false; reject(e); });
+        const fail = (e) => { essentiaLoading = false; reject(e instanceof Error ? e : new Error(String(e))); };
+        // Step 1: load Core UMD (defines global Essentia class)
+        const coreScript = document.createElement('script');
+        coreScript.src = 'https://cdn.jsdelivr.net/npm/essentia.js@0.1.3/dist/essentia.js-core.umd.js';
+        coreScript.onload = () => {
+            // Step 2: load WASM glue (defines global EssentiaWASM function)
+            const wasmScript = document.createElement('script');
+            wasmScript.src = 'https://cdn.jsdelivr.net/npm/essentia.js@0.1.3/dist/essentia-wasm.web.js';
+            wasmScript.onload = () => {
+                EssentiaWASM().then(module => {
+                    essentiaInstance = new Essentia(module);
+                    essentiaLoading = false;
+                    resolve(essentiaInstance);
+                }).catch(fail);
+            };
+            wasmScript.onerror = () => fail(new Error('Failed to load Essentia WASM'));
+            document.head.appendChild(wasmScript);
         };
-        script.onerror = () => { essentiaLoading = false; reject(new Error('Failed to load Essentia.js CDN')); };
-        document.head.appendChild(script);
+        coreScript.onerror = () => fail(new Error('Failed to load Essentia Core'));
+        document.head.appendChild(coreScript);
     });
 }
 

@@ -1150,29 +1150,51 @@ async function loadEssentia() {
 }
 
 // Chord templates: 12 pitch classes (C, C#, D, D#, E, F, F#, G, G#, A, A#, B)
+// 重み付きコードテンプレート（根音1.0, 5度0.8, 3度0.5, 7度0.4）
 const CHORD_TEMPLATES = (() => {
     const notes = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
-    const majorInt = [0,4,7], minorInt = [0,3,7];
+    const shapes = {
+        '':    { iv: [0,4,7],    w: [1.0, 0.5, 0.8] },          // Major
+        'm':   { iv: [0,3,7],    w: [1.0, 0.5, 0.8] },          // Minor
+        '7':   { iv: [0,4,7,10], w: [1.0, 0.5, 0.8, 0.4] },     // Dominant 7th
+        'maj7':{ iv: [0,4,7,11], w: [1.0, 0.5, 0.8, 0.4] },     // Major 7th
+        'm7':  { iv: [0,3,7,10], w: [1.0, 0.5, 0.8, 0.4] },     // Minor 7th
+        'sus2':{ iv: [0,2,7],    w: [1.0, 0.4, 0.8] },          // Sus2
+        'sus4':{ iv: [0,5,7],    w: [1.0, 0.4, 0.8] },          // Sus4
+    };
     const tpl = {};
     for (let r = 0; r < 12; r++) {
-        const maj = new Float32Array(12), min = new Float32Array(12);
-        majorInt.forEach(i => { maj[(r+i)%12] = 1; });
-        minorInt.forEach(i => { min[(r+i)%12] = 1; });
-        tpl[notes[r]] = maj;
-        tpl[notes[r]+'m'] = min;
+        for (const [suffix, { iv, w }] of Object.entries(shapes)) {
+            const t = new Float32Array(12);
+            iv.forEach((interval, i) => { t[(r + interval) % 12] = w[i]; });
+            tpl[notes[r] + suffix] = t;
+        }
     }
     return tpl;
 })();
 
+// ピアソン相関でコードマッチング（ドット積より精度が高い）
 function _matchChord(hpcpArr) {
-    const max = Math.max(...hpcpArr);
-    if (max < 0.05) return 'N';
-    const norm = hpcpArr.map(v => v / max);
-    let best = 'N', bestScore = 0.35;
+    const n = hpcpArr.length;
+    const sumH = hpcpArr.reduce((a, v) => a + v, 0);
+    if (sumH < 0.01) return 'N';
+    const meanH = sumH / n;
+    let varH = 0;
+    for (let i = 0; i < n; i++) varH += (hpcpArr[i] - meanH) ** 2;
+    const stdH = Math.sqrt(varH / n) || 1e-9;
+
+    let best = 'N', bestScore = 0.5; // ピアソン相関の閾値
     for (const [name, tmpl] of Object.entries(CHORD_TEMPLATES)) {
-        let s = 0;
-        for (let i = 0; i < 12; i++) s += norm[i] * tmpl[i];
-        if (s > bestScore) { bestScore = s; best = name; }
+        const sumT = tmpl.reduce((a, v) => a + v, 0);
+        const meanT = sumT / n;
+        let cov = 0, varT = 0;
+        for (let i = 0; i < n; i++) {
+            cov  += (hpcpArr[i] - meanH) * (tmpl[i] - meanT);
+            varT += (tmpl[i] - meanT) ** 2;
+        }
+        const stdT = Math.sqrt(varT / n) || 1e-9;
+        const r = (cov / n) / (stdH * stdT);
+        if (r > bestScore) { bestScore = r; best = name; }
     }
     return best;
 }
@@ -1233,6 +1255,9 @@ function _detectChordsEssentia(essentia, audioBuffer) {
     const numFrames = frames.size();
 
     // --- フレームごとにHPCPを計算してコードを取得 ---
+    // HPCP_WIN フレームを平均してからマッチング（短時間ノイズを抑制）
+    const HPCP_WIN  = 8; // ~370ms のウィンドウ平均
+    const hpcpBuf   = []; // 直近のHPCPを保持するリングバッファ
     const rawEntries = [];
     for (let i = 0; i < numFrames; i++) {
         const frame = frames.get(i);
@@ -1241,9 +1266,18 @@ function _detectChordsEssentia(essentia, audioBuffer) {
             const windowed = essentia.Windowing(frame, true, frameSize, 'hann', 0, false);
             const spec     = essentia.Spectrum(windowed.frame, frameSize);
             const peaks    = essentia.SpectralPeaks(spec.spectrum, 0.0001, Math.min(5000, sampleRate / 2), 100, 40, 'frequency', sampleRate);
-            const hpcp     = essentia.HPCP(peaks.frequencies, peaks.magnitudes);
-            const hpcpArr  = Array.from(essentia.vectorToArray(hpcp.hpcp));
-            rawEntries.push({ time, chord: _matchChord(hpcpArr) });
+            // harmonics=8, weightType='cosine' で倍音考慮したHPCPを計算
+            // HPCP(freq, mag, bandPreset, bandSplitFreq, harmonics, maxFreq, maxShifted, minFreq, nonLinear, normalized, refFreq, sampleRate, size, weightType, windowSize)
+            const hpcp    = essentia.HPCP(peaks.frequencies, peaks.magnitudes, false, 500, 8, Math.min(5000, sampleRate / 2), false, 40, false, 'unitMax', 440, sampleRate, 12, 'cosine', 0.5);
+            const hpcpArr = Array.from(essentia.vectorToArray(hpcp.hpcp));
+
+            // ウィンドウ平均
+            hpcpBuf.push(hpcpArr);
+            if (hpcpBuf.length > HPCP_WIN) hpcpBuf.shift();
+            const avgHpcp = new Array(12).fill(0);
+            for (const h of hpcpBuf) for (let j = 0; j < 12; j++) avgHpcp[j] += h[j] / hpcpBuf.length;
+
+            rawEntries.push({ time, chord: _matchChord(avgHpcp) });
         } catch (e) {
             rawEntries.push({ time, chord: 'N' });
         }

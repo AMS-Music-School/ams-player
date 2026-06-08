@@ -1168,7 +1168,7 @@ function _matchChord(hpcpArr) {
     const max = Math.max(...hpcpArr);
     if (max < 0.05) return 'N';
     const norm = hpcpArr.map(v => v / max);
-    let best = 'N', bestScore = 0.45;
+    let best = 'N', bestScore = 0.35;
     for (const [name, tmpl] of Object.entries(CHORD_TEMPLATES)) {
         let s = 0;
         for (let i = 0; i < 12; i++) s += norm[i] * tmpl[i];
@@ -1223,18 +1223,20 @@ async function runChordAnalysis() {
 
 function _detectChordsEssentia(essentia, audioBuffer) {
     const sampleRate = audioBuffer.sampleRate;
-    const audioData = audioBuffer.getChannelData(0);
-    // Larger hop = fewer frames = less noise
+    const audioData  = audioBuffer.getChannelData(0);
+    // frameSize=8192: 周波数分解能を確保、hopSize=2048: 約46ms刻みで時間分解能を確保
     const frameSize = 8192;
-    const hopSize  = 8192;
+    const hopSize   = 2048;
+    const secPerHop = hopSize / sampleRate;
 
-    const frames = essentia.FrameGenerator(audioData, frameSize, hopSize);
+    const frames    = essentia.FrameGenerator(audioData, frameSize, hopSize);
     const numFrames = frames.size();
 
+    // --- フレームごとにHPCPを計算してコードを取得 ---
     const rawEntries = [];
     for (let i = 0; i < numFrames; i++) {
         const frame = frames.get(i);
-        const time = (i * hopSize) / sampleRate;
+        const time  = i * secPerHop;
         try {
             const windowed = essentia.Windowing(frame, true, frameSize, 'hann', 0, false);
             const spec     = essentia.Spectrum(windowed.frame, frameSize);
@@ -1247,17 +1249,20 @@ function _detectChordsEssentia(essentia, audioBuffer) {
         }
     }
 
-    // --- Step 1: Median filter (window=7) to remove single-frame noise ---
-    const WIN = 7, HALF = Math.floor(WIN / 2);
+    // --- Step 1: メジアンフィルター（前後5フレーム）で瞬間ノイズを除去 ---
+    const WIN = 5, HALF = Math.floor(WIN / 2);
     const smoothed = rawEntries.map((entry, i) => {
         const slice = rawEntries.slice(Math.max(0, i - HALF), Math.min(rawEntries.length, i + HALF + 1));
         const counts = {};
         let maxCount = 0, mode = entry.chord;
-        for (const e of slice) { counts[e.chord] = (counts[e.chord] || 0) + 1; if (counts[e.chord] > maxCount) { maxCount = counts[e.chord]; mode = e.chord; } }
+        for (const e of slice) {
+            counts[e.chord] = (counts[e.chord] || 0) + 1;
+            if (counts[e.chord] > maxCount) { maxCount = counts[e.chord]; mode = e.chord; }
+        }
         return { time: entry.time, chord: mode };
     });
 
-    // --- Step 2: Group consecutive identical chords ---
+    // --- Step 2: 連続する同じコードをグループ化 ---
     const grouped = [];
     for (const entry of smoothed) {
         if (grouped.length === 0 || grouped[grouped.length - 1].chord !== entry.chord) {
@@ -1265,16 +1270,14 @@ function _detectChordsEssentia(essentia, audioBuffer) {
         }
     }
 
-    // --- Step 3: Remove chords shorter than minDur seconds ---
-    const minDur = 2.0;
+    // --- Step 3: 短すぎるコード（0.5秒未満）を前のコードにマージ ---
+    const minDur   = 0.5;
     const totalDur = audioBuffer.duration;
-    // Attach end times
-    const withEnd = grouped.map((g, i) => ({
+    const withEnd  = grouped.map((g, i) => ({
         startTime: g.startTime,
-        chord: g.chord,
-        endTime: i + 1 < grouped.length ? grouped[i + 1].startTime : totalDur
+        chord:     g.chord,
+        endTime:   i + 1 < grouped.length ? grouped[i + 1].startTime : totalDur
     }));
-    // Iteratively merge short segments into predecessor
     let changed = true;
     while (changed) {
         changed = false;

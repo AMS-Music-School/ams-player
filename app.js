@@ -1246,19 +1246,16 @@ async function runChordAnalysis() {
 function _detectChordsEssentia(essentia, audioBuffer) {
     const sampleRate = audioBuffer.sampleRate;
     const audioData  = audioBuffer.getChannelData(0);
-    // frameSize=8192: 周波数分解能を確保、hopSize=2048: 約46ms刻みで時間分解能を確保
-    const frameSize = 8192;
-    const hopSize   = 2048;
-    const secPerHop = hopSize / sampleRate;
+    const frameSize  = 8192;
+    const hopSize    = 2048;
+    const secPerHop  = hopSize / sampleRate;
+    const totalDur   = audioBuffer.duration;
 
+    // --- Step 1: 全フレームの HPCP を収集 ---
     const frames    = essentia.FrameGenerator(audioData, frameSize, hopSize);
     const numFrames = frames.size();
+    const hpcpFrames = []; // { time, hpcp: number[] }
 
-    // --- フレームごとにHPCPを計算してコードを取得 ---
-    // HPCP_WIN フレームを平均してからマッチング（短時間ノイズを抑制）
-    const HPCP_WIN  = 8; // ~370ms のウィンドウ平均
-    const hpcpBuf   = []; // 直近のHPCPを保持するリングバッファ
-    const rawEntries = [];
     for (let i = 0; i < numFrames; i++) {
         const frame = frames.get(i);
         const time  = i * secPerHop;
@@ -1266,70 +1263,43 @@ function _detectChordsEssentia(essentia, audioBuffer) {
             const windowed = essentia.Windowing(frame, true, frameSize, 'hann', 0, false);
             const spec     = essentia.Spectrum(windowed.frame, frameSize);
             const peaks    = essentia.SpectralPeaks(spec.spectrum, 0.0001, Math.min(5000, sampleRate / 2), 100, 40, 'frequency', sampleRate);
-            // HPCP: デフォルトパラメータのみ使用（追加パラメータはWASM crashの原因になるため）
-            const hpcp    = essentia.HPCP(peaks.frequencies, peaks.magnitudes);
-            const hpcpArr = Array.from(essentia.vectorToArray(hpcp.hpcp));
-
-            // ウィンドウ平均
-            hpcpBuf.push(hpcpArr);
-            if (hpcpBuf.length > HPCP_WIN) hpcpBuf.shift();
-            const avgHpcp = new Array(12).fill(0);
-            for (const h of hpcpBuf) for (let j = 0; j < 12; j++) avgHpcp[j] += h[j] / hpcpBuf.length;
-
-            rawEntries.push({ time, chord: _matchChord(avgHpcp) });
+            const hpcp     = essentia.HPCP(peaks.frequencies, peaks.magnitudes);
+            hpcpFrames.push({ time, hpcp: Array.from(essentia.vectorToArray(hpcp.hpcp)) });
         } catch (e) {
-            rawEntries.push({ time, chord: 'N' });
+            hpcpFrames.push({ time, hpcp: new Array(12).fill(0) });
         }
     }
 
-    // --- Step 1: メジアンフィルター（前後5フレーム）で瞬間ノイズを除去 ---
-    const WIN = 5, HALF = Math.floor(WIN / 2);
-    const smoothed = rawEntries.map((entry, i) => {
-        const slice = rawEntries.slice(Math.max(0, i - HALF), Math.min(rawEntries.length, i + HALF + 1));
-        const counts = {};
-        let maxCount = 0, mode = entry.chord;
-        for (const e of slice) {
-            counts[e.chord] = (counts[e.chord] || 0) + 1;
-            if (counts[e.chord] > maxCount) { maxCount = counts[e.chord]; mode = e.chord; }
-        }
-        return { time: entry.time, chord: mode };
-    });
+    // --- Step 2: BPM から小節長を計算して小節ごとにコードを決定 ---
+    // originalBpm はグローバル変数（detectBPM が設定済み）
+    const bpm     = (typeof originalBpm !== 'undefined' && originalBpm > 0) ? originalBpm : 120;
+    const beatDur = 60 / bpm;          // 1拍の秒数
+    const barDur  = 4 * beatDur;       // 1小節の秒数（4/4拍子を仮定）
 
-    // --- Step 2: 連続する同じコードをグループ化 ---
+    const barChords = [];
+    for (let barStart = 0; barStart < totalDur - beatDur * 0.5; barStart += barDur) {
+        const barEnd = barStart + barDur;
+
+        // この小節に含まれるフレームの HPCP を平均
+        const inBar = hpcpFrames.filter(f => f.time >= barStart && f.time < barEnd);
+        if (inBar.length === 0) continue;
+
+        const avgHpcp = new Array(12).fill(0);
+        for (const f of inBar) for (let j = 0; j < 12; j++) avgHpcp[j] += f.hpcp[j] / inBar.length;
+
+        const chord = _matchChord(avgHpcp);
+        if (chord !== 'N') barChords.push({ startTime: barStart, chord });
+    }
+
+    // --- Step 3: 連続する同一コードをまとめる（表示の簡略化） ---
     const grouped = [];
-    for (const entry of smoothed) {
+    for (const entry of barChords) {
         if (grouped.length === 0 || grouped[grouped.length - 1].chord !== entry.chord) {
-            grouped.push({ startTime: entry.time, chord: entry.chord });
+            grouped.push({ startTime: entry.startTime, chord: entry.chord });
         }
     }
 
-    // --- Step 3: 短すぎるコード（0.5秒未満）を前のコードにマージ ---
-    const minDur   = 0.5;
-    const totalDur = audioBuffer.duration;
-    const withEnd  = grouped.map((g, i) => ({
-        startTime: g.startTime,
-        chord:     g.chord,
-        endTime:   i + 1 < grouped.length ? grouped[i + 1].startTime : totalDur
-    }));
-    let changed = true;
-    while (changed) {
-        changed = false;
-        for (let i = 0; i < withEnd.length; i++) {
-            if (withEnd[i].endTime - withEnd[i].startTime < minDur) {
-                if (i === 0 && withEnd.length > 1) {
-                    withEnd[1].startTime = withEnd[0].startTime;
-                    withEnd.splice(0, 1);
-                } else if (i > 0) {
-                    withEnd[i - 1].endTime = withEnd[i].endTime;
-                    withEnd.splice(i, 1);
-                }
-                changed = true;
-                break;
-            }
-        }
-    }
-
-    return withEnd.map(e => ({ startTime: e.startTime, chord: e.chord }));
+    return grouped;
 }
 
 let _chordTimeline = null;

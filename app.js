@@ -1266,9 +1266,8 @@ function _detectChordsEssentia(essentia, audioBuffer) {
             const windowed = essentia.Windowing(frame, true, frameSize, 'hann', 0, false);
             const spec     = essentia.Spectrum(windowed.frame, frameSize);
             const peaks    = essentia.SpectralPeaks(spec.spectrum, 0.0001, Math.min(5000, sampleRate / 2), 100, 40, 'frequency', sampleRate);
-            // HPCP: unitMax正規化 + cosine重み付け（harmonicsはWASM crash回避のため0=default）
-            // HPCP(freq, mag, bandPreset, bandSplitFreq, harmonics, maxFreq, maxShifted, minFreq, nonLinear, normalized, refFreq, sampleRate, size, weightType, windowSize)
-            const hpcp    = essentia.HPCP(peaks.frequencies, peaks.magnitudes, false, 500, 0, Math.min(5000, sampleRate / 2), false, 40, false, 'unitMax', 440, sampleRate, 12, 'cosine', 0.5);
+            // HPCP: デフォルトパラメータのみ使用（追加パラメータはWASM crashの原因になるため）
+            const hpcp    = essentia.HPCP(peaks.frequencies, peaks.magnitudes);
             const hpcpArr = Array.from(essentia.vectorToArray(hpcp.hpcp));
 
             // ウィンドウ平均

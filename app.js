@@ -1223,12 +1223,12 @@ async function runChordAnalysis() {
 
 function _detectChordsEssentia(essentia, audioBuffer) {
     const sampleRate = audioBuffer.sampleRate;
+    // FrameGenerator takes Float32Array directly (no arrayToVector needed)
     const audioData = audioBuffer.getChannelData(0);
-    const frameSize = 8192;
-    const hopSize = 4096;
+    const frameSize = 4096;
+    const hopSize = 2048;
 
-    const audioVector = essentia.arrayToVector(audioData);
-    const frames = essentia.FrameGenerator(audioVector, frameSize, hopSize);
+    const frames = essentia.FrameGenerator(audioData, frameSize, hopSize);
     const numFrames = frames.size();
 
     const entries = [];
@@ -1236,10 +1236,14 @@ function _detectChordsEssentia(essentia, audioBuffer) {
         const frame = frames.get(i);
         const time = (i * hopSize) / sampleRate;
         try {
-            const windowed = essentia.Windowing(frame, true, 0, 'hann', 0, frameSize);
+            // Windowing(frame, normalized?, size?, type?, zeroPadding?, zeroPhase?)
+            const windowed = essentia.Windowing(frame, true, frameSize, 'hann', 0, false);
+            // Spectrum(frame, size?)
             const spec = essentia.Spectrum(windowed.frame, frameSize);
-            const peaks = essentia.SpectralPeaks(spec.spectrum, 100, 'frequency', Math.min(5000, sampleRate / 2), 40, 10, 0.0001, 'interpolate', sampleRate);
-            const hpcp = essentia.HPCP(peaks.frequencies, peaks.magnitudes, 12, 440, false, 0.6, true, 0.5, 40, sampleRate, Math.min(5000, sampleRate / 2));
+            // SpectralPeaks(spectrum, magnitudeThreshold?, maxFrequency?, maxPeaks?, minFrequency?, orderBy?, sampleRate?)
+            const peaks = essentia.SpectralPeaks(spec.spectrum, 0.0001, Math.min(5000, sampleRate / 2), 100, 40, 'frequency', sampleRate);
+            // HPCP(frequencies, magnitudes, bandPreset?, bandSplitFrequency?, harmonics?, maxFrequency?, maxShifted?, minFrequency?, nonLinear?, normalized?, referenceFrequency?, sampleRate?, size?, weightType?, windowSize?)
+            const hpcp = essentia.HPCP(peaks.frequencies, peaks.magnitudes);
             const hpcpArr = Array.from(essentia.vectorToArray(hpcp.hpcp));
             entries.push({ time, chord: _matchChord(hpcpArr) });
         } catch (e) {

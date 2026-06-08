@@ -539,10 +539,11 @@ const translations = {
         subStart: "サブスクリプションを開始する",
         subLogout: "別のカウントでログイン",
         historyTitle: "最近の履歴",
-        historyClear: "すべてクリア"
+        historyClear: "すべてクリア",
+        keyLabel: "キー", majorKey: "メジャー", minorKey: "マイナー"
     },
     en: { 
-        langTitle: "Language Settings", helpTitle: "Help & Guide", themeTitle: "Theme Color", guideFile: "Audio File Mode Guide", guideYT: "YouTube Mode Guide", close: "Close", fit: "FIT", clear: "Clear Loop", ready: "READY", analyzing: "ANALYZING...", setStart: "START", setEnd: "END", loopOff: "LOOP OFF", loopOn: "LOOP ON", fileSelect: "Select Audio File", saveLoop: "Save Loop", speedUpLabel: "Auto BPM Up", recPlay: "Play Rec", recStop: "Stop Rec", privacyMenu: "Privacy Policy", legalMenu: "Commercial Transactions Act", authDesc: "Log in with your account", googleBtn: "Login with Google", authDiv: "OR", authEmail: "Login / Register", historyTitle: "RECENT HISTORY", historyClear: "Clear All", ytLoad: "LOAD", recDel: "Delete", ytPlaceholder: "YouTube URL or Search Keyword...",
+        langTitle: "Language Settings", helpTitle: "Help & Guide", themeTitle: "Theme Color", guideFile: "Audio File Mode Guide", guideYT: "YouTube Mode Guide", close: "Close", fit: "FIT", clear: "Clear Loop", ready: "READY", analyzing: "ANALYZING...", setStart: "START", setEnd: "END", loopOff: "LOOP OFF", loopOn: "LOOP ON", fileSelect: "Select Audio File", saveLoop: "Save Loop", speedUpLabel: "Auto BPM Up", recPlay: "Play Rec", recStop: "Stop Rec", privacyMenu: "Privacy Policy", legalMenu: "Commercial Transactions Act", authDesc: "Log in with your account", googleBtn: "Login with Google", authDiv: "OR", authEmail: "Login / Register", historyTitle: "RECENT HISTORY", historyClear: "Clear All", keyLabel: "Key", majorKey: "major", minorKey: "minor", ytLoad: "LOAD", recDel: "Delete", ytPlaceholder: "YouTube URL or Search Keyword...",
         accInfo: "Account Info", deleteAcc: "Delete Account", accNameLabel: "Display Name", accEmailLabel: "Email", accPlanLabel: "Plan", resetPw: "Reset Password",
         authNote: "*For new registrations, a verification email will be sent. Please open the link in the email to complete registration.",
         msgLoginReq: "Please login first.", msgEmptyAuth: "Please enter your email and password.", msgRegConfirm: "Account not found. A verification email will be sent to the entered address for new registration. Proceed?\n\n*Registration is NOT complete until you click the URL in the email.", msgLoginErr: "Error: ", msgMailSent: "Password reset email sent. Please check your inbox.", msgDelHist: "Clear history?", msgDelRec: "Delete recording?", msgDelAcc: "This will permanently delete your account and all saved data.\n\n⚠️ IMPORTANT: Deleting your account does NOT automatically cancel your subscription! Please cancel your billing via the Square receipt email first.\n\nAre you sure you want to delete?", msgDelAccSuccess: "Account successfully deleted.", msgPwReset: "Send password reset email?", msgRangeReq: "Please select a range", msgRangeInv: "Invalid range", msgSubConfirm: "⚠️ IMPORTANT\nPlease use the exact same email address on the Square payment page.\n(Using Apple Pay might change your address)\n\nProceed to checkout?",
@@ -566,7 +567,7 @@ const translations = {
         subLogout: "Login with another account"
     },
     zh: { 
-        langTitle: "语言设置", helpTitle: "帮助与指南", themeTitle: "主题颜色", guideFile: "音频文件模式指南", guideYT: "YouTube模式指南", close: "关闭", fit: "适应视图", clear: "清除选择", ready: "准备就绪", analyzing: "分析中...", setStart: "起点", setEnd: "终点", loopOff: "循环 关", loopOn: "循环 开", fileSelect: "选择文件", saveLoop: "保存循环", speedUpLabel: "自动提速", recPlay: "播放录音", recStop: "停止播放", privacyMenu: "隐私政策", legalMenu: "特定商业交易法", authDesc: "使用您的帐户登录", googleBtn: "使用Google登录", authDiv: "或", authEmail: "登录 / 注册", historyTitle: "最近历史", historyClear: "全部清除", ytLoad: "加载", recDel: "删除", ytPlaceholder: "YouTube URL 或搜索关键字...",
+        langTitle: "语言设置", helpTitle: "帮助与指南", themeTitle: "主题颜色", guideFile: "音频文件模式指南", guideYT: "YouTube模式指南", close: "关闭", fit: "适应视图", clear: "清除选择", ready: "准备就绪", analyzing: "分析中...", setStart: "起点", setEnd: "终点", loopOff: "循环 关", loopOn: "循环 开", fileSelect: "选择文件", saveLoop: "保存循环", speedUpLabel: "自动提速", recPlay: "播放录音", recStop: "停止播放", privacyMenu: "隐私政策", legalMenu: "特定商业交易法", authDesc: "使用您的帐户登录", googleBtn: "使用Google登录", authDiv: "或", authEmail: "登录 / 注册", historyTitle: "最近历史", historyClear: "全部清除", keyLabel: "调性", majorKey: "大调", minorKey: "小调", ytLoad: "加载", recDel: "删除", ytPlaceholder: "YouTube URL 或搜索关键字...",
         accInfo: "帐户信息", deleteAcc: "删除帐户", accNameLabel: "帐户名称", accEmailLabel: "电子邮件", accPlanLabel: "计划", resetPw: "重置密码",
         authNote: "※新注册时将发送验证邮件。请打开邮件中的链接以完成注册。",
         msgLoginReq: "请先登录。", msgEmptyAuth: "请输入您的电子邮件和密码。", msgRegConfirm: "找不到帐户。系统将向您输入的地址发送一封验证邮件以进行新注册。是否继续？\n\n*在点击收到的邮件中的URL之前，注册不会完成。", msgLoginErr: "错误: ", msgMailSent: "密码重置邮件已发送。请检查您的收件箱。", msgDelHist: "要清除历史记录吗？", msgDelRec: "要删除录音吗？", msgDelAcc: "这将永久删除您的帐户和所有保存的数据。\n\n⚠️ 重要提示：删除帐户不会自动取消您的订阅！请务必先通过Square的付款电子邮件取消订阅。\n\n您确定要删除吗？", msgDelAccSuccess: "帐户已成功删除。", msgPwReset: "发送密码重置电子邮件吗？", msgRangeReq: "请选择一个范围", msgRangeInv: "范围无效", msgSubConfirm: "⚠️ 重要提示\n请在Square付款页面上使用完全相同的电子邮件地址。\n\n继续结帐吗？",
@@ -590,7 +591,7 @@ const translations = {
         subLogout: "使用其他帐户登录"
     },
     ko: { 
-        langTitle: "언어 설정", helpTitle: "도움말 및 가이드", themeTitle: "테마 색상", guideFile: "오디오 파일 모드 가이드", guideYT: "YouTube 모드 가이드", close: "닫기", fit: "전체 보기", clear: "선택 해제", ready: "준비 완료", analyzing: "분석 중...", setStart: "시작", setEnd: "종료", loopOff: "루프 끄기", loopOn: "루프 켜기", fileSelect: "파일 선택", saveLoop: "루프 저장", speedUpLabel: "자동 BPM 업", recPlay: "녹음 재생", recStop: "재생 정지", privacyMenu: "개인정보처리방침", legalMenu: "특정상거래법 표기", authDesc: "계정으로 로그인", googleBtn: "Google로 로그인", authDiv: "또는", authEmail: "로그인 / 회원가입", historyTitle: "최근 기록", historyClear: "모두 지우기", ytLoad: "불러오기", recDel: "삭제", ytPlaceholder: "YouTube URL 또는 검색 키워드...",
+        langTitle: "언어 설정", helpTitle: "도움말 및 가이드", themeTitle: "테마 색상", guideFile: "오디오 파일 모드 가이드", guideYT: "YouTube 모드 가이드", close: "닫기", fit: "전체 보기", clear: "선택 해제", ready: "준비 완료", analyzing: "분석 중...", setStart: "시작", setEnd: "종료", loopOff: "루프 끄기", loopOn: "루프 켜기", fileSelect: "파일 선택", saveLoop: "루프 저장", speedUpLabel: "자동 BPM 업", recPlay: "녹음 재생", recStop: "재생 정지", privacyMenu: "개인정보처리방침", legalMenu: "특정상거래법 표기", authDesc: "계정으로 로그인", googleBtn: "Google로 로그인", authDiv: "또는", authEmail: "로그인 / 회원가입", historyTitle: "최근 기록", historyClear: "모두 지우기", keyLabel: "조성", majorKey: "장조", minorKey: "단조", ytLoad: "불러오기", recDel: "삭제", ytPlaceholder: "YouTube URL 또는 검색 키워드...",
         accInfo: "계정 정보", deleteAcc: "계정 삭제", accNameLabel: "계정 이름", accEmailLabel: "이메일", accPlanLabel: "플랜", resetPw: "비밀번호 재설정",
         authNote: "※신규 가입 시 확인 이메일이 발송됩니다. 이메일의 링크를 열어 가입을 완료해 주세요.",
         msgLoginReq: "먼저 로그인해 주세요.", msgEmptyAuth: "이메일과 비밀번호를 입력해 주세요.", msgRegConfirm: "계정을 찾을 수 없습니다. 신규 가입을 위해 입력하신 주소로 확인 이메일이 발송됩니다. 계속하시겠습니까?\n\n※수신한 이메일의 URL을 클릭하기 전까지는 가입이 완료되지 않습니다.", msgLoginErr: "오류: ", msgMailSent: "비밀번호 재설정 이메일을 보냈습니다. 받은 편지함을 확인하세요.", msgDelHist: "기록을 삭제하시겠습니까?", msgDelRec: "녹음을 삭제하시겠습니까?", msgDelAcc: "계정과 모든 저장된 데이터가 영구적으로 삭제됩니다.\n\n⚠️ 중요: 계정을 삭제해도 구독(결제)은 자동으로 해지되지 않습니다! 반드시 먼저 Square 결제 이메일에서 해지 절차를 진행해 주세요.\n\n정말 삭제하시겠습니까?", msgDelAccSuccess: "계정이 성공적으로 삭제되었습니다.", msgPwReset: "비밀번호 재설정 이메일을 보내시겠습니까?", msgRangeReq: "범위를 지정해 주세요", msgRangeInv: "잘못된 범위입니다", msgSubConfirm: "⚠️ 중요\nSquare 결제 페이지에서도 완전히 동일한 이메일 주소를 사용해 주세요.\n\n결제를 진행하시겠습니까?",
@@ -614,7 +615,7 @@ const translations = {
         subLogout: "다른 계정으로 로그인"
     },
     es: { 
-        langTitle: "Idioma", helpTitle: "Ayuda y Guía", themeTitle: "Color del Tema", guideFile: "Guía Modo Archivo", guideYT: "Guía Modo YouTube", close: "Cerrar", fit: "Ajustar", clear: "Borrar", ready: "LISTO", analyzing: "ANALIZANDO...", setStart: "INICIO", setEnd: "FIN", loopOff: "BUCLE OFF", loopOn: "BUCLE ON", fileSelect: "Elegir Archivo", saveLoop: "Guardar", speedUpLabel: "Auto BPM Up", recPlay: "Reproducir", recStop: "Detener", privacyMenu: "Privacidad", legalMenu: "Aviso Legal", authDesc: "Inicia sesión con tu cuenta", googleBtn: "Iniciar con Google", authDiv: "O", authEmail: "Iniciar / Registrarse", historyTitle: "Historial", historyClear: "Borrar Todo", ytLoad: "CARGAR", recDel: "Eliminar", ytPlaceholder: "URL de YouTube o palabra clave de búsqueda...",
+        langTitle: "Idioma", helpTitle: "Ayuda y Guía", themeTitle: "Color del Tema", guideFile: "Guía Modo Archivo", guideYT: "Guía Modo YouTube", close: "Cerrar", fit: "Ajustar", clear: "Borrar", ready: "LISTO", analyzing: "ANALIZANDO...", setStart: "INICIO", setEnd: "FIN", loopOff: "BUCLE OFF", loopOn: "BUCLE ON", fileSelect: "Elegir Archivo", saveLoop: "Guardar", speedUpLabel: "Auto BPM Up", recPlay: "Reproducir", recStop: "Detener", privacyMenu: "Privacidad", legalMenu: "Aviso Legal", authDesc: "Inicia sesión con tu cuenta", googleBtn: "Iniciar con Google", authDiv: "O", authEmail: "Iniciar / Registrarse", historyTitle: "Historial", historyClear: "Borrar Todo", keyLabel: "Tonalidad", majorKey: "mayor", minorKey: "menor", ytLoad: "CARGAR", recDel: "Eliminar", ytPlaceholder: "URL de YouTube o palabra clave de búsqueda...",
         accInfo: "Cuenta", deleteAcc: "Eliminar Cuenta", accNameLabel: "Nombre", accEmailLabel: "Correo", accPlanLabel: "Plan", resetPw: "Restablecer Contraseña",
         authNote: "*Para nuevos registros, se enviará un correo de verificación. Abra el enlace en el correo para completar el registro.",
         msgLoginReq: "Inicie sesión primero.", msgEmptyAuth: "Ingrese su correo y contraseña.", msgRegConfirm: "Cuenta no encontrada. Se enviará un correo de verificación a la dirección ingresada para un nuevo registro. ¿Continuar?\n\n*El registro NO se completará hasta que haga clic en la URL del correo.", msgLoginErr: "Error: ", msgMailSent: "Correo de restablecimiento enviado. Revise su bandeja.", msgDelHist: "¿Borrar historial?", msgDelRec: "¿Eliminar grabación?", msgDelAcc: "Esto eliminará permanentemente su cuenta y datos.\n\n⚠️ IMPORTANTE: ¡Eliminar su cuenta NO cancelará automáticamente su suscripción! Por favor, cancele su facturación a través del correo de recibo de Square primero.\n\n¿Está seguro de que desea eliminar?", msgDelAccSuccess: "Cuenta eliminada con éxito.", msgPwReset: "¿Enviar correo para restablecer contraseña?", msgRangeReq: "Seleccione un rango", msgRangeInv: "Rango inválido", msgSubConfirm: "⚠️ IMPORTANTE\nUse exactamente el mismo correo en la página de pago de Square.\n\n¿Proceder al pago?",
@@ -638,7 +639,7 @@ const translations = {
         subLogout: "Usar otra cuenta"
     },
     pt: {
-        langTitle: "Idioma", helpTitle: "Ajuda e Guia", themeTitle: "Cor do Tema", guideFile: "Guia Modo Arquivo", guideYT: "Guia Modo YouTube", close: "Fechar", fit: "Ajustar", clear: "Limpar", ready: "PRONTO", analyzing: "ANALISANDO...", setStart: "INÍCIO", setEnd: "FIM", loopOff: "LOOP OFF", loopOn: "LOOP ON", fileSelect: "Selecionar Arquivo", saveLoop: "Salvar Loop", speedUpLabel: "Auto BPM Up", recPlay: "Reproduzir Grav.", recStop: "Parar", privacyMenu: "Política de Privacidade", legalMenu: "Aviso Legal", authDesc: "Entre com sua conta", googleBtn: "Entrar com Google", authDiv: "OU", authEmail: "Entrar / Cadastrar", historyTitle: "Histórico Recente", historyClear: "Limpar Tudo", ytLoad: "CARREGAR", recDel: "Excluir", ytPlaceholder: "URL do YouTube ou palavra-chave de busca...",
+        langTitle: "Idioma", helpTitle: "Ajuda e Guia", themeTitle: "Cor do Tema", guideFile: "Guia Modo Arquivo", guideYT: "Guia Modo YouTube", close: "Fechar", fit: "Ajustar", clear: "Limpar", ready: "PRONTO", analyzing: "ANALISANDO...", setStart: "INÍCIO", setEnd: "FIM", loopOff: "LOOP OFF", loopOn: "LOOP ON", fileSelect: "Selecionar Arquivo", saveLoop: "Salvar Loop", speedUpLabel: "Auto BPM Up", recPlay: "Reproduzir Grav.", recStop: "Parar", privacyMenu: "Política de Privacidade", legalMenu: "Aviso Legal", authDesc: "Entre com sua conta", googleBtn: "Entrar com Google", authDiv: "OU", authEmail: "Entrar / Cadastrar", historyTitle: "Histórico Recente", historyClear: "Limpar Tudo", keyLabel: "Tonalidade", majorKey: "maior", minorKey: "menor", ytLoad: "CARREGAR", recDel: "Excluir", ytPlaceholder: "URL do YouTube ou palavra-chave de busca...",
         accInfo: "Informações da Conta", deleteAcc: "Excluir Conta", accNameLabel: "Nome", accEmailLabel: "E-mail", accPlanLabel: "Plano", resetPw: "Redefinir Senha",
         authNote: "*Para novos cadastros, um e-mail de verificação será enviado. Abra o link no e-mail para concluir o cadastro.",
         msgLoginReq: "Faça login primeiro.", msgEmptyAuth: "Digite seu e-mail e senha.", msgRegConfirm: "Conta não encontrada. Um e-mail de verificação será enviado ao endereço informado para novo cadastro. Continuar?\n\n*O cadastro NÃO estará concluído até você clicar no URL do e-mail.", msgLoginErr: "Erro: ", msgMailSent: "E-mail de redefinição enviado. Verifique sua caixa de entrada.", msgDelHist: "Limpar histórico?", msgDelRec: "Excluir gravação?", msgDelAcc: "Isso excluirá permanentemente sua conta e todos os dados salvos.\n\n⚠️ IMPORTANTE: Excluir sua conta NÃO cancela automaticamente sua assinatura! Por favor, cancele o pagamento pelo e-mail de recibo do Square primeiro.\n\nTem certeza que deseja excluir?", msgDelAccSuccess: "Conta excluída com sucesso.", msgPwReset: "Enviar e-mail de redefinição de senha?", msgRangeReq: "Selecione um intervalo", msgRangeInv: "Intervalo inválido", msgSubConfirm: "⚠️ IMPORTANTE\nUse exatamente o mesmo e-mail na página de pagamento do Square.\n\nProsseguir para o pagamento?",
@@ -901,9 +902,11 @@ function changeLanguage() {
     document.getElementById('ytLoadBtnTxt').innerText = t.ytLoad; 
     
     const histTitle = document.getElementById('historyTitle');
-    if(histTitle) histTitle.innerText = t.historyTitle; 
+    if(histTitle) histTitle.innerText = t.historyTitle;
     const histClearBtn = document.getElementById('historyClearBtn');
-    if(histClearBtn) histClearBtn.innerText = t.historyClear; 
+    if(histClearBtn) histClearBtn.innerText = t.historyClear;
+    const keyLabelEl = document.getElementById('keyLabel');
+    if(keyLabelEl) keyLabelEl.innerText = t.keyLabel || 'Key';
     
     document.getElementById('guideFileContent').innerHTML = t.guideFileContent; 
     document.getElementById('guideYTContent').innerHTML = t.guideYTContent; 
@@ -992,15 +995,113 @@ async function analyzeAudio(blob) {
         const threshold = 0.015; 
         for (let i = 0; i < data.length; i += 100) { if (Math.abs(data[i]) > threshold) { skip = i / audioBuffer.sampleRate; break; } } 
         firstSoundTime = skip; 
-        const bpm = detectBPM(audioBuffer); 
-        if (bpm > 0) originalBpm = Math.round(bpm); else originalBpm = 120; 
-        updateBpmDisplay(); statusEl.innerText = translations[lang].ready; 
+        const bpm = detectBPM(audioBuffer);
+        if (bpm > 0) originalBpm = Math.round(bpm); else originalBpm = 120;
+        updateBpmDisplay();
+        const keyResult = detectKey(audioBuffer);
+        updateKeyDisplay(keyResult);
+        statusEl.innerText = translations[lang].ready;
         if(wavesurfer && !wavesurfer.isPlaying()) { wavesurfer.setTime(firstSoundTime); }
-    } catch (e) { console.error("Analysis error:", e); statusEl.innerText = translations[lang].ready; } 
+    } catch (e) { console.error("Analysis error:", e); statusEl.innerText = translations[lang].ready; }
 }
 
 function updateBpmDisplay() { const currentSpeed = parseFloat(document.getElementById('speed').value); const currentBpm = Math.round(originalBpm * currentSpeed); const bpmEl = document.getElementById('spTxt'); if (bpmEl) bpmEl.innerText = "BPM " + (originalBpm > 0 ? currentBpm : "---"); }
 function detectBPM(buffer) { const data = buffer.getChannelData(0), sampleRate = buffer.sampleRate, step = 200, energy = []; for (let i = 0; i < data.length; i += step) { let sum = 0; for(let j=0; j<step && (i+j)<data.length; j++) sum += data[i+j] * data[i+j]; energy.push(Math.sqrt(sum/step)); } let bestBpm = 0, maxCorrelation = 0; const minInterval = Math.floor((60 / 200) * (sampleRate / step)), maxInterval = Math.floor((60 / 60) * (sampleRate / step)); for (let interval = minInterval; interval <= maxInterval; interval++) { let correlation = 0; for (let i = 0; i < Math.min(energy.length - interval, 10000); i++) correlation += energy[i] * energy[i + interval]; if (correlation > maxCorrelation) { maxCorrelation = correlation; bestBpm = 60 / (interval * step / sampleRate); } } return (bestBpm < 50 || bestBpm > 250) ? 0 : bestBpm; }
+function _nextPow2(n) { let p = 1; while (p < n) p <<= 1; return p; }
+function _fftMag(signal) {
+    const N = signal.length;
+    const re = new Float64Array(N), im = new Float64Array(N);
+    for (let i = 0; i < N; i++) re[i] = signal[i];
+    // bit-reversal
+    let j = 0;
+    for (let i = 1; i < N; i++) {
+        let bit = N >> 1;
+        for (; j & bit; bit >>= 1) j ^= bit;
+        j ^= bit;
+        if (i < j) { let t = re[i]; re[i] = re[j]; re[j] = t; t = im[i]; im[i] = im[j]; im[j] = t; }
+    }
+    // butterfly
+    for (let len = 2; len <= N; len <<= 1) {
+        const ang = -2 * Math.PI / len, wRe = Math.cos(ang), wIm = Math.sin(ang);
+        for (let i = 0; i < N; i += len) {
+            let cRe = 1, cIm = 0;
+            for (let k = 0; k < len >> 1; k++) {
+                const uRe = re[i+k], uIm = im[i+k];
+                const vRe = re[i+k+(len>>1)]*cRe - im[i+k+(len>>1)]*cIm;
+                const vIm = re[i+k+(len>>1)]*cIm + im[i+k+(len>>1)]*cRe;
+                re[i+k] = uRe+vRe; im[i+k] = uIm+vIm;
+                re[i+k+(len>>1)] = uRe-vRe; im[i+k+(len>>1)] = uIm-vIm;
+                const nr = cRe*wRe - cIm*wIm; cIm = cRe*wIm + cIm*wRe; cRe = nr;
+            }
+        }
+    }
+    const mag = new Float64Array(N >> 1);
+    for (let i = 0; i < (N >> 1); i++) mag[i] = Math.sqrt(re[i]*re[i] + im[i]*im[i]);
+    return mag;
+}
+function detectKey(audioBuffer) {
+    const sampleRate = audioBuffer.sampleRate;
+    const raw = audioBuffer.getChannelData(0);
+    // Downsample to ~8000 Hz
+    const factor = Math.max(1, Math.floor(sampleRate / 8000));
+    const dsRate = sampleRate / factor;
+    const maxRaw = Math.min(raw.length, sampleRate * 90); // up to 90 sec
+    const dsLen = Math.floor(maxRaw / factor);
+    const fftSize = Math.min(16384, _nextPow2(dsLen));
+    // Hann window
+    const hann = new Float64Array(fftSize);
+    for (let i = 0; i < fftSize; i++) hann[i] = 0.5 * (1 - Math.cos(2 * Math.PI * i / (fftSize - 1)));
+    // Chromagram accumulation
+    const chroma = new Float64Array(12);
+    let wCount = 0;
+    for (let start = 0; start + fftSize <= dsLen; start += fftSize) {
+        const frame = new Float64Array(fftSize);
+        for (let i = 0; i < fftSize; i++) { const ri = (start + i) * factor; if (ri < raw.length) frame[i] = raw[ri] * hann[i]; }
+        const mag = _fftMag(frame);
+        for (let bin = 1; bin < fftSize >> 1; bin++) {
+            const freq = bin * dsRate / fftSize;
+            if (freq < 65.41 || freq > 1975.5) continue; // C2–B6
+            const midi = 12 * Math.log2(freq / 440) + 69;
+            const pc = ((Math.round(midi) % 12) + 12) % 12;
+            chroma[pc] += mag[bin] * mag[bin];
+        }
+        wCount++;
+    }
+    if (wCount === 0) return null;
+    // Normalize
+    const maxC = Math.max(...chroma);
+    if (maxC === 0) return null;
+    for (let i = 0; i < 12; i++) chroma[i] /= maxC;
+    // Krumhansl-Schmuckler profiles
+    const majP = [6.35,2.23,3.48,2.33,4.38,4.09,2.52,5.19,2.39,3.66,2.29,2.88];
+    const minP = [6.33,2.68,3.52,5.38,2.60,3.53,2.54,4.75,3.98,2.69,3.34,3.17];
+    const notes = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+    function pearson(a, b) {
+        const n = a.length, mA = a.reduce((s,v)=>s+v,0)/n, mB = b.reduce((s,v)=>s+v,0)/n;
+        let num=0, dA=0, dB=0;
+        for (let i=0;i<n;i++){num+=(a[i]-mA)*(b[i]-mB);dA+=(a[i]-mA)**2;dB+=(b[i]-mB)**2;}
+        return num/(Math.sqrt(dA*dB)||1);
+    }
+    let bestCorr=-Infinity, bestKey='C', bestMode='major';
+    for (let root=0; root<12; root++) {
+        const rot = Array.from({length:12},(_,i)=>chroma[(i+root)%12]);
+        const mj = pearson(rot, majP), mn = pearson(rot, minP);
+        if (mj > bestCorr) { bestCorr=mj; bestKey=notes[root]; bestMode='major'; }
+        if (mn > bestCorr) { bestCorr=mn; bestKey=notes[root]; bestMode='minor'; }
+    }
+    return { key: bestKey, mode: bestMode };
+}
+function updateKeyDisplay(keyResult) {
+    const el = document.getElementById('keyDisplay');
+    const rowEl = document.getElementById('keyRow');
+    if (!el || !rowEl) return;
+    if (!keyResult) { rowEl.style.display = 'none'; return; }
+    const lang = document.getElementById('langSelect').value || 'ja';
+    const t = translations[lang] || translations['ja'];
+    const modeStr = keyResult.mode === 'major' ? (t.majorKey || 'major') : (t.minorKey || 'minor');
+    el.innerText = keyResult.key + ' ' + modeStr;
+    rowEl.style.display = 'flex';
+}
 function playBeep(isLast) { const ctx = initAudioContext(); const osc = ctx.createOscillator(), gain = ctx.createGain(); osc.frequency.setValueAtTime(isLast ? 880 : 440, ctx.currentTime); gain.gain.setValueAtTime(0.1, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1); osc.connect(gain); gain.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + 0.1); }
 async function runCountdown() { if (!isCountEnabled) return true; const currentSpeed = parseFloat(document.getElementById('speed').value); const interval = 60000 / (originalBpm * currentSpeed); const overlay = document.getElementById('countdown-overlay'); overlay.style.display = 'block'; for (let i = 1; i <= 4; i++) { overlay.innerText = i; playBeep(i === 4); await new Promise(r => setTimeout(r, interval)); } overlay.style.display = 'none'; return true; }
 async function toggleRecording() { if (!await requireSubscription()) return; initAudioContext(); if (isRecording) { if (mediaRecorder) mediaRecorder.stop(); if (wavesurfer.isPlaying()) wavesurfer.pause(); isRecording = false; document.getElementById('recBtn').classList.remove('recording'); document.getElementById('recIcon').innerText = 'mic'; } else { try { const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } }); const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4'; mediaRecorder = new MediaRecorder(stream, { mimeType }); recordedChunks = []; mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); }; mediaRecorder.onstop = async () => { const blob = new Blob(recordedChunks, { type: mimeType }); if (recObjectURL) URL.revokeObjectURL(recObjectURL); recObjectURL = URL.createObjectURL(blob); const arrayBuffer = await blob.arrayBuffer(); const ctx = initAudioContext(); recordedAudioBuffer = await ctx.decodeAudioData(arrayBuffer); document.getElementById('rec-waveform-wrapper').style.display = 'block'; document.getElementById('recVolControl').style.display = 'flex'; document.getElementById('recControls').style.display = 'flex'; await recWavesurfer.load(recObjectURL); applyVolumes(); updateRecPlayBtnUI(); stream.getTracks().forEach(track => track.stop()); }; const region = wsRegions.getRegions()[0]; const startPos = region ? region.start : wavesurfer.getCurrentTime(); wavesurfer.setTime(startPos); lastRecStartPos = startPos; await runCountdown(); mediaRecorder.start(); await wavesurfer.play(); isRecording = true; document.getElementById('recBtn').classList.add('recording'); document.getElementById('recIcon').innerText = 'stop'; } catch (err) { alert("マイクを許可してください"); } } }
@@ -1447,8 +1548,8 @@ function startApp() {
                 if (isSpeedUpEnabled) { currentLoopCount++; const targetCount = parseInt(document.getElementById('speedUpCount').value); if (currentLoopCount >= targetCount) { const sInput = document.getElementById('speed'); const currentVal = parseFloat(sInput.value); if (currentVal < 1.0) { sInput.value = Math.min(1.0, currentVal + 0.05).toFixed(2); applySettings(); } currentLoopCount = 0; } } 
             } 
         } 
-        lastTime = t; 
-    }); 
+        lastTime = t;
+    });
 
     window.resetSetting = (id, val) => { document.getElementById(id).value = val; applySettings(); }; 
     openPlaylistDB().then(() => renderPlaylist()).catch(() => {});

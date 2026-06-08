@@ -64,6 +64,34 @@
             .mode-tabs { gap: 6px; }
             .tab-btn { font-size: 0.78rem; padding: 8px 10px; }
         }
+        /* Chord strip */
+        .chord-strip::-webkit-scrollbar { display: none; }
+        .chord-pill {
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 8px 14px;
+            border-radius: 10px;
+            cursor: pointer;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            transition: transform 0.2s, background 0.2s, border-color 0.2s;
+            flex-shrink: 0;
+            min-width: 52px;
+            user-select: none;
+        }
+        .chord-pill:hover { background: rgba(255,255,255,0.1); }
+        .chord-pill.active {
+            background: var(--primary-color);
+            border-color: var(--primary-color);
+            transform: scale(1.12);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.4);
+        }
+        .chord-pill.active .chord-pill-name { color: #000 !important; }
+        .chord-pill.active .chord-pill-time { color: rgba(0,0,0,0.6) !important; }
+        .chord-pill-name { font-weight: bold; font-size: 1rem; color: var(--text-main); }
+        .chord-pill-time { font-size: 0.62rem; color: var(--text-dim); margin-top: 2px; }
     </style>
 </head>
 <body>
@@ -363,7 +391,7 @@
                 <span style="font-weight:bold; font-size:0.85rem; color:var(--text-dim);" id="chordPanelTitle">Chord List</span>
                 <button class="reset-btn" onclick="document.getElementById('chordPanel').style.display='none'" style="font-size:0.75rem; padding:2px 8px;">✕</button>
             </div>
-            <div id="chordResults" style="max-height:260px; overflow-y:auto; -webkit-overflow-scrolling:touch;"></div>
+            <div id="chordResults" style="display:flex; flex-direction:row; overflow-x:auto; overflow-y:hidden; gap:6px; padding:4px 2px; -webkit-overflow-scrolling:touch; scroll-behavior:smooth; scrollbar-width:none;" class="chord-strip"></div>
         </div>
     </div>
 

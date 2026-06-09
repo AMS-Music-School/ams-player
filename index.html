@@ -356,8 +356,14 @@
             </div>
             <div class="row" id="chordAnalyzeRow" style="display:none;">
                 <div style="min-width:65px; font-weight:bold; color:var(--text-dim); font-size:0.75rem;">Chord</div>
+                <select id="chordNoteDiv" style="font-size:0.72rem; padding:2px 4px; background:var(--panel-bg); color:var(--text-main); border:1px solid var(--border-color); border-radius:6px;">
+                    <option value="4">全音符</option>
+                    <option value="2">2分音符</option>
+                    <option value="1" selected>4分音符</option>
+                    <option value="0.5">8分音符</option>
+                </select>
                 <button class="reset-btn" style="padding:3px 10px; font-size:0.75rem;" onclick="runChordAnalysis()" id="chordAnalyzeBtn">解析</button>
-                <span id="chordCurrentDisplay" style="color:var(--primary-color); font-size:1rem; font-weight:bold; margin-left:8px;">---</span>
+                <span id="chordCurrentDisplay" style="color:var(--primary-color); font-size:1rem; font-weight:bold; margin-left:4px;">---</span>
             </div>
             <div id="chordResultPanel" style="display:none; margin-top:6px; max-height:120px; overflow-y:auto; background:rgba(0,0,0,0.3); border-radius:8px; padding:6px 8px;">
                 <div id="chordResultList" style="display:flex; flex-wrap:wrap; gap:4px;"></div>

@@ -1143,12 +1143,8 @@ async function runChordAnalysis() {
     await new Promise(r => setTimeout(r, 50));
     const raw = currentAudioBuffer.getChannelData(0);
     const sampleRate = currentAudioBuffer.sampleRate;
-    // BPMと音符区分からホップサイズを計算
-    const noteDiv = parseFloat(document.getElementById('chordNoteDiv').value); // 4=全,2=二分,1=四分,0.5=八分
-    const beatSec = 60 / (originalBpm > 0 ? originalBpm : 120);
-    const hopSec = beatSec * noteDiv;
-    const hopSamples = Math.max(Math.floor(sampleRate * hopSec), 1024);
-    const frameSize = Math.min(8192, _nextPow2(hopSamples * 2));
+    const frameSize = 8192;
+    const hopSamples = Math.floor(sampleRate * 1.5);
     const results = [];
     for (let offset = 0; offset + frameSize < raw.length; offset += hopSamples) {
         const chroma = computeChromaFrame(raw, sampleRate, offset, frameSize);
@@ -1165,15 +1161,12 @@ function renderChordList() {
     const panel = document.getElementById('chordResultPanel');
     if (!list || !panel) return;
     list.innerHTML = '';
-    const beatSec = 60 / (originalBpm > 0 ? originalBpm : 120);
-    const noteDiv = parseFloat((document.getElementById('chordNoteDiv') || {value:'1'}).value);
-    const noteDivLabel = {4:'全',2:'½',1:'♩',0.5:'♪'}[noteDiv] || '♩';
     detectedChords.forEach((c, idx) => {
         const pill = document.createElement('span');
-        const beatNum = Math.round(c.time / (beatSec * noteDiv)) + 1;
+        const min = Math.floor(c.time / 60), sec = Math.floor(c.time % 60);
         pill.className = 'chord-result-pill';
         pill.dataset.idx = idx;
-        pill.innerHTML = `<span style="font-size:0.62rem;color:var(--text-dim)">${noteDivLabel}${beatNum}</span><br><b>${c.chord}</b>`;
+        pill.innerHTML = `<span style="font-size:0.65rem;color:var(--text-dim)">${min}:${String(sec).padStart(2,'0')}</span><br><b>${c.chord}</b>`;
         pill.style.cssText = 'display:inline-block;padding:4px 8px;background:rgba(255,255,255,0.07);border-radius:6px;cursor:pointer;text-align:center;font-size:0.85rem;min-width:40px;border:1px solid transparent;';
         pill.onclick = () => { if (wavesurfer) wavesurfer.setTime(c.time); };
         list.appendChild(pill);

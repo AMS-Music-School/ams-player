@@ -341,6 +341,10 @@
                 <input type="range" id="speed" min="0.5" max="1.5" step="0.01" value="1.0">
                 <span id="spTxt" class="val-display">BPM ---</span>
             </div>
+            <div class="row" style="justify-content:flex-end; gap:6px;">
+                <button class="reset-btn" style="padding:2px 8px; font-size:0.7rem;" onclick="multiplyBpm(0.5)">÷2</button>
+                <button class="reset-btn" style="padding:2px 8px; font-size:0.7rem;" onclick="multiplyBpm(2)">×2</button>
+            </div>
             <div class="row">
                 <div style="min-width:65px; font-weight:bold; color:var(--text-dim); font-size:0.75rem;">Pitch <button class="reset-btn" onclick="resetSetting('pitch', 0)">Reset</button></div>
                 <input type="range" id="pitch" min="-6" max="6" step="1" value="0">

@@ -1005,6 +1005,7 @@ async function analyzeAudio(blob) {
     } catch (e) { console.error("Analysis error:", e); statusEl.innerText = translations[lang].ready; }
 }
 
+function multiplyBpm(factor) { if (originalBpm <= 0) return; const newBpm = originalBpm * factor; if (newBpm < 40 || newBpm > 300) return; originalBpm = Math.round(newBpm); updateBpmDisplay(); }
 function updateBpmDisplay() { const currentSpeed = parseFloat(document.getElementById('speed').value); const currentBpm = Math.round(originalBpm * currentSpeed); const bpmEl = document.getElementById('spTxt'); if (bpmEl) bpmEl.innerText = "BPM " + (originalBpm > 0 ? currentBpm : "---"); }
 function detectBPM(buffer) { const data = buffer.getChannelData(0), sampleRate = buffer.sampleRate, step = 200, energy = []; for (let i = 0; i < data.length; i += step) { let sum = 0; for(let j=0; j<step && (i+j)<data.length; j++) sum += data[i+j] * data[i+j]; energy.push(Math.sqrt(sum/step)); } let bestBpm = 0, maxCorrelation = 0; const minInterval = Math.floor((60 / 200) * (sampleRate / step)), maxInterval = Math.floor((60 / 60) * (sampleRate / step)); for (let interval = minInterval; interval <= maxInterval; interval++) { let correlation = 0; for (let i = 0; i < Math.min(energy.length - interval, 10000); i++) correlation += energy[i] * energy[i + interval]; if (correlation > maxCorrelation) { maxCorrelation = correlation; bestBpm = 60 / (interval * step / sampleRate); } } return (bestBpm < 50 || bestBpm > 250) ? 0 : bestBpm; }
 function _nextPow2(n) { let p = 1; while (p < n) p <<= 1; return p; }

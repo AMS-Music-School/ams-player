@@ -666,7 +666,7 @@ const translations = {
 
 let wavesurfer, wsRegions, recWavesurfer, ytPlayer, loopInterval;
 let loopStart = 0, loopEnd = 0, isLooping = false, currentMode = 'file';
-let audioCtx, firstSoundTime = 0, originalBpm = 120, currentAudioBuffer = null;
+let audioCtx, firstSoundTime = 0, originalBpm = 120;
 let currentObjectURL = null, currentFileName = "", currentYTId = "";
 let isCountEnabled = true, isSpeedUpEnabled = false;
 let mediaRecorder, recordedChunks = [];
@@ -995,17 +995,11 @@ async function analyzeAudio(blob) {
         const threshold = 0.015; 
         for (let i = 0; i < data.length; i += 100) { if (Math.abs(data[i]) > threshold) { skip = i / audioBuffer.sampleRate; break; } } 
         firstSoundTime = skip; 
-        currentAudioBuffer = audioBuffer;
         const bpm = detectBPM(audioBuffer);
         if (bpm > 0) originalBpm = Math.round(bpm); else originalBpm = 120;
         updateBpmDisplay();
         const keyResult = detectKey(audioBuffer);
         updateKeyDisplay(keyResult);
-        detectedChords = [];
-        document.getElementById('chordResultPanel').style.display = 'none';
-        document.getElementById('chordCurrentDisplay').innerText = '---';
-        document.getElementById('chordAnalyzeRow').style.display = 'flex';
-        document.getElementById('chordAnalyzeBtn').innerText = '解析';
         statusEl.innerText = translations[lang].ready;
         if(wavesurfer && !wavesurfer.isPlaying()) { wavesurfer.setTime(firstSoundTime); }
     } catch (e) { console.error("Analysis error:", e); statusEl.innerText = translations[lang].ready; }
@@ -1097,94 +1091,6 @@ function detectKey(audioBuffer) {
         if (mn > bestCorr) { bestCorr=mn; bestKey=notes[root]; bestMode='minor'; }
     }
     return { key: bestKey, mode: bestMode };
-}
-// --- Chord Detection ---
-let detectedChords = [];
-function computeChromaFrame(raw, sampleRate, startSample, frameSize) {
-    const hann = new Float64Array(frameSize);
-    for (let i = 0; i < frameSize; i++) hann[i] = 0.5 * (1 - Math.cos(2 * Math.PI * i / (frameSize - 1)));
-    const frame = new Float64Array(frameSize);
-    for (let i = 0; i < frameSize; i++) { const idx = startSample + i; frame[i] = (idx < raw.length ? raw[idx] : 0) * hann[i]; }
-    const mag = _fftMag(frame);
-    const chroma = new Float64Array(12);
-    for (let bin = 1; bin < frameSize >> 1; bin++) {
-        const freq = bin * sampleRate / frameSize;
-        if (freq < 65.41 || freq > 1975.5) continue;
-        const midi = 12 * Math.log2(freq / 440) + 69;
-        const pc = ((Math.round(midi) % 12) + 12) % 12;
-        chroma[pc] += mag[bin] * mag[bin];
-    }
-    const mx = Math.max(...chroma);
-    if (mx > 0) for (let i = 0; i < 12; i++) chroma[i] /= mx;
-    return chroma;
-}
-function matchChordFromChroma(chroma) {
-    const notes = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
-    const maj = [1,0,0,0,1,0,0,1,0,0,0,0];
-    const min = [1,0,0,1,0,0,0,1,0,0,0,0];
-    const maj7 = [1,0,0,0,1,0,0,1,0,0,1,0];
-    const dom7 = [1,0,0,0,1,0,0,1,0,0,1,0];
-    const min7 = [1,0,0,1,0,0,0,1,0,0,1,0];
-    const templates = [{t:maj,s:''},{t:min,s:'m'},{t:maj7,s:'M7'},{t:min7,s:'m7'}];
-    let best = -1, bestName = 'N';
-    for (let root = 0; root < 12; root++) {
-        for (const {t, s} of templates) {
-            let score = 0;
-            for (let i = 0; i < 12; i++) score += chroma[(i + root) % 12] * t[i];
-            if (score > best) { best = score; bestName = notes[root] + s; }
-        }
-    }
-    return bestName;
-}
-async function runChordAnalysis() {
-    if (!currentAudioBuffer) return;
-    const btn = document.getElementById('chordAnalyzeBtn');
-    btn.disabled = true; btn.innerText = '解析中...';
-    await new Promise(r => setTimeout(r, 50));
-    const raw = currentAudioBuffer.getChannelData(0);
-    const sampleRate = currentAudioBuffer.sampleRate;
-    const frameSize = 8192;
-    const hopSamples = Math.floor(sampleRate * 1.5);
-    const results = [];
-    for (let offset = 0; offset + frameSize < raw.length; offset += hopSamples) {
-        const chroma = computeChromaFrame(raw, sampleRate, offset, frameSize);
-        const chord = matchChordFromChroma(chroma);
-        const time = offset / sampleRate;
-        if (results.length === 0 || results[results.length-1].chord !== chord) results.push({time, chord});
-    }
-    detectedChords = results;
-    renderChordList();
-    btn.disabled = false; btn.innerText = '再解析';
-}
-function renderChordList() {
-    const list = document.getElementById('chordResultList');
-    const panel = document.getElementById('chordResultPanel');
-    if (!list || !panel) return;
-    list.innerHTML = '';
-    detectedChords.forEach((c, idx) => {
-        const pill = document.createElement('span');
-        const min = Math.floor(c.time / 60), sec = Math.floor(c.time % 60);
-        pill.className = 'chord-result-pill';
-        pill.dataset.idx = idx;
-        pill.innerHTML = `<span style="font-size:0.65rem;color:var(--text-dim)">${min}:${String(sec).padStart(2,'0')}</span><br><b>${c.chord}</b>`;
-        pill.style.cssText = 'display:inline-block;padding:4px 8px;background:rgba(255,255,255,0.07);border-radius:6px;cursor:pointer;text-align:center;font-size:0.85rem;min-width:40px;border:1px solid transparent;';
-        pill.onclick = () => { if (wavesurfer) wavesurfer.setTime(c.time); };
-        list.appendChild(pill);
-    });
-    panel.style.display = detectedChords.length ? 'block' : 'none';
-}
-function updateCurrentChordDisplay() {
-    if (!detectedChords.length || !wavesurfer) return;
-    const t = wavesurfer.getCurrentTime();
-    let cur = detectedChords[0];
-    for (const c of detectedChords) { if (c.time <= t) cur = c; else break; }
-    const el = document.getElementById('chordCurrentDisplay');
-    if (el) el.innerText = cur ? cur.chord : '---';
-    // ハイライト
-    document.querySelectorAll('.chord-result-pill').forEach(p => {
-        const c = detectedChords[parseInt(p.dataset.idx)];
-        p.style.borderColor = (c === cur) ? 'var(--primary-color)' : 'transparent';
-    });
 }
 function updateKeyDisplay(keyResult) {
     const el = document.getElementById('keyDisplay');
@@ -1631,9 +1537,8 @@ function startApp() {
     wavesurfer.on('interaction', () => { if (recObjectURL && recWavesurfer) { const currentTime = wavesurfer.getCurrentTime(); const offset = currentTime - lastRecStartPos; if (offset >= 0 && offset < recWavesurfer.getDuration()) recWavesurfer.setTime(offset); else recWavesurfer.setTime(0); if (wavesurfer.isPlaying()) recWavesurfer.play(); } currentLoopCount = 0; lastTime = wavesurfer.getCurrentTime(); }); 
     recWavesurfer.on('interaction', () => { if (!recObjectURL) return; const recTime = recWavesurfer.getCurrentTime(); const targetMainTime = lastRecStartPos + recTime; if (targetMainTime <= wavesurfer.getDuration()) wavesurfer.setTime(targetMainTime); if (wavesurfer.isPlaying()) wavesurfer.play(); }); 
     
-    wavesurfer.on('timeupdate', t => {
-        document.getElementById('currentTime').innerText = fmt(t);
-        if (detectedChords.length) updateCurrentChordDisplay(); 
+    wavesurfer.on('timeupdate', t => { 
+        document.getElementById('currentTime').innerText = fmt(t); 
         if (wavesurfer.isPlaying() && recObjectURL && recWavesurfer && recWavesurfer.isPlaying()) { const expectedRecTime = t - lastRecStartPos; const actualRecTime = recWavesurfer.getCurrentTime(); if (Math.abs(actualRecTime - expectedRecTime) > 0.2) { if (expectedRecTime >= 0 && expectedRecTime < recWavesurfer.getDuration()) recWavesurfer.setTime(expectedRecTime); else recWavesurfer.pause(); } } 
         const r = wsRegions.getRegions()[0]; 
         const isNaturalPlay = (t - lastTime) >= 0 && (t - lastTime) < 0.5;

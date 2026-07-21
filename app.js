@@ -1104,7 +1104,7 @@ async function extractPdfTab(arrayBuffer) {
     pdfjsLib.GlobalWorkerOptions.workerSrc = PDF_WORKER;
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
     const OPS = pdfjsLib.OPS;
-    const numbers = [], lines = [], texts = [], vlines = [];
+    const numbers = [], lines = [], texts = [], vlines = [], diags = [];
     let pageOffset = 0;
     for (let p = 1; p <= pdf.numPages; p++) {
         const page = await pdf.getPage(p);
@@ -1142,6 +1142,12 @@ async function extractPdfTab(arrayBuffer) {
             } else if (Math.abs(a[0] - b[0]) < 0.8 && Math.abs(a[1] - b[1]) > 8) {
                 // 縦線＝小節線の候補（リズム推定に使う）
                 vlines.push({ x: a[0], yTop: (vp.height - Math.max(a[1], b[1])) + pageOffset, yBot: (vp.height - Math.min(a[1], b[1])) + pageOffset });
+            } else {
+                // 斜線＝ストローク記号(スラッシュ)の候補。同じコードの繰り返しを表す。
+                const dx = Math.abs(a[0] - b[0]), dy = Math.abs(a[1] - b[1]);
+                if (dx > 1.5 && dy > 1.5) {
+                    diags.push({ x: (a[0] + b[0]) / 2, y: (vp.height - (a[1] + b[1]) / 2) + pageOffset, dx, dy });
+                }
             }
         };
         for (let i = 0; i < ol.fnArray.length; i++) {
@@ -1177,7 +1183,7 @@ async function extractPdfTab(arrayBuffer) {
         pageOffset += vp.height + 50; // ページを縦に連結して読み順を保つ
         page.cleanup();
     }
-    return { numbers, lines, vlines, texts, textLines: buildTextLines(texts) };
+    return { numbers, lines, vlines, diags, texts, textLines: buildTextLines(texts) };
 }
 
 // テキスト片をy座標でまとめて「行」を作り、x順のトークン列にする
@@ -1293,8 +1299,13 @@ const DUR_TEX = { 32: ':1', 24: ':2 d', 16: ':2', 12: ':4 d', 8: ':4', 6: ':8 d'
 // 各システムに属する小節線のx座標を求める（縦線のy範囲がそのシステムの譜面と一致するもの）
 function barlinesForSystem(sys, vlines, spacing) {
     const tol = Math.max(2, spacing * 0.9);
+    const staffH = sys.bottom - sys.top;
     const xs = vlines
-        .filter(v => Math.abs(v.yTop - sys.top) < tol && Math.abs(v.yBot - sys.bottom) < tol)
+        // 譜面の上端から下端までを覆う縦線を小節線とみなす。
+        // 五線譜とTAB譜をまたいで引かれる小節線にも対応するため「一致」ではなく「覆う」で判定し、
+        // ページ枠のような極端に長い線は長さの上限で除外する。
+        .filter(v => v.yTop <= sys.top + tol && v.yBot >= sys.bottom - tol &&
+                     (v.yBot - v.yTop) <= staffH * 4)
         .map(v => v.x)
         .sort((a, b) => a - b);
     const uniq = [];
@@ -1336,12 +1347,46 @@ function _propsWithGamma(widths, gamma) {
     return s > 0 ? p.map(v => v / s) : widths.map(() => 1 / widths.length);
 }
 
+// あるシステム内のストローク記号(スラッシュ)のx座標を求める
+// スラッシュは平行四辺形の輪郭として同一xに複数の線分が描かれるため、xでまとめる
+function slashesForSystem(sys, diags, spacing) {
+    const inSys = diags.filter(d =>
+        d.y > sys.top - spacing * 0.5 && d.y < sys.bottom + spacing * 0.5 &&
+        d.x >= sys.x0 - 5 && d.x <= sys.x1 + 5 &&
+        d.dy >= spacing * 0.7 && d.dy <= spacing * 2.5 &&
+        d.dx >= spacing * 0.5 && d.dx <= spacing * 2.0
+    ).sort((a, b) => a.x - b.x);
+    const xs = [];
+    for (const d of inSys) {
+        if (!xs.length || d.x - xs[xs.length - 1] > spacing * 0.5) xs.push(d.x);
+    }
+    return xs;
+}
+
 // システム群＋小節線から「小節ごとのイベント列（音価付き）」を組み立てる
-function buildBars(systems, vlines, spacing, xTol) {
+function buildBars(systems, vlines, spacing, xTol, diags) {
     // まず小節ごとに「イベント列」と「各音の占有幅」を集める
     const raw = [];
     for (const sys of systems) {
-        const events = tabSystemsToEvents([sys.notes], xTol);
+        let events = tabSystemsToEvents([sys.notes], xTol);
+        if (!events.length) continue;
+        // ストローク記号を「直前のコードをもう一度鳴らす」イベントとして差し込む
+        const slashXs = slashesForSystem(sys, diags || [], spacing);
+        if (slashXs.length) {
+            const merged = events.slice();
+            for (const sx of slashXs) {
+                // 既存の音符と同じ位置なら重複させない
+                if (events.some(e => Math.abs(e.x - sx) <= Math.max(xTol, spacing * 0.5))) continue;
+                merged.push({ x: sx, slash: true, notes: null });
+            }
+            merged.sort((a, b) => a.x - b.x);
+            let lastNotes = null;
+            events = [];
+            for (const e of merged) {
+                if (e.slash) { if (lastNotes) events.push({ x: e.x, notes: lastNotes }); }
+                else { lastNotes = e.notes; events.push(e); }
+            }
+        }
         if (!events.length) continue;
         const bl = barlinesForSystem(sys, vlines, spacing);
         // 小節線が取れない場合はシステム全体を1つの塊として扱う
@@ -1519,7 +1564,7 @@ async function loadTabFromPdf(file) {
     try {
         pdfStatus('PDFを解析中...');
         const buf = await file.arrayBuffer();
-        const { numbers, lines, vlines, texts, textLines } = await extractPdfTab(buf);
+        const { numbers, lines, vlines, diags, texts, textLines } = await extractPdfTab(buf);
         const title = file.name.replace(/\.pdf$/i, '');
         const tempo = detectTempoFromTexts(texts);
 
@@ -1529,7 +1574,7 @@ async function loadTabFromPdf(file) {
         // 和音判定の許容幅は弦間隔に比例させる（同時に鳴る音はほぼ同一x、連続音はそれより離れる）
         const xTol = Math.max(1.2, (tab.spacing || 10) * 0.35);
         if (systems.length) {
-            const bars = buildBars(systems, vlines || [], tab.spacing, xTol);
+            const bars = buildBars(systems, vlines || [], tab.spacing, xTol, diags || []);
             const noteCount = bars.reduce((a, b) => a + b.events.length, 0);
             if (noteCount > 0) {
                 const fitted = bars.filter(b => b.durations).length;

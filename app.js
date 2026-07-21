@@ -979,9 +979,13 @@ function initGpMode() {
     try {
         gpApi = new alphaTab.AlphaTabApi(main, {
             core: { fontDirectory: GP_CDN + 'font/' },
+            // 楽譜の全記号をGuitar Pro準拠で忠実に描画（既定のGuitarProモードを明示）
+            notation: { notationMode: alphaTab.NotationMode.GuitarPro, fingeringMode: alphaTab.FingeringMode.ScoreDefault },
             display: { layoutMode: alphaTab.LayoutMode.Page, scale: 1.0 },
             player: {
                 enablePlayer: true,
+                // 常に内蔵シンセで再生（GP7以降の埋め込みバッキング音源だと楽譜のテンポ/リピートに追従せずズレるため）
+                playerMode: alphaTab.PlayerMode.EnabledSynthesizer,
                 enableCursor: true,
                 enableUserInteraction: true,
                 soundFont: GP_CDN + 'soundfont/sonivox.sf2',

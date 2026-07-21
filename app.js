@@ -1104,7 +1104,7 @@ async function extractPdfTab(arrayBuffer) {
     pdfjsLib.GlobalWorkerOptions.workerSrc = PDF_WORKER;
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
     const OPS = pdfjsLib.OPS;
-    const numbers = [], lines = [], texts = [];
+    const numbers = [], lines = [], texts = [], vlines = [];
     let pageOffset = 0;
     for (let p = 1; p <= pdf.numPages; p++) {
         const page = await pdf.getPage(p);
@@ -1139,6 +1139,9 @@ async function extractPdfTab(arrayBuffer) {
             const b = Util.applyTransform([bx, by], ctm);
             if (Math.abs(a[1] - b[1]) < 0.8 && Math.abs(a[0] - b[0]) > 50) {
                 lines.push({ y: (vp.height - a[1]) + pageOffset, x0: Math.min(a[0], b[0]), x1: Math.max(a[0], b[0]) });
+            } else if (Math.abs(a[0] - b[0]) < 0.8 && Math.abs(a[1] - b[1]) > 8) {
+                // 縦線＝小節線の候補（リズム推定に使う）
+                vlines.push({ x: a[0], yTop: (vp.height - Math.max(a[1], b[1])) + pageOffset, yBot: (vp.height - Math.min(a[1], b[1])) + pageOffset });
             }
         };
         for (let i = 0; i < ol.fnArray.length; i++) {
@@ -1165,6 +1168,8 @@ async function extractPdfTab(arrayBuffer) {
                     const b = Util.applyTransform([rx + rw, ry + rh], ctm);
                     if (Math.abs(b[1] - a[1]) < 2.5 && Math.abs(b[0] - a[0]) > 50) {
                         lines.push({ y: (vp.height - (a[1] + b[1]) / 2) + pageOffset, x0: Math.min(a[0], b[0]), x1: Math.max(a[0], b[0]) });
+                    } else if (Math.abs(b[0] - a[0]) < 2.5 && Math.abs(b[1] - a[1]) > 8) {
+                        vlines.push({ x: (a[0] + b[0]) / 2, yTop: (vp.height - Math.max(a[1], b[1])) + pageOffset, yBot: (vp.height - Math.min(a[1], b[1])) + pageOffset });
                     }
                 }
             }
@@ -1172,7 +1177,7 @@ async function extractPdfTab(arrayBuffer) {
         pageOffset += vp.height + 50; // ページを縦に連結して読み順を保つ
         page.cleanup();
     }
-    return { numbers, lines, textLines: buildTextLines(texts) };
+    return { numbers, lines, vlines, texts, textLines: buildTextLines(texts) };
 }
 
 // テキスト片をy座標でまとめて「行」を作り、x順のトークン列にする
@@ -1258,7 +1263,10 @@ function groupTabSystems(numbers, lines) {
         if (modeH > 0 && Math.abs(c.h - modeH) > hTol) continue;
         result[c.si].push({ string: c.string, fret: c.fret, x: c.x });
     }
-    return { systems: result.filter(a => a.length > 0), spacing };
+    // 音符と一緒にシステムの幾何情報も返す（小節線の対応付けに使う）
+    const out = [];
+    systems.forEach((s, i) => { if (result[i].length) out.push({ notes: result[i], top: s.top, bottom: s.bottom, x0: s.x0, x1: s.x1 }); });
+    return { systems: out, spacing };
 }
 
 // システム群を「時間順のイベント列」に変換（x座標が近い音は和音として束ねる）
@@ -1275,6 +1283,135 @@ function tabSystemsToEvents(systems, xTol) {
         }
     }
     return events;
+}
+
+/* ----- リズム推定：小節線で区切り、小節内の音符の間隔比から音価を逆算する ----- */
+// 32分音符を1単位とし、1小節(4/4)=32単位。使用できる音価のみを候補にする。
+const DUR_UNITS = [1, 2, 3, 4, 6, 8, 12, 16, 24, 32];
+const DUR_TEX = { 32: ':1', 24: ':2 d', 16: ':2', 12: ':4 d', 8: ':4', 6: ':8 d', 4: ':8', 3: ':16 d', 2: ':16', 1: ':32' };
+
+// 各システムに属する小節線のx座標を求める（縦線のy範囲がそのシステムの譜面と一致するもの）
+function barlinesForSystem(sys, vlines, spacing) {
+    const tol = Math.max(2, spacing * 0.9);
+    const xs = vlines
+        .filter(v => Math.abs(v.yTop - sys.top) < tol && Math.abs(v.yBot - sys.bottom) < tol)
+        .map(v => v.x)
+        .sort((a, b) => a - b);
+    const uniq = [];
+    for (const x of xs) { if (!uniq.length || x - uniq[uniq.length - 1] > 3) uniq.push(x); } // 複縦線をまとめる
+    return uniq;
+}
+
+// 幅の比率から音価(単位)を決める。合計がちょうど1小節になる組合せをDPで最適化。
+function fitDurations(props, totalUnits) {
+    const N = props.length;
+    if (N === 0 || N > totalUnits) return null;
+    const INF = Infinity;
+    const dp = [], back = [];
+    for (let i = 0; i <= N; i++) { dp.push(new Float64Array(totalUnits + 1).fill(INF)); back.push(new Int16Array(totalUnits + 1).fill(-1)); }
+    dp[0][0] = 0;
+    for (let i = 0; i < N; i++) {
+        const target = props[i] * totalUnits;
+        for (let s = 0; s <= totalUnits; s++) {
+            if (dp[i][s] === INF) continue;
+            for (const d of DUR_UNITS) {
+                const ns = s + d;
+                if (ns > totalUnits) continue;
+                const cost = dp[i][s] + Math.abs(d - target);
+                if (cost < dp[i + 1][ns]) { dp[i + 1][ns] = cost; back[i + 1][ns] = d; }
+            }
+        }
+    }
+    if (dp[N][totalUnits] === INF) return null;
+    const out = new Array(N);
+    let s = totalUnits;
+    for (let i = N; i > 0; i--) { const d = back[i][s]; out[i - 1] = d; s -= d; }
+    return { durs: out, cost: dp[N][totalUnits] };
+}
+
+// 幅→音価の非線形補正。浄書は音価のk乗(k<1)で幅を配分するため、幅のγ乗で戻す。
+function _propsWithGamma(widths, gamma) {
+    const p = widths.map(w => Math.pow(Math.max(w, 0.0001), gamma));
+    const s = p.reduce((a, v) => a + v, 0);
+    return s > 0 ? p.map(v => v / s) : widths.map(() => 1 / widths.length);
+}
+
+// システム群＋小節線から「小節ごとのイベント列（音価付き）」を組み立てる
+function buildBars(systems, vlines, spacing, xTol) {
+    // まず小節ごとに「イベント列」と「各音の占有幅」を集める
+    const raw = [];
+    for (const sys of systems) {
+        const events = tabSystemsToEvents([sys.notes], xTol);
+        if (!events.length) continue;
+        const bl = barlinesForSystem(sys, vlines, spacing);
+        // 小節線が取れない場合はシステム全体を1つの塊として扱う
+        const bounds = bl.length >= 2 ? bl : [sys.x0, sys.x1];
+        for (let b = 0; b < bounds.length - 1; b++) {
+            const bx0 = bounds[b], bx1 = bounds[b + 1];
+            const inBar = events.filter(e => e.x >= bx0 - 1 && e.x < bx1 - 0.5);
+            if (!inBar.length) continue;
+            // 各音の占有幅＝次の音までの距離（最後の音は小節末まで）
+            const widths = inBar.map((e, i) => (i < inBar.length - 1 ? inBar[i + 1].x : bx1) - e.x);
+            raw.push({ events: inBar, widths });
+        }
+    }
+    if (!raw.length) return [];
+    // 補正の強さγを複数試し、全小節の当てはまりが最も良いものを採用する
+    // （浄書ソフトごとに幅の配分特性が異なるため固定値にしない）
+    const GAMMAS = [1.0, 1.2, 1.4, 1.6, 1.8, 2.0, 2.3];
+    let best = null;
+    for (const g of GAMMAS) {
+        let cost = 0, fitted = 0;
+        const durs = raw.map(r => {
+            const f = fitDurations(_propsWithGamma(r.widths, g), 32);
+            if (f) {
+                // γの良し悪しは音符が3つ以上ある小節でしか判別できないため、そこだけを評価対象にする
+                if (r.widths.length >= 3) cost += f.cost;
+                fitted++; return f.durs;
+            }
+            cost += 32; return null;
+        });
+        if (!best || cost < best.cost) best = { gamma: g, cost, durs, fitted };
+    }
+    const bars = raw.map((r, i) => ({ events: r.events, durations: best.durs[i] }));
+    bars.gamma = best.gamma;
+    bars.fitted = best.fitted;
+    return bars;
+}
+
+// 小節群→alphaTex（音価付き）
+function barsToAlphaTex(bars, title, tempo, fallbackNoteValue) {
+    // リズムを推定できなかった小節で使う既定の音価（UIの「音符」指定）
+    const fbUnits = { 4: 8, 8: 4, 16: 2 }[fallbackNoteValue] || 4;
+    const parts = [];
+    let lastTex = null;
+    bars.forEach((bar, bi) => {
+        const toks = [];
+        bar.events.forEach((ev, i) => {
+            const uniq = new Map();
+            ev.notes.forEach(n => { if (!uniq.has(n.string)) uniq.set(n.string, n.fret); });
+            const notes = [...uniq.entries()].map(([s, f]) => f + '.' + s);
+            const beat = notes.length > 1 ? '(' + notes.join(' ') + ')' : notes[0];
+            const u = bar.durations ? bar.durations[i] : fbUnits;
+            const spec = (DUR_TEX[u] || ':8').split(' ');        // 例 ":4 d"
+            let out = '';
+            if (spec[0] !== lastTex) { out += spec[0] + ' '; lastTex = spec[0]; }
+            out += beat + (spec[1] === 'd' ? '{d}' : '');
+            toks.push(out);
+        });
+        parts.push(toks.join(' '));
+    });
+    const safeTitle = (title || 'PDF Score').replace(/["\\]/g, '');
+    return '\\title "' + safeTitle + '" \\tempo ' + (tempo || 90) + ' . ' + parts.join(' | ');
+}
+
+// 譜面のテンポ表記（♩= 134 など）を読み取る
+function detectTempoFromTexts(texts) {
+    for (const t of (texts || [])) {
+        const m = /=\s*(\d{2,3})/.exec(t.str || '');
+        if (m) { const v = parseInt(m[1], 10); if (v >= 40 && v <= 300) return v; }
+    }
+    return null;
 }
 
 // イベント列をalphaTexへ（音価は均一、4/4で小節を区切る）
@@ -1382,20 +1519,26 @@ async function loadTabFromPdf(file) {
     try {
         pdfStatus('PDFを解析中...');
         const buf = await file.arrayBuffer();
-        const { numbers, lines, textLines } = await extractPdfTab(buf);
+        const { numbers, lines, vlines, texts, textLines } = await extractPdfTab(buf);
         const title = file.name.replace(/\.pdf$/i, '');
+        const tempo = detectTempoFromTexts(texts);
 
         // ① TAB譜として読めるか試す
         const tab = (numbers.length && lines.length >= 6) ? groupTabSystems(numbers, lines) : { systems: [], spacing: 0 };
         const systems = tab.systems;
         // 和音判定の許容幅は弦間隔に比例させる（同時に鳴る音はほぼ同一x、連続音はそれより離れる）
         const xTol = Math.max(1.2, (tab.spacing || 10) * 0.35);
-        const events = systems.length ? tabSystemsToEvents(systems, xTol) : [];
-        if (events.length > 0) {
-            const noteValue = parseInt(document.getElementById('pdfNoteValue').value, 10) || 8;
-            gpApi.tex(eventsToAlphaTex(events, noteValue, title));
-            pdfStatus('TAB譜として読み取り: ' + systems.length + '段 / ' + events.length + '音（音の長さは均一で再生します）');
-            return;
+        if (systems.length) {
+            const bars = buildBars(systems, vlines || [], tab.spacing, xTol);
+            const noteCount = bars.reduce((a, b) => a + b.events.length, 0);
+            if (noteCount > 0) {
+                const fitted = bars.filter(b => b.durations).length;
+                const noteValue = parseInt(document.getElementById('pdfNoteValue').value, 10) || 8;
+                gpApi.tex(barsToAlphaTex(bars, title, tempo, noteValue));
+                pdfStatus('TAB譜として読み取り: ' + systems.length + '段 / ' + bars.length + '小節 / ' + noteCount + '音'
+                    + '（リズム推定 ' + fitted + '/' + bars.length + '小節' + (tempo ? ' ・テンポ' + tempo : '') + '）');
+                return;
+            }
         }
 
         // ② TAB譜が無ければコードストローク譜として試す

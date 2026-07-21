@@ -1104,7 +1104,7 @@ async function extractPdfTab(arrayBuffer) {
     pdfjsLib.GlobalWorkerOptions.workerSrc = PDF_WORKER;
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
     const OPS = pdfjsLib.OPS;
-    const numbers = [], lines = [];
+    const numbers = [], lines = [], texts = [];
     let pageOffset = 0;
     for (let p = 1; p <= pdf.numPages; p++) {
         const page = await pdf.getPage(p);
@@ -1112,11 +1112,21 @@ async function extractPdfTab(arrayBuffer) {
         // --- 数字テキスト ---
         const tc = await page.getTextContent();
         for (const it of tc.items) {
-            const s = (it.str || '').trim();
-            if (!/^\d{1,2}$/.test(s)) continue;
-            const fret = parseInt(s, 10);
-            if (fret < 0 || fret > 24) continue;
-            numbers.push({ fret, x: it.transform[4], y: (vp.height - it.transform[5]) + pageOffset });
+            const raw = it.str || '';
+            if (raw.trim()) texts.push({ str: raw, x: it.transform[4], y: (vp.height - it.transform[5]) + pageOffset });
+            if (!/\d/.test(raw)) continue;
+            // PDF.jsは近接した数字を1つのテキストに結合することがあるため（例 "12 0"）、
+            // 数字トークンごとに分解し、文字幅から個々のx座標を推定する
+            const baseX = it.transform[4];
+            const perChar = raw.length ? (it.width || 0) / raw.length : 0;
+            const y = (vp.height - it.transform[5]) + pageOffset;
+            const re = /\d{1,2}/g;
+            let m;
+            while ((m = re.exec(raw)) !== null) {
+                const fret = parseInt(m[0], 10);
+                if (fret < 0 || fret > 24) continue;
+                numbers.push({ fret, x: baseX + m.index * perChar, y });
+            }
         }
         // --- 水平罫線（TAB譜の弦）---
         const ol = await page.getOperatorList();
@@ -1143,7 +1153,26 @@ async function extractPdfTab(arrayBuffer) {
         pageOffset += vp.height + 50; // ページを縦に連結して読み順を保つ
         page.cleanup();
     }
-    return { numbers, lines };
+    return { numbers, lines, textLines: buildTextLines(texts) };
+}
+
+// テキスト片をy座標でまとめて「行」を作り、x順のトークン列にする
+function buildTextLines(texts) {
+    if (!texts.length) return [];
+    const sorted = texts.slice().sort((a, b) => a.y - b.y || a.x - b.x);
+    const rows = [];
+    for (const t of sorted) {
+        const last = rows[rows.length - 1];
+        if (last && Math.abs(t.y - last.y) <= 4) last.items.push(t);
+        else rows.push({ y: t.y, items: [t] });
+    }
+    return rows.map(r => {
+        const tokens = [];
+        r.items.sort((a, b) => a.x - b.x).forEach(it => {
+            it.str.split(/\s+/).forEach(tok => { if (tok) tokens.push(tok); });
+        });
+        return { y: r.y, tokens };
+    });
 }
 
 // 罫線を6本一組のシステムにまとめ、各数字を最も近い罫線＝弦に割り当てる
@@ -1224,22 +1253,122 @@ function eventsToAlphaTex(events, noteValue, title) {
     return '\\title "' + safeTitle + '" \\tempo 90 . :' + noteValue + ' ' + parts.join(' ');
 }
 
+/* ----- コードストローク譜（コードネームが並ぶ譜面）への対応 ----- */
+// よく使う開放コードの押さえ方 [6弦,5弦,4弦,3弦,2弦,1弦]（-1=ミュート）
+const OPEN_VOICINGS = {
+    'C':[-1,3,2,0,1,0], 'D':[-1,-1,0,2,3,2], 'E':[0,2,2,1,0,0], 'F':[1,3,3,2,1,1],
+    'G':[3,2,0,0,0,3], 'A':[-1,0,2,2,2,0], 'B':[-1,2,4,4,4,2],
+    'Am':[-1,0,2,2,1,0], 'Bm':[-1,2,4,4,3,2], 'Cm':[-1,3,5,5,4,3], 'Dm':[-1,-1,0,2,3,1],
+    'Em':[0,2,2,0,0,0], 'Fm':[1,3,3,1,1,1], 'Gm':[3,5,5,3,3,3],
+    'C7':[-1,3,2,3,1,0], 'D7':[-1,-1,0,2,1,2], 'E7':[0,2,0,1,0,0], 'F7':[1,3,1,2,1,1],
+    'G7':[3,2,0,0,0,1], 'A7':[-1,0,2,0,2,0], 'B7':[-1,2,1,2,0,2],
+    'Am7':[-1,0,2,0,1,0], 'Bm7':[-1,2,0,2,0,2], 'Dm7':[-1,-1,0,2,1,1], 'Em7':[0,2,2,0,3,0],
+    'Cmaj7':[-1,3,2,0,0,0], 'Dmaj7':[-1,-1,0,2,2,2], 'Emaj7':[0,2,1,1,0,0],
+    'Fmaj7':[-1,-1,3,2,1,0], 'Gmaj7':[3,2,0,0,0,2], 'Amaj7':[-1,0,2,1,2,0],
+    'Csus4':[-1,3,3,0,1,1], 'Dsus4':[-1,-1,0,2,3,3], 'Esus4':[0,2,2,2,0,0],
+    'Gsus4':[3,3,0,0,1,3], 'Asus4':[-1,0,2,2,3,0],
+    'Dsus2':[-1,-1,0,2,3,0], 'Asus2':[-1,0,2,2,0,0]
+};
+const _PC = { 'C':0,'C#':1,'Db':1,'D':2,'D#':3,'Eb':3,'E':4,'F':5,'F#':6,'Gb':6,'G':7,'G#':8,'Ab':8,'A':9,'A#':10,'Bb':10,'B':11 };
+// バレーコードの形（ルート=6弦 / 5弦）
+const _SHAPE_E = { 'maj':[0,2,2,1,0,0], 'm':[0,2,2,0,0,0], '7':[0,2,0,1,0,0], 'm7':[0,2,0,0,0,0], 'maj7':[0,2,1,1,0,0], 'sus4':[0,2,2,2,0,0], 'dim':[0,1,2,0,-1,-1], 'aug':[0,3,2,1,1,0] };
+const _SHAPE_A = { 'maj':[-1,0,2,2,2,0], 'm':[-1,0,2,2,1,0], '7':[-1,0,2,0,2,0], 'm7':[-1,0,2,0,1,0], 'maj7':[-1,0,2,1,2,0], 'sus4':[-1,0,2,2,3,0], 'dim':[-1,0,1,2,1,-1], 'aug':[-1,0,3,2,2,-1] };
+
+// コードネームの妥当性チェック＆分解
+const CHORD_RE = /^([A-G])([#♯b♭]?)((?:maj|Maj|MAJ|M|min|m|dim|aug|sus|add|°|\+|-)?\d{0,2}(?:sus\d|add\d|b5|#5|b9|#9)?)(?:\/([A-G][#♯b♭]?))?$/;
+function parseChordName(tok) {
+    const m = CHORD_RE.exec(tok);
+    if (!m) return null;
+    const root = m[1] + (m[2] ? m[2].replace('♯', '#').replace('♭', 'b') : '');
+    if (!(root in _PC)) return null;
+    let q = (m[3] || '').replace('Maj', 'maj').replace('MAJ', 'maj');
+    let quality;
+    if (/^(maj7|M7|△7)/.test(q)) quality = 'maj7';
+    else if (/^m7|^min7|^-7/.test(q)) quality = 'm7';
+    else if (/^(dim|°)/.test(q)) quality = 'dim';
+    else if (/^(aug|\+)/.test(q)) quality = 'aug';
+    else if (/^sus2/.test(q)) quality = 'sus2';
+    else if (/^sus/.test(q)) quality = 'sus4';
+    else if (/^(m|min|-)/.test(q) && !/^maj/.test(q)) quality = /7/.test(q) ? 'm7' : 'm';
+    else if (/7/.test(q)) quality = /maj/.test(q) ? 'maj7' : '7';
+    else quality = 'maj';
+    return { root, quality, display: tok };
+}
+// コードネーム→押さえ方（開放コード表→無ければバレーで算出）
+function chordToFrets(ch) {
+    const key = ch.root + (ch.quality === 'maj' ? '' : ch.quality === 'm' ? 'm' : ch.quality);
+    if (OPEN_VOICINGS[key]) return OPEN_VOICINGS[key];
+    const pc = _PC[ch.root];
+    const q = (ch.quality === 'sus2') ? 'sus4' : ch.quality;
+    const eFret = ((pc - 4) % 12 + 12) % 12;   // 6弦ルート(E=4)
+    const aFret = ((pc - 9) % 12 + 12) % 12;   // 5弦ルート(A=9)
+    const useE = (eFret > 0 && eFret <= 7) || aFret === 0;
+    const shape = useE ? (_SHAPE_E[q] || _SHAPE_E['maj']) : (_SHAPE_A[q] || _SHAPE_A['maj']);
+    const n = useE ? (eFret === 0 ? 12 : eFret) : (aFret === 0 ? 12 : aFret);
+    return shape.map(v => v < 0 ? -1 : v + n);
+}
+// PDFテキストから「コードが主体の行」を抽出し、読み順にコードを並べる
+function extractChordsFromText(textLines) {
+    const chords = [];
+    for (const line of textLines) {
+        const tokens = line.tokens;
+        if (!tokens.length) continue;
+        const parsed = tokens.map(t => parseChordName(t));
+        const hits = parsed.filter(Boolean).length;
+        // 行の6割以上がコード名の行のみ採用（歌詞行・ヘッダ行を除外）
+        if (hits >= 2 && hits / tokens.length >= 0.6) {
+            parsed.forEach(p => { if (p) chords.push(p); });
+        }
+    }
+    return chords;
+}
+// コード列→alphaTex（1コード=1小節、4分音符×4回のストローク）
+function chordsToAlphaTex(chords, title, tempo) {
+    const bars = chords.map(ch => {
+        const frets = chordToFrets(ch);
+        const toks = [];
+        frets.forEach((f, i) => { if (f >= 0 && f <= 24) toks.push(f + '.' + (6 - i)); });
+        if (!toks.length) return null;
+        const beat = '(' + toks.join(' ') + ')';
+        const name = ch.display.replace(/["\\]/g, '');
+        return beat + '{ch "' + name + '"} ' + beat + ' ' + beat + ' ' + beat;
+    }).filter(Boolean);
+    const safeTitle = (title || 'Chord Sheet').replace(/["\\]/g, '');
+    return '\\title "' + safeTitle + '" \\tempo ' + (tempo || 100) + ' . :4 ' + bars.join(' | ');
+}
+
 async function loadTabFromPdf(file) {
     if (typeof pdfjsLib === 'undefined') { pdfStatus('PDF読み込みライブラリが利用できません。'); return; }
     if (!gpApi) { pdfStatus('先にTAB譜モードを開いてください。'); return; }
     try {
         pdfStatus('PDFを解析中...');
         const buf = await file.arrayBuffer();
-        const { numbers, lines } = await extractPdfTab(buf);
-        if (numbers.length === 0) { pdfStatus('数字が検出できませんでした。スキャン画像のPDFの可能性があります（文字情報を持つPDFのみ対応）。'); return; }
-        if (lines.length < 6) { pdfStatus('TAB譜の罫線が検出できませんでした。画像として描かれたPDFの可能性があります。'); return; }
-        const systems = groupTabSystems(numbers, lines);
-        const events = tabSystemsToEvents(systems);
-        if (events.length === 0) { pdfStatus('TAB譜の構造を認識できませんでした。'); return; }
-        const noteValue = parseInt(document.getElementById('pdfNoteValue').value, 10) || 8;
-        const tex = eventsToAlphaTex(events, noteValue, file.name.replace(/\.pdf$/i, ''));
-        gpApi.tex(tex);
-        pdfStatus('読み取り完了: ' + systems.length + '段 / ' + events.length + '音（音の長さは均一で再生します）');
+        const { numbers, lines, textLines } = await extractPdfTab(buf);
+        const title = file.name.replace(/\.pdf$/i, '');
+
+        // ① TAB譜として読めるか試す
+        const systems = (numbers.length && lines.length >= 6) ? groupTabSystems(numbers, lines) : [];
+        const events = systems.length ? tabSystemsToEvents(systems) : [];
+        if (events.length > 0) {
+            const noteValue = parseInt(document.getElementById('pdfNoteValue').value, 10) || 8;
+            gpApi.tex(eventsToAlphaTex(events, noteValue, title));
+            pdfStatus('TAB譜として読み取り: ' + systems.length + '段 / ' + events.length + '音（音の長さは均一で再生します）');
+            return;
+        }
+
+        // ② TAB譜が無ければコードストローク譜として試す
+        const chords = extractChordsFromText(textLines || []);
+        if (chords.length >= 2) {
+            gpApi.tex(chordsToAlphaTex(chords, title, 100));
+            pdfStatus('コード譜として読み取り: ' + chords.length + 'コード（1コード=1小節・4分音符でストローク再生）');
+            return;
+        }
+
+        if (numbers.length === 0 && (!textLines || textLines.length === 0)) {
+            pdfStatus('文字情報が検出できませんでした。スキャン画像のPDFは読み取れません。');
+        } else {
+            pdfStatus('TAB譜の罫線もコードネームも認識できませんでした。対応形式か確認してください。');
+        }
     } catch (e) {
         console.error('PDF parse error:', e);
         pdfStatus('PDFの解析に失敗しました: ' + (e && e.message ? e.message : e));

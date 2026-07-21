@@ -456,7 +456,7 @@
         <div style="border:1px solid var(--border-color); border-radius:10px; padding:10px 12px; margin-bottom:12px; background:rgba(0,0,0,0.25);">
             <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap;">
                 <span style="font-size:0.75rem; font-weight:bold; color:var(--text-dim);">
-                    <span class="material-icons" style="font-size:15px; vertical-align:middle;">science</span> PDF TAB譜の読み取り（実験機能）
+                    <span class="material-icons" style="font-size:15px; vertical-align:middle;">science</span> PDF譜面の読み取り（実験機能）
                 </span>
                 <div style="display:flex; align-items:center; gap:6px;">
                     <span style="font-size:0.7rem; color:var(--text-dim);">音符</span>
@@ -470,8 +470,10 @@
                 </div>
             </div>
             <p style="font-size:0.65rem; color:var(--text-dim); margin:8px 0 0; line-height:1.6;">
-                ※ 文字情報を持つPDF（Guitar Pro等から出力したもの）のTAB譜のみ対応。スキャン画像のPDFは読み取れません。<br>
-                ※ PDFのTAB譜には音の長さ情報が無いため、<b>全音符を同じ長さで再生</b>します（上の「音符」で指定）。
+                ※ <b>TAB譜</b>と<b>コードストローク譜</b>（コードネームが並ぶ譜面）に対応。自動で判別します。<br>
+                ※ 文字情報を持つPDFのみ対応。<b>スキャン画像のPDFは読み取れません</b>。<br>
+                ※ TAB譜は音の長さ情報が無いため<b>全音符を同じ長さで再生</b>します（上の「音符」で指定）。<br>
+                ※ コード譜は<b>1コード＝1小節・4分音符×4回のストローク</b>で再生します。
             </p>
             <div id="pdfStatus" style="font-size:0.7rem; color:var(--primary-color); margin-top:6px; min-height:1.1em;"></div>
         </div>

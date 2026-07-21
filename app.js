@@ -1125,29 +1125,48 @@ async function extractPdfTab(arrayBuffer) {
             while ((m = re.exec(raw)) !== null) {
                 const fret = parseInt(m[0], 10);
                 if (fret < 0 || fret > 24) continue;
-                numbers.push({ fret, x: baseX + m.index * perChar, y });
+                numbers.push({ fret, x: baseX + m.index * perChar, y, h: Math.abs(it.transform[3]) || 0 });
             }
         }
         // --- 水平罫線（TAB譜の弦）---
+        // 実際のPDFは座標変換(cm)を多用するため、変換行列(CTM)を追跡して実座標に直す
+        const Util = pdfjsLib.Util;
         const ol = await page.getOperatorList();
+        let ctm = [1, 0, 0, 1, 0, 0];
+        const ctmStack = [];
+        const addLine = (ax, ay, bx, by) => {
+            const a = Util.applyTransform([ax, ay], ctm);
+            const b = Util.applyTransform([bx, by], ctm);
+            if (Math.abs(a[1] - b[1]) < 0.8 && Math.abs(a[0] - b[0]) > 50) {
+                lines.push({ y: (vp.height - a[1]) + pageOffset, x0: Math.min(a[0], b[0]), x1: Math.max(a[0], b[0]) });
+            }
+        };
         for (let i = 0; i < ol.fnArray.length; i++) {
-            if (ol.fnArray[i] !== OPS.constructPath) continue;
-            const args = ol.argsArray[i];
+            const fn = ol.fnArray[i], args = ol.argsArray[i];
+            if (fn === OPS.save) { ctmStack.push(ctm.slice()); continue; }
+            if (fn === OPS.restore) { ctm = ctmStack.pop() || [1, 0, 0, 1, 0, 0]; continue; }
+            if (fn === OPS.transform) { ctm = Util.transform(ctm, args); continue; }
+            if (fn !== OPS.constructPath) continue;
             const ops = args[0], coords = args[1];
             let ci = 0, cx = 0, cy = 0;
             for (const op of ops) {
                 if (op === OPS.moveTo) { cx = coords[ci]; cy = coords[ci + 1]; ci += 2; }
                 else if (op === OPS.lineTo) {
                     const nx = coords[ci], ny = coords[ci + 1]; ci += 2;
-                    // 水平かつ十分な長さ＝譜面の罫線とみなす
-                    if (Math.abs(ny - cy) < 0.6 && Math.abs(nx - cx) > 80) {
-                        lines.push({ y: (vp.height - cy) + pageOffset, x0: Math.min(cx, nx), x1: Math.max(cx, nx) });
-                    }
+                    addLine(cx, cy, nx, ny);
                     cx = nx; cy = ny;
                 }
                 else if (op === OPS.curveTo) ci += 6;
                 else if (op === OPS.curveTo2 || op === OPS.curveTo3) ci += 4;
-                else if (op === OPS.rectangle) ci += 4;
+                else if (op === OPS.rectangle) {
+                    // 罫線が「細長い塗り矩形」で描かれるPDFにも対応
+                    const rx = coords[ci], ry = coords[ci + 1], rw = coords[ci + 2], rh = coords[ci + 3]; ci += 4;
+                    const a = Util.applyTransform([rx, ry], ctm);
+                    const b = Util.applyTransform([rx + rw, ry + rh], ctm);
+                    if (Math.abs(b[1] - a[1]) < 2.5 && Math.abs(b[0] - a[0]) > 50) {
+                        lines.push({ y: (vp.height - (a[1] + b[1]) / 2) + pageOffset, x0: Math.min(a[0], b[0]), x1: Math.max(a[0], b[0]) });
+                    }
+                }
             }
         }
         pageOffset += vp.height + 50; // ページを縦に連結して読み順を保つ
@@ -1177,15 +1196,21 @@ function buildTextLines(texts) {
 
 // 罫線を6本一組のシステムにまとめ、各数字を最も近い罫線＝弦に割り当てる
 function groupTabSystems(numbers, lines) {
-    if (!lines.length || !numbers.length) return [];
+    if (!lines.length || !numbers.length) return { systems: [], spacing: 0 };
     // 罫線のy座標を重複除去してソート
     const ys = [];
     lines.slice().sort((a, b) => a.y - b.y).forEach(l => {
         const last = ys[ys.length - 1];
-        if (last && Math.abs(l.y - last.y) < 1.5) return; // 同一線の重複描画を除去
+        // 罫線は複数の線分に分割して描かれるため、同一yの線分はx範囲を統合する
+        // （破棄すると罫線の横幅が実際より短くなり、大半の音符が範囲外と判定されてしまう）
+        if (last && Math.abs(l.y - last.y) < 1.5) {
+            last.x0 = Math.min(last.x0, l.x0);
+            last.x1 = Math.max(last.x1, l.x1);
+            return;
+        }
         ys.push({ y: l.y, x0: l.x0, x1: l.x1 });
     });
-    if (ys.length < 6) return [];
+    if (ys.length < 6) return { systems: [], spacing: 0 };
     // 線間隔の中央値＝弦の間隔
     const gaps = [];
     for (let i = 1; i < ys.length; i++) gaps.push(ys[i].y - ys[i - 1].y);
@@ -1204,9 +1229,10 @@ function groupTabSystems(numbers, lines) {
         top: g[0].y, bottom: g[5].y, lines: g,
         x0: Math.min(...g.map(l => l.x0)), x1: Math.max(...g.map(l => l.x1))
     }));
-    if (!systems.length) return [];
+    if (!systems.length) return { systems: [], spacing: 0 };
     // 各数字を、y範囲が合致するシステムの最も近い罫線に割り当て
     const result = systems.map(() => []);
+    const cand = [];
     for (const n of numbers) {
         let si = -1;
         for (let i = 0; i < systems.length; i++) {
@@ -1214,19 +1240,32 @@ function groupTabSystems(numbers, lines) {
             if (n.y >= s.top - spacing * 0.9 && n.y <= s.bottom + spacing * 0.9 &&
                 n.x >= s.x0 - 20 && n.x <= s.x1 + 20) { si = i; break; }
         }
-        if (si < 0) continue; // 譜面外の数字（ページ番号・小節番号など）は除外
+        if (si < 0) continue; // 譜面外の数字（ページ番号・コードダイアグラム等）は除外
         const s = systems[si];
-        let str = Math.round((n.y - s.top) / spacing) + 1;
-        if (str < 1) str = 1; if (str > 6) str = 6;
-        result[si].push({ string: str, fret: n.fret, x: n.x });
+        const rel = (n.y - s.top) / spacing;
+        const str = Math.round(rel) + 1;
+        if (str < 1 || str > 6) continue;                        // 6弦の範囲外は採用しない
+        if (Math.abs(rel - Math.round(rel)) > 0.45) continue;     // 罫線から離れすぎ＝小節番号等
+        cand.push({ si, string: str, fret: n.fret, x: n.x, h: n.h || 0 });
     }
-    return result.filter(a => a.length > 0);
+    // フォント高さの最頻値＝フレット番号のサイズ。小節番号は一回り小さいので除外できる
+    const hCount = new Map();
+    cand.forEach(c => { const k = Math.round(c.h * 10) / 10; hCount.set(k, (hCount.get(k) || 0) + 1); });
+    let modeH = 0, bestN = -1;
+    hCount.forEach((v, k) => { if (v > bestN) { bestN = v; modeH = k; } });
+    const hTol = Math.max(0.35, modeH * 0.06); // 小節番号(一回り小さい)を確実に分離できる幅
+    for (const c of cand) {
+        if (modeH > 0 && Math.abs(c.h - modeH) > hTol) continue;
+        result[c.si].push({ string: c.string, fret: c.fret, x: c.x });
+    }
+    return { systems: result.filter(a => a.length > 0), spacing };
 }
 
 // システム群を「時間順のイベント列」に変換（x座標が近い音は和音として束ねる）
-function tabSystemsToEvents(systems) {
+// xTol は譜面のスケール（弦の間隔）から算出する。固定値だと小さい譜面で連続音を誤結合するため。
+function tabSystemsToEvents(systems, xTol) {
     const events = [];
-    const X_TOL = 6;
+    const X_TOL = (typeof xTol === 'number' && xTol > 0) ? xTol : 6;
     for (const notes of systems) {
         const byX = notes.slice().sort((a, b) => a.x - b.x);
         let group = null;
@@ -1347,8 +1386,11 @@ async function loadTabFromPdf(file) {
         const title = file.name.replace(/\.pdf$/i, '');
 
         // ① TAB譜として読めるか試す
-        const systems = (numbers.length && lines.length >= 6) ? groupTabSystems(numbers, lines) : [];
-        const events = systems.length ? tabSystemsToEvents(systems) : [];
+        const tab = (numbers.length && lines.length >= 6) ? groupTabSystems(numbers, lines) : { systems: [], spacing: 0 };
+        const systems = tab.systems;
+        // 和音判定の許容幅は弦間隔に比例させる（同時に鳴る音はほぼ同一x、連続音はそれより離れる）
+        const xTol = Math.max(1.2, (tab.spacing || 10) * 0.35);
+        const events = systems.length ? tabSystemsToEvents(systems, xTol) : [];
         if (events.length > 0) {
             const noteValue = parseInt(document.getElementById('pdfNoteValue').value, 10) || 8;
             gpApi.tex(eventsToAlphaTex(events, noteValue, title));

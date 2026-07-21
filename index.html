@@ -17,6 +17,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
     <script src="https://unpkg.com/wavesurfer.js@7/dist/wavesurfer.min.js"></script>
     <script src="https://unpkg.com/wavesurfer.js@7/dist/plugins/regions.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@coderline/alphatab@1.8.4/dist/alphaTab.min.js"></script>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     
     <link rel="stylesheet" href="style.css">
@@ -232,6 +233,7 @@
     <div class="mode-tabs">
         <button class="tab-btn active" id="tab-file" onclick="switchMode('file')">Audio File Mode</button>
         <button class="tab-btn" id="tab-yt" onclick="switchMode('yt')">YouTube Mode</button>
+        <button class="tab-btn" id="tab-gp" onclick="switchMode('gp')">TAB譜 (Guitar Pro)</button>
     </div>
 
     <div id="file-section" class="content-section active">
@@ -436,6 +438,57 @@
                     <button class="clear-btn-ja" onclick="saveLoop('yt')" id="saveLoopBtnYT" style="border: 1px solid var(--primary-color); border-radius: 8px; padding: 8px 20px; flex:none;">
                         <span class="material-icons" style="font-size:18px;">bookmark_add</span> SAVE
                     </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="gp-section" class="content-section">
+        <div style="display:flex; gap:8px; align-items:stretch; margin-bottom:10px;">
+            <label for="gpFile" class="custom-file-upload" id="gpSelectBtn" style="flex:1; margin-bottom:0; justify-content:center;">Guitar Proファイルを選択</label>
+            <input type="file" id="gpFile" accept=".gp,.gpx,.gp3,.gp4,.gp5,.gp7,.xml,.musicxml" style="display:none;">
+        </div>
+        <p style="font-size:0.7rem; color:var(--text-dim); margin:0 0 10px; line-height:1.5;">
+            対応形式: Guitar Pro (.gp / .gpx / .gp3 / .gp4 / .gp5) ・ MusicXML (.xml / .musicxml)
+        </p>
+
+        <div id="gpEmpty" style="text-align:center; color:var(--text-dim); padding:40px 15px; border:1px dashed var(--border-color); border-radius:12px;">
+            <span class="material-icons" style="font-size:40px; opacity:0.5;">library_music</span>
+            <p style="font-size:0.85rem; margin-top:10px;">Guitar Pro / MusicXML ファイルを選択すると<br>楽譜が表示され、再生できます。</p>
+        </div>
+
+        <div id="gpPlayerWrap" style="display:none;">
+            <div id="gpTitle" style="font-weight:bold; color:var(--text-main); font-size:1rem; margin-bottom:4px;"></div>
+            <div id="gpArtist" style="color:var(--text-dim); font-size:0.8rem; margin-bottom:10px;"></div>
+
+            <div id="gpLoadStatus" style="font-size:0.8rem; color:var(--primary-color); margin-bottom:8px; min-height:1.1em;"></div>
+
+            <div class="gp-viewport" id="gpViewport">
+                <div id="gpMain"></div>
+            </div>
+
+            <div class="transport-controls" style="margin:15px 0;">
+                <button class="btn-ctrl" id="gpStopBtn" title="停止"><span class="material-icons">stop</span></button>
+                <button class="btn-ctrl play-main" id="gpPlayBtn"><span class="material-icons" id="gpPlayIcon" style="font-size:35px;">play_arrow</span></button>
+                <button class="btn-ctrl" id="gpLoopBtn" title="ループ"><span class="material-icons">repeat</span></button>
+                <button class="btn-ctrl" id="gpMetroBtn" title="メトロノーム"><span class="material-icons">av_timer</span></button>
+                <button class="btn-ctrl" id="gpCountBtn" title="カウントイン"><span class="material-icons">timer</span></button>
+            </div>
+
+            <div class="panel" style="padding:12px 15px; gap:10px;">
+                <div class="row">
+                    <div style="min-width:65px; font-weight:bold; color:var(--text-dim); font-size:0.75rem;">Speed <button class="reset-btn" id="gpSpeedReset">Reset</button></div>
+                    <input type="range" id="gpSpeed" min="0.25" max="1.5" step="0.05" value="1.0">
+                    <span id="gpSpeedTxt" class="val-display">x1.00</span>
+                </div>
+                <div class="row">
+                    <div style="min-width:65px; font-weight:bold; color:var(--text-dim); font-size:0.75rem;">Zoom <button class="reset-btn" id="gpZoomReset">Reset</button></div>
+                    <input type="range" id="gpZoom" min="0.5" max="1.75" step="0.05" value="1.0">
+                    <span id="gpZoomTxt" class="val-display">100%</span>
+                </div>
+                <div class="row" style="align-items:flex-start;">
+                    <div style="min-width:65px; font-weight:bold; color:var(--text-dim); font-size:0.75rem; padding-top:6px;">Tracks</div>
+                    <div id="gpTrackList" style="flex-grow:1; display:flex; flex-direction:column; gap:6px;"></div>
                 </div>
             </div>
         </div>

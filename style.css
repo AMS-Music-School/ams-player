@@ -186,6 +186,19 @@ input[type="file"] { display: none; }
 .color-swatch { width: 30px; height: 30px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: transform 0.2s, box-shadow 0.2s; }
 .color-swatch:hover { transform: scale(1.15); }
 .color-swatch.active { border-color: #fff; box-shadow: 0 0 12px rgba(255,255,255,0.6); }
+
+/* ===== TAB譜 (Guitar Pro / AlphaTab) モード ===== */
+.gp-viewport { position: relative; background: #ffffff; border: 1px solid var(--border-color); border-radius: 8px; overflow-y: auto; overflow-x: auto; max-height: 60vh; -webkit-overflow-scrolling: touch; }
+#gpMain { min-height: 100px; }
+/* AlphaTabのカーソル・選択の視認性を確保 */
+.gp-viewport .at-cursor-bar { background: rgba(212, 163, 115, 0.18); }
+.gp-viewport .at-cursor-beat { background: var(--primary-color); width: 3px; }
+.gp-viewport .at-highlight * { fill: var(--primary-color); stroke: var(--primary-color); }
+.gp-track-item { display: flex; align-items: center; gap: 8px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); border-radius: 8px; padding: 8px 10px; cursor: pointer; transition: border-color 0.2s; }
+.gp-track-item.active { border-color: var(--primary-color); background: rgba(212,163,115,0.12); }
+.gp-track-name { flex-grow: 1; font-size: 0.8rem; color: var(--text-main); }
+.gp-track-mute { font-size: 0.65rem; padding: 2px 8px; border-radius: 6px; border: 1px solid var(--border-color); background: rgba(0,0,0,0.4); color: var(--text-dim); cursor: pointer; }
+.gp-track-mute.muted { border-color: var(--recording-red); color: var(--recording-red); }
     </style>
 </head>
 <body>

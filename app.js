@@ -956,7 +956,130 @@ function initAudioContext() { if (!audioCtx) audioCtx = new (window.AudioContext
 function toggleSolo() { isSolo = !isSolo; document.getElementById('soloBtn').classList.toggle('active', isSolo); applyVolumes(); }
 function applyVolumes() { if (!wavesurfer) return; const mVol = parseFloat(document.getElementById('mainVolume').value); const rVol = parseFloat(document.getElementById('recVolume').value); if (isSolo) wavesurfer.setMuted(true); else { wavesurfer.setMuted(false); wavesurfer.setVolume(mVol); } if (recWavesurfer && recObjectURL) recWavesurfer.setVolume(rVol); document.getElementById('mainVolTxt').innerText = Math.round(mVol * 100) + "%"; document.getElementById('recVolTxt').innerText = Math.round(rVol * 100) + "%"; }
 async function toggleFeature(type) { if (type === 'count') { isCountEnabled = !isCountEnabled; document.getElementById('countToggleBtn').classList.toggle('active', isCountEnabled); } else if (type === 'speedup') { if (!await requireSubscription()) return; isSpeedUpEnabled = !isSpeedUpEnabled; document.getElementById('speedUpToggleBtn').classList.toggle('active', isSpeedUpEnabled); const selectEl = document.getElementById('speedUpCount'); selectEl.disabled = !isSpeedUpEnabled; currentLoopCount = 0; } }
-function switchMode(mode) { currentMode = mode; document.getElementById('file-section').classList.toggle('active', mode === 'file'); document.getElementById('yt-section').classList.toggle('active', mode === 'yt'); document.getElementById('tab-file').classList.toggle('active', mode === 'file'); document.getElementById('tab-yt').classList.toggle('active', mode === 'yt'); if(mode === 'yt') { if(wavesurfer) wavesurfer.pause(); renderYTHistory(); } if(mode === 'file' && ytPlayer && ytPlayer.pauseVideo) ytPlayer.pauseVideo(); }
+function switchMode(mode) { currentMode = mode; document.getElementById('file-section').classList.toggle('active', mode === 'file'); document.getElementById('yt-section').classList.toggle('active', mode === 'yt'); document.getElementById('gp-section').classList.toggle('active', mode === 'gp'); document.getElementById('tab-file').classList.toggle('active', mode === 'file'); document.getElementById('tab-yt').classList.toggle('active', mode === 'yt'); document.getElementById('tab-gp').classList.toggle('active', mode === 'gp'); if(mode !== 'file' && wavesurfer) wavesurfer.pause(); if(mode === 'yt') { renderYTHistory(); } if(mode !== 'yt' && ytPlayer && ytPlayer.pauseVideo) ytPlayer.pauseVideo(); if(mode === 'gp') { initGpMode(); } else if (gpApi) { try { gpApi.pause(); } catch(e){} } }
+
+/* ===== TAB譜（Guitar Pro / MusicXML）モード — AlphaTab ===== */
+let gpApi = null;
+let gpInitialized = false;
+let gpScore = null;
+const GP_CDN = "https://cdn.jsdelivr.net/npm/@coderline/alphatab@1.8.4/dist/";
+
+function gpStatus(msg) { const el = document.getElementById('gpLoadStatus'); if (el) el.innerText = msg || ''; }
+
+function initGpMode() {
+    if (gpInitialized) return;
+    gpInitialized = true;
+    // AlphaTab本体の読込確認
+    if (typeof alphaTab === 'undefined' || !alphaTab.AlphaTabApi) {
+        gpStatus('楽譜エンジンの読み込みに失敗しました。通信環境を確認して再読み込みしてください。');
+        return;
+    }
+    const main = document.getElementById('gpMain');
+    const viewport = document.getElementById('gpViewport');
+    try {
+        gpApi = new alphaTab.AlphaTabApi(main, {
+            core: { fontDirectory: GP_CDN + 'font/' },
+            display: { layoutMode: alphaTab.LayoutMode.Page, scale: 1.0 },
+            player: {
+                enablePlayer: true,
+                enableCursor: true,
+                enableUserInteraction: true,
+                soundFont: GP_CDN + 'soundfont/sonivox.sf2',
+                scrollElement: viewport,
+                scrollMode: alphaTab.ScrollMode.Continuous
+            }
+        });
+    } catch (e) {
+        console.error('AlphaTab init error:', e);
+        gpStatus('楽譜エンジンの初期化に失敗しました。');
+        return;
+    }
+
+    gpApi.scoreLoaded.on(score => {
+        gpScore = score;
+        document.getElementById('gpTitle').innerText = score.title || '(無題)';
+        document.getElementById('gpArtist').innerText = score.artist || '';
+        document.getElementById('gpEmpty').style.display = 'none';
+        document.getElementById('gpPlayerWrap').style.display = 'block';
+        renderGpTrackList(score);
+    });
+    gpApi.renderStarted.on(() => gpStatus('楽譜を描画中...'));
+    gpApi.renderFinished.on(() => gpStatus(''));
+    gpApi.soundFontLoad.on(e => { if (e && e.total) gpStatus('音源を読み込み中... ' + Math.floor((e.loaded / e.total) * 100) + '%'); });
+    gpApi.playerReady.on(() => gpStatus(''));
+    gpApi.playerStateChanged.on(args => {
+        const playing = args.state === alphaTab.synth.PlayerState.Playing;
+        document.getElementById('gpPlayIcon').innerText = playing ? 'pause' : 'play_arrow';
+    });
+    gpApi.error.on(err => { console.error('AlphaTab error:', err); gpStatus('読み込みエラー: ' + (err && err.message ? err.message : 'ファイルを確認してください')); });
+
+    // ファイル選択
+    document.getElementById('gpFile').addEventListener('change', async (ev) => {
+        const file = ev.target.files && ev.target.files[0];
+        if (!file) return;
+        try {
+            gpStatus('ファイルを読み込み中...');
+            const buf = await file.arrayBuffer();
+            gpApi.load(new Uint8Array(buf));
+        } catch (e) {
+            console.error(e);
+            gpStatus('このファイルは読み込めませんでした。対応形式か確認してください。');
+        }
+    });
+
+    // 再生コントロール
+    document.getElementById('gpPlayBtn').onclick = () => { initAudioContext(); if (gpApi) gpApi.playPause(); };
+    document.getElementById('gpStopBtn').onclick = () => { if (gpApi) gpApi.stop(); };
+    document.getElementById('gpLoopBtn').onclick = (e) => { if (!gpApi) return; gpApi.isLooping = !gpApi.isLooping; e.currentTarget.classList.toggle('active', gpApi.isLooping); };
+    document.getElementById('gpMetroBtn').onclick = (e) => { if (!gpApi) return; const on = gpApi.metronomeVolume > 0; gpApi.metronomeVolume = on ? 0 : 1; e.currentTarget.classList.toggle('active', !on); };
+    document.getElementById('gpCountBtn').onclick = (e) => { if (!gpApi) return; const on = gpApi.countInVolume > 0; gpApi.countInVolume = on ? 0 : 1; e.currentTarget.classList.toggle('active', !on); };
+
+    // スピード
+    const spd = document.getElementById('gpSpeed');
+    spd.oninput = () => { if (gpApi) gpApi.playbackSpeed = parseFloat(spd.value); document.getElementById('gpSpeedTxt').innerText = 'x' + parseFloat(spd.value).toFixed(2); };
+    document.getElementById('gpSpeedReset').onclick = () => { spd.value = 1.0; spd.oninput(); };
+
+    // ズーム
+    const zoom = document.getElementById('gpZoom');
+    zoom.oninput = () => {
+        const v = parseFloat(zoom.value);
+        document.getElementById('gpZoomTxt').innerText = Math.round(v * 100) + '%';
+        if (gpApi) { gpApi.settings.display.scale = v; gpApi.updateSettings(); gpApi.render(); }
+    };
+    document.getElementById('gpZoomReset').onclick = () => { zoom.value = 1.0; zoom.oninput(); };
+}
+
+function renderGpTrackList(score) {
+    const list = document.getElementById('gpTrackList');
+    if (!list) return;
+    list.innerHTML = '';
+    // 「すべて表示」
+    const allItem = document.createElement('div');
+    allItem.className = 'gp-track-item active';
+    allItem.innerHTML = '<span class="gp-track-name">すべてのトラックを表示</span>';
+    allItem.onclick = () => { gpApi.renderTracks(score.tracks); _setActiveTrackItem(allItem); };
+    list.appendChild(allItem);
+
+    score.tracks.forEach(track => {
+        const item = document.createElement('div');
+        item.className = 'gp-track-item';
+        const name = document.createElement('span');
+        name.className = 'gp-track-name';
+        name.innerText = track.name || ('Track ' + (track.index + 1));
+        item.appendChild(name);
+        const mute = document.createElement('button');
+        mute.className = 'gp-track-mute';
+        mute.innerText = 'ミュート';
+        mute.onclick = (e) => { e.stopPropagation(); const m = !mute.classList.contains('muted'); mute.classList.toggle('muted', m); gpApi.changeTrackMute([track], m); };
+        item.appendChild(mute);
+        // トラック名クリックでそのトラックのみ表示
+        name.onclick = () => { gpApi.renderTracks([track]); _setActiveTrackItem(item); };
+        list.appendChild(item);
+    });
+}
+function _setActiveTrackItem(activeEl) {
+    document.querySelectorAll('#gpTrackList .gp-track-item').forEach(el => el.classList.toggle('active', el === activeEl));
+}
 
 async function forceRefreshPlayer() {
     if (currentMode !== 'file' || !currentObjectURL) return;
@@ -1574,9 +1697,10 @@ function startApp() {
         if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
         if (e.code === 'Space') { 
             e.preventDefault(); 
-            if (currentMode === 'file') document.getElementById('playBtn').click(); 
-            else if (currentMode === 'yt') toggleYTPlay(); 
-        } 
+            if (currentMode === 'file') document.getElementById('playBtn').click();
+            else if (currentMode === 'yt') toggleYTPlay();
+            else if (currentMode === 'gp' && gpApi) { initAudioContext(); gpApi.playPause(); }
+        }
         else if (e.code === 'ArrowLeft') { 
             e.preventDefault(); 
             if (currentMode === 'file' && wavesurfer) wavesurfer.skip(-5); 

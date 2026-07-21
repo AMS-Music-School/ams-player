@@ -18,6 +18,7 @@
     <script src="https://unpkg.com/wavesurfer.js@7/dist/wavesurfer.min.js"></script>
     <script src="https://unpkg.com/wavesurfer.js@7/dist/plugins/regions.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@coderline/alphatab@1.8.4/dist/alphaTab.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     
     <link rel="stylesheet" href="style.css">
@@ -451,6 +452,29 @@
         <p style="font-size:0.7rem; color:var(--text-dim); margin:0 0 10px; line-height:1.5;">
             対応形式: Guitar Pro (.gp / .gpx / .gp3 / .gp4 / .gp5) ・ MusicXML (.xml / .musicxml)
         </p>
+
+        <div style="border:1px solid var(--border-color); border-radius:10px; padding:10px 12px; margin-bottom:12px; background:rgba(0,0,0,0.25);">
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap;">
+                <span style="font-size:0.75rem; font-weight:bold; color:var(--text-dim);">
+                    <span class="material-icons" style="font-size:15px; vertical-align:middle;">science</span> PDF TAB譜の読み取り（実験機能）
+                </span>
+                <div style="display:flex; align-items:center; gap:6px;">
+                    <span style="font-size:0.7rem; color:var(--text-dim);">音符</span>
+                    <select id="pdfNoteValue" class="speedup-select" style="font-size:0.7rem;">
+                        <option value="4">4分</option>
+                        <option value="8" selected>8分</option>
+                        <option value="16">16分</option>
+                    </select>
+                    <label for="pdfFile" class="reset-btn" style="cursor:pointer; padding:4px 12px;">PDFを選択</label>
+                    <input type="file" id="pdfFile" accept="application/pdf,.pdf" style="display:none;">
+                </div>
+            </div>
+            <p style="font-size:0.65rem; color:var(--text-dim); margin:8px 0 0; line-height:1.6;">
+                ※ 文字情報を持つPDF（Guitar Pro等から出力したもの）のTAB譜のみ対応。スキャン画像のPDFは読み取れません。<br>
+                ※ PDFのTAB譜には音の長さ情報が無いため、<b>全音符を同じ長さで再生</b>します（上の「音符」で指定）。
+            </p>
+            <div id="pdfStatus" style="font-size:0.7rem; color:var(--primary-color); margin-top:6px; min-height:1.1em;"></div>
+        </div>
 
         <div id="gpEmpty" style="text-align:center; color:var(--text-dim); padding:40px 15px; border:1px dashed var(--border-color); border-radius:12px;">
             <span class="material-icons" style="font-size:40px; opacity:0.5;">library_music</span>

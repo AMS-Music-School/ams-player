@@ -1031,6 +1031,14 @@ function initGpMode() {
         }
     });
 
+    // PDF TAB譜の読み取り（実験機能）
+    document.getElementById('pdfFile').addEventListener('change', async (ev) => {
+        const file = ev.target.files && ev.target.files[0];
+        if (!file) return;
+        await loadTabFromPdf(file);
+        ev.target.value = '';
+    });
+
     // 再生コントロール
     document.getElementById('gpPlayBtn').onclick = () => { initAudioContext(); if (gpApi) gpApi.playPause(); };
     document.getElementById('gpStopBtn').onclick = () => { if (gpApi) gpApi.stop(); };
@@ -1083,6 +1091,159 @@ function renderGpTrackList(score) {
 }
 function _setActiveTrackItem(activeEl) {
     document.querySelectorAll('#gpTrackList .gp-track-item').forEach(el => el.classList.toggle('active', el === activeEl));
+}
+
+/* ===== PDF TAB譜 読み取り（実験機能） =====
+   文字情報を持つPDFからフレット番号を抽出し、6弦グリッドに割り当ててalphaTexへ変換する。
+   PDFのTAB譜は音価（音の長さ）情報を持たないため、全音符を均一長で再生する。 */
+const PDF_WORKER = "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js";
+function pdfStatus(msg) { const el = document.getElementById('pdfStatus'); if (el) el.innerText = msg || ''; }
+
+// PDF全ページから「数字テキスト」と「水平罫線」を座標付きで収集
+async function extractPdfTab(arrayBuffer) {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = PDF_WORKER;
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    const OPS = pdfjsLib.OPS;
+    const numbers = [], lines = [];
+    let pageOffset = 0;
+    for (let p = 1; p <= pdf.numPages; p++) {
+        const page = await pdf.getPage(p);
+        const vp = page.getViewport({ scale: 1 });
+        // --- 数字テキスト ---
+        const tc = await page.getTextContent();
+        for (const it of tc.items) {
+            const s = (it.str || '').trim();
+            if (!/^\d{1,2}$/.test(s)) continue;
+            const fret = parseInt(s, 10);
+            if (fret < 0 || fret > 24) continue;
+            numbers.push({ fret, x: it.transform[4], y: (vp.height - it.transform[5]) + pageOffset });
+        }
+        // --- 水平罫線（TAB譜の弦）---
+        const ol = await page.getOperatorList();
+        for (let i = 0; i < ol.fnArray.length; i++) {
+            if (ol.fnArray[i] !== OPS.constructPath) continue;
+            const args = ol.argsArray[i];
+            const ops = args[0], coords = args[1];
+            let ci = 0, cx = 0, cy = 0;
+            for (const op of ops) {
+                if (op === OPS.moveTo) { cx = coords[ci]; cy = coords[ci + 1]; ci += 2; }
+                else if (op === OPS.lineTo) {
+                    const nx = coords[ci], ny = coords[ci + 1]; ci += 2;
+                    // 水平かつ十分な長さ＝譜面の罫線とみなす
+                    if (Math.abs(ny - cy) < 0.6 && Math.abs(nx - cx) > 80) {
+                        lines.push({ y: (vp.height - cy) + pageOffset, x0: Math.min(cx, nx), x1: Math.max(cx, nx) });
+                    }
+                    cx = nx; cy = ny;
+                }
+                else if (op === OPS.curveTo) ci += 6;
+                else if (op === OPS.curveTo2 || op === OPS.curveTo3) ci += 4;
+                else if (op === OPS.rectangle) ci += 4;
+            }
+        }
+        pageOffset += vp.height + 50; // ページを縦に連結して読み順を保つ
+        page.cleanup();
+    }
+    return { numbers, lines };
+}
+
+// 罫線を6本一組のシステムにまとめ、各数字を最も近い罫線＝弦に割り当てる
+function groupTabSystems(numbers, lines) {
+    if (!lines.length || !numbers.length) return [];
+    // 罫線のy座標を重複除去してソート
+    const ys = [];
+    lines.slice().sort((a, b) => a.y - b.y).forEach(l => {
+        const last = ys[ys.length - 1];
+        if (last && Math.abs(l.y - last.y) < 1.5) return; // 同一線の重複描画を除去
+        ys.push({ y: l.y, x0: l.x0, x1: l.x1 });
+    });
+    if (ys.length < 6) return [];
+    // 線間隔の中央値＝弦の間隔
+    const gaps = [];
+    for (let i = 1; i < ys.length; i++) gaps.push(ys[i].y - ys[i - 1].y);
+    const sg = gaps.slice().sort((a, b) => a - b);
+    const spacing = sg[Math.floor(sg.length / 2)] || 10;
+    // 間隔が大きく空いたところでシステム分割
+    const groups = [];
+    let cur = [ys[0]];
+    for (let i = 1; i < ys.length; i++) {
+        if (ys[i].y - ys[i - 1].y > spacing * 2.2) { groups.push(cur); cur = [ys[i]]; }
+        else cur.push(ys[i]);
+    }
+    groups.push(cur);
+    // 6本の罫線を持つグループのみTAB譜システムとして採用（五線譜は5本なので自然に除外される）
+    const systems = groups.filter(g => g.length === 6).map(g => ({
+        top: g[0].y, bottom: g[5].y, lines: g,
+        x0: Math.min(...g.map(l => l.x0)), x1: Math.max(...g.map(l => l.x1))
+    }));
+    if (!systems.length) return [];
+    // 各数字を、y範囲が合致するシステムの最も近い罫線に割り当て
+    const result = systems.map(() => []);
+    for (const n of numbers) {
+        let si = -1;
+        for (let i = 0; i < systems.length; i++) {
+            const s = systems[i];
+            if (n.y >= s.top - spacing * 0.9 && n.y <= s.bottom + spacing * 0.9 &&
+                n.x >= s.x0 - 20 && n.x <= s.x1 + 20) { si = i; break; }
+        }
+        if (si < 0) continue; // 譜面外の数字（ページ番号・小節番号など）は除外
+        const s = systems[si];
+        let str = Math.round((n.y - s.top) / spacing) + 1;
+        if (str < 1) str = 1; if (str > 6) str = 6;
+        result[si].push({ string: str, fret: n.fret, x: n.x });
+    }
+    return result.filter(a => a.length > 0);
+}
+
+// システム群を「時間順のイベント列」に変換（x座標が近い音は和音として束ねる）
+function tabSystemsToEvents(systems) {
+    const events = [];
+    const X_TOL = 6;
+    for (const notes of systems) {
+        const byX = notes.slice().sort((a, b) => a.x - b.x);
+        let group = null;
+        for (const n of byX) {
+            if (group && Math.abs(n.x - group.x) <= X_TOL) group.notes.push(n);
+            else { group = { x: n.x, notes: [n] }; events.push(group); }
+        }
+    }
+    return events;
+}
+
+// イベント列をalphaTexへ（音価は均一、4/4で小節を区切る）
+function eventsToAlphaTex(events, noteValue, title) {
+    const perBar = noteValue; // 4/4: 4分→4個, 8分→8個, 16分→16個
+    const parts = [];
+    events.forEach((ev, i) => {
+        const uniq = new Map(); // 同一弦の重複を除去
+        ev.notes.forEach(n => { if (!uniq.has(n.string)) uniq.set(n.string, n.fret); });
+        const tokens = [...uniq.entries()].map(([s, f]) => f + '.' + s);
+        parts.push(tokens.length > 1 ? '(' + tokens.join(' ') + ')' : tokens[0]);
+        if ((i + 1) % perBar === 0 && i !== events.length - 1) parts.push('|');
+    });
+    const safeTitle = (title || 'PDF TAB').replace(/["\\]/g, '');
+    return '\\title "' + safeTitle + '" \\tempo 90 . :' + noteValue + ' ' + parts.join(' ');
+}
+
+async function loadTabFromPdf(file) {
+    if (typeof pdfjsLib === 'undefined') { pdfStatus('PDF読み込みライブラリが利用できません。'); return; }
+    if (!gpApi) { pdfStatus('先にTAB譜モードを開いてください。'); return; }
+    try {
+        pdfStatus('PDFを解析中...');
+        const buf = await file.arrayBuffer();
+        const { numbers, lines } = await extractPdfTab(buf);
+        if (numbers.length === 0) { pdfStatus('数字が検出できませんでした。スキャン画像のPDFの可能性があります（文字情報を持つPDFのみ対応）。'); return; }
+        if (lines.length < 6) { pdfStatus('TAB譜の罫線が検出できませんでした。画像として描かれたPDFの可能性があります。'); return; }
+        const systems = groupTabSystems(numbers, lines);
+        const events = tabSystemsToEvents(systems);
+        if (events.length === 0) { pdfStatus('TAB譜の構造を認識できませんでした。'); return; }
+        const noteValue = parseInt(document.getElementById('pdfNoteValue').value, 10) || 8;
+        const tex = eventsToAlphaTex(events, noteValue, file.name.replace(/\.pdf$/i, ''));
+        gpApi.tex(tex);
+        pdfStatus('読み取り完了: ' + systems.length + '段 / ' + events.length + '音（音の長さは均一で再生します）');
+    } catch (e) {
+        console.error('PDF parse error:', e);
+        pdfStatus('PDFの解析に失敗しました: ' + (e && e.message ? e.message : e));
+    }
 }
 
 async function forceRefreshPlayer() {

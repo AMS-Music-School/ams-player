@@ -124,6 +124,11 @@
 
         <div class="tuner-strings" id="tunerStrings"></div>
 
+        <div class="tuner-level-wrap" id="tunerLevelWrap" style="display:none;">
+            <span class="material-icons" style="font-size:16px; color:var(--text-dim);">mic</span>
+            <div class="tuner-level-track"><div class="tuner-level-bar" id="tunerLevelBar"></div></div>
+        </div>
+
         <button class="subscribe-btn" id="tunerToggleBtn" onclick="toggleTuner()" style="margin-top:18px; font-size:0.95rem; padding:12px;">マイクを開始</button>
         <p style="font-size:0.65rem; color:var(--text-dim); margin:10px 0 0; line-height:1.5;">
             ギターやベースの音を拾って音程を表示します。基準A=<span id="tunerA4">440</span>Hz。<br>周囲が静かな環境でお使いください。

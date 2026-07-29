@@ -199,6 +199,25 @@ input[type="file"] { display: none; }
 .gp-track-name { flex-grow: 1; font-size: 0.8rem; color: var(--text-main); }
 .gp-track-mute { font-size: 0.65rem; padding: 2px 8px; border-radius: 6px; border: 1px solid var(--border-color); background: rgba(0,0,0,0.4); color: var(--text-dim); cursor: pointer; }
 .gp-track-mute.muted { border-color: var(--recording-red); color: var(--recording-red); }
+
+/* ===== チューナー ===== */
+#tuner-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 7000; display: none; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.tuner-card { background: rgba(20,20,26,0.85); border: 1px solid var(--border-color); border-radius: 20px; padding: 22px; max-width: 380px; width: 100%; box-shadow: 0 10px 40px rgba(0,0,0,0.6); text-align: center; }
+.tuner-note { font-size: 4.5rem; font-weight: bold; line-height: 1; color: var(--text-dim); transition: color 0.15s; }
+.tuner-note.in-tune { color: #33dd88; text-shadow: 0 0 20px rgba(51,221,136,0.6); }
+.tuner-note.off { color: var(--primary-color); }
+.tuner-freq { font-size: 0.8rem; color: var(--text-dim); margin-top: 6px; min-height: 1.1em; }
+.tuner-meter { margin-top: 18px; }
+.tuner-scale { display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--text-dim); margin-bottom: 4px; padding: 0 2px; }
+.tuner-track { position: relative; height: 44px; background: rgba(0,0,0,0.4); border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden; }
+.tuner-center { position: absolute; left: 50%; top: 0; bottom: 0; width: 2px; background: rgba(51,221,136,0.5); transform: translateX(-50%); }
+.tuner-needle { position: absolute; left: 50%; top: 4px; bottom: 4px; width: 4px; border-radius: 2px; background: var(--primary-color); transform: translateX(-50%); transition: left 0.08s linear, background 0.15s; }
+.tuner-needle.in-tune { background: #33dd88; box-shadow: 0 0 12px rgba(51,221,136,0.8); }
+.tuner-cents { font-size: 0.75rem; color: var(--text-dim); margin-top: 6px; min-height: 1.1em; }
+.tuner-strings { display: flex; justify-content: center; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+.tuner-string { width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; border-radius: 50%; border: 1px solid var(--border-color); background: rgba(0,0,0,0.3); font-size: 0.85rem; font-weight: bold; color: var(--text-dim); transition: all 0.15s; }
+.tuner-string.target { border-color: var(--primary-color); color: var(--primary-color); }
+.tuner-string.in-tune { border-color: #33dd88; color: #33dd88; box-shadow: 0 0 12px rgba(51,221,136,0.5); }
     </style>
 </head>
 <body>

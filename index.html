@@ -103,6 +103,36 @@
     </div>
 </div>
 
+<div id="tuner-overlay">
+    <div class="tuner-card">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <span style="color:var(--primary-color); font-weight:bold; letter-spacing:1px;"><span class="material-icons" style="font-size:18px; vertical-align:middle;">graphic_eq</span> チューナー</span>
+            <button onclick="closeTuner()" style="background:none; border:none; color:var(--text-dim); cursor:pointer;"><span class="material-icons">close</span></button>
+        </div>
+
+        <div class="tuner-note" id="tunerNote">–</div>
+        <div class="tuner-freq" id="tunerFreq">マイクを開始してください</div>
+
+        <div class="tuner-meter">
+            <div class="tuner-scale">
+                <span>-50</span><span>♭</span><span style="color:var(--primary-color);">0</span><span>♯</span><span>+50</span>
+            </div>
+            <div class="tuner-track">
+                <div class="tuner-center"></div>
+                <div class="tuner-needle" id="tunerNeedle"></div>
+            </div>
+            <div class="tuner-cents" id="tunerCents"></div>
+        </div>
+
+        <div class="tuner-strings" id="tunerStrings"></div>
+
+        <button class="subscribe-btn" id="tunerToggleBtn" onclick="toggleTuner()" style="margin-top:18px; font-size:0.95rem; padding:12px;">マイクを開始</button>
+        <p style="font-size:0.65rem; color:var(--text-dim); margin:10px 0 0; line-height:1.5;">
+            ギターやベースの音を拾って音程を表示します。基準A=<span id="tunerA4">440</span>Hz。<br>周囲が静かな環境でお使いください。
+        </p>
+    </div>
+</div>
+
 <div id="welcome-trial-overlay">
     <div class="login-card" style="text-align:center;">
         <div class="material-icons" style="font-size:48px; color:var(--primary-color); margin-bottom:10px;">celebration</div>
@@ -141,6 +171,9 @@
             <span id="userName">Guest</span>
             <button class="logout-btn" onclick="logout()">Logout</button>
         </div>
+        <button class="menu-trigger" onclick="openTuner()" title="チューナー">
+            <span class="material-icons">graphic_eq</span>
+        </button>
         <button class="menu-trigger" onclick="toggleMenu(true)">
             <span class="material-icons">menu</span>
         </button>

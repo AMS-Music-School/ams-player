@@ -1103,6 +1103,141 @@ function updateKeyDisplay(keyResult) {
     el.innerText = keyResult.key + ' ' + modeStr;
     rowEl.style.display = 'flex';
 }
+/* ===== チューナー（マイク入力→自己相関による音程検出・純JS） ===== */
+let tunerStream = null, tunerAnalyser = null, tunerRAF = null, tunerBuf = null, tunerRunning = false;
+const TUNER_A4 = 440;
+const TUNER_STRINGS = [ // 標準ギターチューニング（低音→高音）
+    { name: 'E', freq: 82.41 }, { name: 'A', freq: 110.00 }, { name: 'D', freq: 146.83 },
+    { name: 'G', freq: 196.00 }, { name: 'B', freq: 246.94 }, { name: 'E', freq: 329.63 }
+];
+const _NOTE_SHARP = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+
+function renderTunerStrings() {
+    const el = document.getElementById('tunerStrings');
+    if (!el) return;
+    el.innerHTML = '';
+    TUNER_STRINGS.forEach((s, i) => {
+        const d = document.createElement('div');
+        d.className = 'tuner-string';
+        d.id = 'tunerStr' + i;
+        d.innerText = s.name;
+        el.appendChild(d);
+    });
+}
+
+window.openTuner = function () {
+    renderTunerStrings();
+    document.getElementById('tuner-overlay').style.display = 'flex';
+};
+window.closeTuner = function () {
+    stopTuner();
+    document.getElementById('tuner-overlay').style.display = 'none';
+};
+window.toggleTuner = function () { if (tunerRunning) stopTuner(); else startTuner(); };
+
+async function startTuner() {
+    try {
+        const ctx = initAudioContext();
+        if (ctx.state === 'suspended') await ctx.resume();
+        tunerStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+        const src = ctx.createMediaStreamSource(tunerStream);
+        tunerAnalyser = ctx.createAnalyser();
+        tunerAnalyser.fftSize = 2048;
+        tunerBuf = new Float32Array(tunerAnalyser.fftSize);
+        src.connect(tunerAnalyser);
+        tunerRunning = true;
+        document.getElementById('tunerToggleBtn').innerText = 'マイクを停止';
+        tunerLoop();
+    } catch (e) {
+        console.error('Tuner mic error:', e);
+        document.getElementById('tunerFreq').innerText = 'マイクを利用できません（許可が必要です）';
+    }
+}
+
+function stopTuner() {
+    tunerRunning = false;
+    if (tunerRAF) { cancelAnimationFrame(tunerRAF); tunerRAF = null; }
+    if (tunerStream) { tunerStream.getTracks().forEach(t => t.stop()); tunerStream = null; }
+    tunerAnalyser = null;
+    const btn = document.getElementById('tunerToggleBtn'); if (btn) btn.innerText = 'マイクを開始';
+    const note = document.getElementById('tunerNote'); if (note) { note.innerText = '–'; note.className = 'tuner-note'; }
+    const freq = document.getElementById('tunerFreq'); if (freq) freq.innerText = 'マイクを開始してください';
+    const cents = document.getElementById('tunerCents'); if (cents) cents.innerText = '';
+    const needle = document.getElementById('tunerNeedle'); if (needle) { needle.style.left = '50%'; needle.className = 'tuner-needle'; }
+    document.querySelectorAll('.tuner-string').forEach(el => el.className = 'tuner-string');
+}
+
+// 自己相関による基本周波数推定（単音楽器向け・堅牢）
+function detectPitchAC(buf, sampleRate) {
+    const N = buf.length;
+    let rms = 0;
+    for (let i = 0; i < N; i++) rms += buf[i] * buf[i];
+    rms = Math.sqrt(rms / N);
+    if (rms < 0.008) return -1; // 無音・小さすぎる音は無視
+
+    // 端の減衰を避けるためトリミング
+    let r1 = 0, r2 = N - 1, thres = 0.2;
+    for (let i = 0; i < N / 2; i++) { if (Math.abs(buf[i]) < thres) { r1 = i; break; } }
+    for (let i = 1; i < N / 2; i++) { if (Math.abs(buf[N - i]) < thres) { r2 = N - i; break; } }
+    const b = buf.slice(r1, r2);
+    const n = b.length;
+    const c = new Float32Array(n).fill(0);
+    for (let lag = 0; lag < n; lag++) {
+        for (let i = 0; i < n - lag; i++) c[lag] += b[i] * b[i + lag];
+    }
+    // 最初の谷の後の最大ピークを探す
+    let d = 0; while (d < n - 1 && c[d] > c[d + 1]) d++;
+    let maxPos = -1, maxVal = -1;
+    for (let i = d; i < n; i++) { if (c[i] > maxVal) { maxVal = c[i]; maxPos = i; } }
+    if (maxPos <= 0) return -1;
+    // 放物線補間で精度を上げる
+    const x0 = maxPos > 0 ? c[maxPos - 1] : c[maxPos];
+    const x1 = c[maxPos];
+    const x2 = maxPos < n - 1 ? c[maxPos + 1] : c[maxPos];
+    const a = (x0 + x2 - 2 * x1) / 2, bb = (x2 - x0) / 2;
+    const shift = a ? -bb / (2 * a) : 0;
+    const period = maxPos + shift;
+    if (period <= 0) return -1;
+    const freq = sampleRate / period;
+    return (freq >= 60 && freq <= 1200) ? freq : -1;
+}
+
+function freqToNote(freq) {
+    const midi = Math.round(69 + 12 * Math.log2(freq / TUNER_A4));
+    const refFreq = TUNER_A4 * Math.pow(2, (midi - 69) / 12);
+    const cents = Math.floor(1200 * Math.log2(freq / refFreq));
+    return { name: _NOTE_SHARP[(midi % 12 + 12) % 12], octave: Math.floor(midi / 12) - 1, cents, midi };
+}
+
+let _tunerHold = { name: null, count: 0 };
+function tunerLoop() {
+    if (!tunerRunning || !tunerAnalyser) return;
+    tunerAnalyser.getFloatTimeDomainData(tunerBuf);
+    const ctx = audioCtx;
+    const freq = detectPitchAC(tunerBuf, ctx.sampleRate);
+    if (freq > 0) {
+        const info = freqToNote(freq);
+        const inTune = Math.abs(info.cents) <= 5;
+        const noteEl = document.getElementById('tunerNote');
+        noteEl.innerText = info.name + (info.name.length === 1 ? '' : '');
+        noteEl.className = 'tuner-note ' + (inTune ? 'in-tune' : 'off');
+        document.getElementById('tunerFreq').innerText = freq.toFixed(1) + ' Hz（' + info.name + info.octave + '）';
+        const cents = info.cents;
+        document.getElementById('tunerCents').innerText = (cents > 0 ? '+' : '') + cents + ' cent' + (inTune ? '  ✓ 合っています' : (cents > 0 ? '（高い→少し緩める）' : '（低い→少し締める）'));
+        const needle = document.getElementById('tunerNeedle');
+        const pos = 50 + Math.max(-50, Math.min(50, cents)); // -50..+50cent → 0..100%
+        needle.style.left = pos + '%';
+        needle.className = 'tuner-needle' + (inTune ? ' in-tune' : '');
+        // 最も近いギター弦をハイライト
+        let best = -1, bestDiff = 1e9;
+        TUNER_STRINGS.forEach((s, i) => { const dc = Math.abs(1200 * Math.log2(freq / s.freq)); if (dc < bestDiff) { bestDiff = dc; best = i; } });
+        document.querySelectorAll('.tuner-string').forEach((el, i) => {
+            el.className = 'tuner-string' + (i === best ? (inTune ? ' in-tune' : ' target') : '');
+        });
+    }
+    tunerRAF = requestAnimationFrame(tunerLoop);
+}
+
 function playBeep(isLast) { const ctx = initAudioContext(); const osc = ctx.createOscillator(), gain = ctx.createGain(); osc.frequency.setValueAtTime(isLast ? 880 : 440, ctx.currentTime); gain.gain.setValueAtTime(0.1, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1); osc.connect(gain); gain.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + 0.1); }
 async function runCountdown() { if (!isCountEnabled) return true; const currentSpeed = parseFloat(document.getElementById('speed').value); const interval = 60000 / (originalBpm * currentSpeed); const overlay = document.getElementById('countdown-overlay'); overlay.style.display = 'block'; for (let i = 1; i <= 4; i++) { overlay.innerText = i; playBeep(i === 4); await new Promise(r => setTimeout(r, interval)); } overlay.style.display = 'none'; return true; }
 async function toggleRecording() { if (!await requireSubscription()) return; initAudioContext(); if (isRecording) { if (mediaRecorder) mediaRecorder.stop(); if (wavesurfer.isPlaying()) wavesurfer.pause(); isRecording = false; document.getElementById('recBtn').classList.remove('recording'); document.getElementById('recIcon').innerText = 'mic'; } else { try { const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } }); const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4'; mediaRecorder = new MediaRecorder(stream, { mimeType }); recordedChunks = []; mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); }; mediaRecorder.onstop = async () => { const blob = new Blob(recordedChunks, { type: mimeType }); if (recObjectURL) URL.revokeObjectURL(recObjectURL); recObjectURL = URL.createObjectURL(blob); const arrayBuffer = await blob.arrayBuffer(); const ctx = initAudioContext(); recordedAudioBuffer = await ctx.decodeAudioData(arrayBuffer); document.getElementById('rec-waveform-wrapper').style.display = 'block'; document.getElementById('recVolControl').style.display = 'flex'; document.getElementById('recControls').style.display = 'flex'; await recWavesurfer.load(recObjectURL); applyVolumes(); updateRecPlayBtnUI(); stream.getTracks().forEach(track => track.stop()); }; const region = wsRegions.getRegions()[0]; const startPos = region ? region.start : wavesurfer.getCurrentTime(); wavesurfer.setTime(startPos); lastRecStartPos = startPos; await runCountdown(); mediaRecorder.start(); await wavesurfer.play(); isRecording = true; document.getElementById('recBtn').classList.add('recording'); document.getElementById('recIcon').innerText = 'stop'; } catch (err) { alert("マイクを許可してください"); } } }

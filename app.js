@@ -1752,6 +1752,7 @@ function updateKeyDisplay(keyResult) {
 }
 /* ===== チューナー（マイク入力→自己相関による音程検出・純JS） ===== */
 let tunerStream = null, tunerAnalyser = null, tunerRAF = null, tunerBuf = null, tunerRunning = false;
+let tunerSrc = null, tunerSink = null;
 const TUNER_A4 = 440;
 const TUNER_STRINGS = [ // 標準ギターチューニング（低音→高音）
     { name: 'E', freq: 82.41 }, { name: 'A', freq: 110.00 }, { name: 'D', freq: 146.83 },
@@ -1783,70 +1784,113 @@ window.closeTuner = function () {
 window.toggleTuner = function () { if (tunerRunning) stopTuner(); else startTuner(); };
 
 async function startTuner() {
+    const freqEl = document.getElementById('tunerFreq');
     try {
+        // iOS対策: AudioContextはユーザー操作内で生成・resumeする必要がある
         const ctx = initAudioContext();
         if (ctx.state === 'suspended') await ctx.resume();
-        tunerStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
-        const src = ctx.createMediaStreamSource(tunerStream);
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            freqEl.innerText = 'この環境ではマイクを利用できません（HTTPSが必要です）';
+            return;
+        }
+        freqEl.innerText = 'マイクを準備中...';
+        tunerStream = await navigator.mediaDevices.getUserMedia({
+            audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
+        });
+        // 念のため再度resume（iOSはgetUserMedia後にsuspendされることがある）
+        if (ctx.state === 'suspended') await ctx.resume();
+        tunerSrc = ctx.createMediaStreamSource(tunerStream);
         tunerAnalyser = ctx.createAnalyser();
-        tunerAnalyser.fftSize = 2048;
+        tunerAnalyser.fftSize = 4096;               // 低音弦の検出精度を上げる
+        tunerAnalyser.smoothingTimeConstant = 0;
         tunerBuf = new Float32Array(tunerAnalyser.fftSize);
-        src.connect(tunerAnalyser);
+        tunerSrc.connect(tunerAnalyser);
+        // iOS対策: グラフをdestinationまで繋がないと音声が流れない端末があるため、無音ゲイン経由で接続
+        tunerSink = ctx.createGain();
+        tunerSink.gain.value = 0;
+        tunerAnalyser.connect(tunerSink);
+        tunerSink.connect(ctx.destination);
         tunerRunning = true;
         document.getElementById('tunerToggleBtn').innerText = 'マイクを停止';
+        document.getElementById('tunerLevelWrap').style.display = 'flex';
+        freqEl.innerText = '弦を鳴らしてください...';
+        _tunerHold = { freq: 0, count: 0 };
         tunerLoop();
     } catch (e) {
         console.error('Tuner mic error:', e);
-        document.getElementById('tunerFreq').innerText = 'マイクを利用できません（許可が必要です）';
+        const msg = (e && e.name === 'NotAllowedError') ? 'マイクの使用が許可されませんでした。ブラウザの設定で許可してください。'
+            : (e && e.name === 'NotFoundError') ? 'マイクが見つかりませんでした。'
+            : 'マイクを開始できませんでした（HTTPS環境が必要です）。';
+        freqEl.innerText = msg;
+        stopTuner();
+        document.getElementById('tunerToggleBtn').innerText = 'マイクを開始';
     }
 }
 
 function stopTuner() {
     tunerRunning = false;
     if (tunerRAF) { cancelAnimationFrame(tunerRAF); tunerRAF = null; }
+    try { if (tunerSrc) tunerSrc.disconnect(); } catch (e) {}
+    try { if (tunerAnalyser) tunerAnalyser.disconnect(); } catch (e) {}
+    try { if (tunerSink) tunerSink.disconnect(); } catch (e) {}
     if (tunerStream) { tunerStream.getTracks().forEach(t => t.stop()); tunerStream = null; }
-    tunerAnalyser = null;
+    tunerSrc = null; tunerSink = null; tunerAnalyser = null;
     const btn = document.getElementById('tunerToggleBtn'); if (btn) btn.innerText = 'マイクを開始';
     const note = document.getElementById('tunerNote'); if (note) { note.innerText = '–'; note.className = 'tuner-note'; }
     const freq = document.getElementById('tunerFreq'); if (freq) freq.innerText = 'マイクを開始してください';
     const cents = document.getElementById('tunerCents'); if (cents) cents.innerText = '';
     const needle = document.getElementById('tunerNeedle'); if (needle) { needle.style.left = '50%'; needle.className = 'tuner-needle'; }
+    const lw = document.getElementById('tunerLevelWrap'); if (lw) lw.style.display = 'none';
+    const lb = document.getElementById('tunerLevelBar'); if (lb) lb.style.width = '0%';
     document.querySelectorAll('.tuner-string').forEach(el => el.className = 'tuner-string');
 }
 
-// 自己相関による基本周波数推定（単音楽器向け・堅牢）
-function detectPitchAC(buf, sampleRate) {
-    const N = buf.length;
-    let rms = 0;
-    for (let i = 0; i < N; i++) rms += buf[i] * buf[i];
-    rms = Math.sqrt(rms / N);
-    if (rms < 0.008) return -1; // 無音・小さすぎる音は無視
-
-    // 端の減衰を避けるためトリミング
-    let r1 = 0, r2 = N - 1, thres = 0.2;
-    for (let i = 0; i < N / 2; i++) { if (Math.abs(buf[i]) < thres) { r1 = i; break; } }
-    for (let i = 1; i < N / 2; i++) { if (Math.abs(buf[N - i]) < thres) { r2 = N - i; break; } }
-    const b = buf.slice(r1, r2);
-    const n = b.length;
-    const c = new Float32Array(n).fill(0);
-    for (let lag = 0; lag < n; lag++) {
-        for (let i = 0; i < n - lag; i++) c[lag] += b[i] * b[i + lag];
+// 自己相関による基本周波数推定（正規化ACF＋ピーク選択・低音/倍音に強い）
+// 対象は≤1200Hzなので信号を間引いて計算量を削減（モバイルでも軽快に動作）
+function detectPitchAC(rawBuf, rawRate, rms) {
+    if (rms < 0.003) return -1; // ほぼ無音
+    // 間引き（ボックス平均でエイリアシングを抑える）。実効サンプルレートは約8kHz以上を維持。
+    const DEC = Math.max(1, Math.floor(rawRate / 9000));
+    const sampleRate = rawRate / DEC;
+    const N = Math.floor(rawBuf.length / DEC);
+    const buf = new Float32Array(N);
+    for (let i = 0; i < N; i++) { let s = 0; for (let j = 0; j < DEC; j++) s += rawBuf[i * DEC + j]; buf[i] = s / DEC; }
+    // 対象周波数帯 40〜1200Hz に対応するラグ範囲だけ計算（低音弦もカバー＆高速）
+    const minLag = Math.max(2, Math.floor(sampleRate / 1200));
+    const maxLag = Math.min(N - 2, Math.ceil(sampleRate / 40));
+    // DC成分を除去した信号を用意
+    let mean = 0; for (let i = 0; i < N; i++) mean += buf[i]; mean /= N;
+    const d = new Float32Array(N);
+    let c0 = 0; for (let i = 0; i < N; i++) { const v = buf[i] - mean; d[i] = v; c0 += v * v; }
+    if (c0 <= 0) return -1;
+    // 正規化自己相関を全ラグ分計算
+    const corr = new Float32Array(maxLag + 1);
+    for (let lag = minLag; lag <= maxLag; lag++) {
+        let sum = 0; const lim = N - lag;
+        for (let i = 0; i < lim; i++) sum += d[i] * d[i + lag];
+        corr[lag] = sum / c0;
     }
-    // 最初の谷の後の最大ピークを探す
-    let d = 0; while (d < n - 1 && c[d] > c[d + 1]) d++;
-    let maxPos = -1, maxVal = -1;
-    for (let i = d; i < n; i++) { if (c[i] > maxVal) { maxVal = c[i]; maxPos = i; } }
-    if (maxPos <= 0) return -1;
+    // 全ピーク（局所最大）を抽出し、最大ピーク値を求める
+    let maxPeak = 0;
+    const peaks = [];
+    for (let lag = minLag + 1; lag < maxLag; lag++) {
+        if (corr[lag] > corr[lag - 1] && corr[lag] >= corr[lag + 1] && corr[lag] > 0) {
+            peaks.push(lag);
+            if (corr[lag] > maxPeak) maxPeak = corr[lag];
+        }
+    }
+    if (maxPeak < 0.4 || !peaks.length) return -1; // 明瞭なピッチが無い
+    // 最大ピークの90%以上で最も低いラグ＝基音（倍音によるオクターブ下誤検出を防ぐ）
+    let bestLag = -1;
+    for (const lag of peaks) { if (corr[lag] >= maxPeak * 0.9) { bestLag = lag; break; } }
+    if (bestLag < minLag) return -1;
     // 放物線補間で精度を上げる
-    const x0 = maxPos > 0 ? c[maxPos - 1] : c[maxPos];
-    const x1 = c[maxPos];
-    const x2 = maxPos < n - 1 ? c[maxPos + 1] : c[maxPos];
+    let period = bestLag;
+    const x0 = corr[bestLag - 1], x1 = corr[bestLag], x2 = corr[bestLag + 1];
     const a = (x0 + x2 - 2 * x1) / 2, bb = (x2 - x0) / 2;
-    const shift = a ? -bb / (2 * a) : 0;
-    const period = maxPos + shift;
-    if (period <= 0) return -1;
+    if (a) period = bestLag - bb / (2 * a);
     const freq = sampleRate / period;
-    return (freq >= 60 && freq <= 1200) ? freq : -1;
+    return (freq >= 40 && freq <= 1200) ? freq : -1;
 }
 
 function freqToNote(freq) {
@@ -1856,12 +1900,29 @@ function freqToNote(freq) {
     return { name: _NOTE_SHARP[(midi % 12 + 12) % 12], octave: Math.floor(midi / 12) - 1, cents, midi };
 }
 
-let _tunerHold = { name: null, count: 0 };
+let _tunerHold = { freq: 0, count: 0 };
 function tunerLoop() {
     if (!tunerRunning || !tunerAnalyser) return;
     tunerAnalyser.getFloatTimeDomainData(tunerBuf);
     const ctx = audioCtx;
-    const freq = detectPitchAC(tunerBuf, ctx.sampleRate);
+    // 入力レベル（RMS）を計算してメーターに反映。マイクが拾っているか一目で分かる。
+    let rms = 0; for (let i = 0; i < tunerBuf.length; i++) rms += tunerBuf[i] * tunerBuf[i];
+    rms = Math.sqrt(rms / tunerBuf.length);
+    const lb = document.getElementById('tunerLevelBar');
+    if (lb) lb.style.width = Math.min(100, Math.round(rms * 400)) + '%';
+
+    let freq = detectPitchAC(tunerBuf, ctx.sampleRate, rms);
+    // 直近の値と大きく飛ぶ単発ノイズは無視して安定させる
+    if (freq > 0 && _tunerHold.freq > 0) {
+        const ratio = freq / _tunerHold.freq;
+        if (ratio > 1.06 || ratio < 0.94) {
+            if (_tunerHold.count < 2) { _tunerHold.count++; freq = _tunerHold.freq; }
+            else { _tunerHold = { freq, count: 0 }; }
+        } else { _tunerHold = { freq: _tunerHold.freq * 0.6 + freq * 0.4, count: 0 }; freq = _tunerHold.freq; }
+    } else if (freq > 0) {
+        _tunerHold = { freq, count: 0 };
+    }
+
     if (freq > 0) {
         const info = freqToNote(freq);
         const inTune = Math.abs(info.cents) <= 5;
@@ -1881,6 +1942,11 @@ function tunerLoop() {
         document.querySelectorAll('.tuner-string').forEach((el, i) => {
             el.className = 'tuner-string' + (i === best ? (inTune ? ' in-tune' : ' target') : '');
         });
+    } else {
+        // 音程が取れないとき：入力があれば「拾っています」、無ければ「弦を鳴らして」
+        const freqEl = document.getElementById('tunerFreq');
+        if (rms >= 0.003) freqEl.innerText = '🎤 音を拾っています（1本ずつ、はっきり鳴らしてください）';
+        else freqEl.innerText = '弦を鳴らしてください...';
     }
     tunerRAF = requestAnimationFrame(tunerLoop);
 }

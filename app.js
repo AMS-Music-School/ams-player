@@ -1166,8 +1166,9 @@ async function startTuner() {
         tunerRunning = true;
         document.getElementById('tunerToggleBtn').innerText = 'マイクを停止';
         document.getElementById('tunerLevelWrap').style.display = 'flex';
-        freqEl.innerText = '弦を鳴らしてください...';
+        freqEl.innerText = '弦を鳴らしてください…';
         _tunerHold = { freq: 0, count: 0 };
+        _tunerLost = 0;
         tunerLoop();
     } catch (e) {
         console.error('Tuner mic error:', e);
@@ -1254,6 +1255,7 @@ function freqToNote(freq) {
 }
 
 let _tunerHold = { freq: 0, count: 0 };
+let _tunerLost = 0;
 function tunerLoop() {
     if (!tunerRunning || !tunerAnalyser) return;
     tunerAnalyser.getFloatTimeDomainData(tunerBuf);
@@ -1277,6 +1279,7 @@ function tunerLoop() {
     }
 
     if (freq > 0) {
+        _tunerLost = 0;
         const info = freqToNote(freq);
         const inTune = Math.abs(info.cents) <= 5;
         const noteEl = document.getElementById('tunerNote');
@@ -1296,10 +1299,13 @@ function tunerLoop() {
             el.className = 'tuner-string' + (i === best ? (inTune ? ' in-tune' : ' target') : '');
         });
     } else {
-        // 音程が取れないとき：入力があれば「拾っています」、無ければ「弦を鳴らして」
-        const freqEl = document.getElementById('tunerFreq');
-        if (rms >= 0.003) freqEl.innerText = '🎤 音を拾っています（1本ずつ、はっきり鳴らしてください）';
-        else freqEl.innerText = '弦を鳴らしてください...';
+        // 音程が途切れた直後は直前の表示を少しの間保持し、文字の点滅を防ぐ
+        _tunerLost = (_tunerLost || 0) + 1;
+        if (_tunerLost > 12) {
+            const freqEl = document.getElementById('tunerFreq');
+            if (rms >= 0.003) freqEl.innerText = '🎤 音を拾っています…';
+            else freqEl.innerText = '弦を鳴らしてください…';
+        }
     }
     tunerRAF = requestAnimationFrame(tunerLoop);
 }

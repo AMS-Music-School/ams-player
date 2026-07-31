@@ -1752,7 +1752,7 @@ function updateKeyDisplay(keyResult) {
 }
 /* ===== チューナー（マイク入力→自己相関による音程検出・純JS） ===== */
 let tunerStream = null, tunerAnalyser = null, tunerRAF = null, tunerBuf = null, tunerRunning = false;
-let tunerSrc = null, tunerSink = null;
+let tunerSrc = null, tunerSink = null, tunerUseFloat = true, tunerByteBuf = null;
 const TUNER_A4 = 440;
 const TUNER_STRINGS = [ // 標準ギターチューニング（低音→高音）
     { name: 'E', freq: 82.41 }, { name: 'A', freq: 110.00 }, { name: 'D', freq: 146.83 },
@@ -1804,6 +1804,9 @@ async function startTuner() {
         tunerAnalyser.fftSize = 4096;               // 低音弦の検出精度を上げる
         tunerAnalyser.smoothingTimeConstant = 0;
         tunerBuf = new Float32Array(tunerAnalyser.fftSize);
+        // 一部モバイルブラウザは getFloatTimeDomainData 非対応のため getByteTimeDomainData で代替
+        tunerUseFloat = (typeof tunerAnalyser.getFloatTimeDomainData === 'function');
+        tunerByteBuf = tunerUseFloat ? null : new Uint8Array(tunerAnalyser.fftSize);
         tunerSrc.connect(tunerAnalyser);
         // iOS対策: グラフをdestinationまで繋がないと音声が流れない端末があるため、無音ゲイン経由で接続
         tunerSink = ctx.createGain();
@@ -1849,7 +1852,7 @@ function stopTuner() {
 // 自己相関による基本周波数推定（正規化ACF＋ピーク選択・低音/倍音に強い）
 // 対象は≤1200Hzなので信号を間引いて計算量を削減（モバイルでも軽快に動作）
 function detectPitchAC(rawBuf, rawRate, rms) {
-    if (rms < 0.003) return -1; // ほぼ無音
+    if (rms < 0.0012) return -1; // ほぼ無音（モバイルの弱い入力も拾えるよう低め）
     // 間引き（ボックス平均でエイリアシングを抑える）。実効サンプルレートは約8kHz以上を維持。
     const DEC = Math.max(1, Math.floor(rawRate / 9000));
     const sampleRate = rawRate / DEC;
@@ -1880,7 +1883,7 @@ function detectPitchAC(rawBuf, rawRate, rms) {
             if (corr[lag] > maxPeak) maxPeak = corr[lag];
         }
     }
-    if (maxPeak < 0.4 || !peaks.length) return -1; // 明瞭なピッチが無い
+    if (maxPeak < 0.25 || !peaks.length) return -1; // 明瞭なピッチが無い（雑音の多いモバイルマイク向けに緩和）
     // 最大ピークの90%以上で最も低いラグ＝基音（倍音によるオクターブ下誤検出を防ぐ）
     let bestLag = -1;
     for (const lag of peaks) { if (corr[lag] >= maxPeak * 0.9) { bestLag = lag; break; } }
@@ -1905,22 +1908,25 @@ let _tunerHold = { freq: 0, count: 0 };
 let _tunerLost = 0;
 function tunerLoop() {
     if (!tunerRunning || !tunerAnalyser) return;
-    tunerAnalyser.getFloatTimeDomainData(tunerBuf);
+    // 時間波形を取得（Float非対応端末はByteから変換）
+    if (tunerUseFloat) tunerAnalyser.getFloatTimeDomainData(tunerBuf);
+    else { tunerAnalyser.getByteTimeDomainData(tunerByteBuf); for (let i = 0; i < tunerByteBuf.length; i++) tunerBuf[i] = (tunerByteBuf[i] - 128) / 128; }
     const ctx = audioCtx;
     // 入力レベル（RMS）を計算してメーターに反映。マイクが拾っているか一目で分かる。
     let rms = 0; for (let i = 0; i < tunerBuf.length; i++) rms += tunerBuf[i] * tunerBuf[i];
     rms = Math.sqrt(rms / tunerBuf.length);
     const lb = document.getElementById('tunerLevelBar');
-    if (lb) lb.style.width = Math.min(100, Math.round(rms * 400)) + '%';
+    if (lb) lb.style.width = Math.min(100, Math.round(Math.sqrt(rms) * 180)) + '%'; // 弱い信号でも見えるよう非線形スケール
 
     let freq = detectPitchAC(tunerBuf, ctx.sampleRate, rms);
     // 直近の値と大きく飛ぶ単発ノイズは無視して安定させる
     if (freq > 0 && _tunerHold.freq > 0) {
         const ratio = freq / _tunerHold.freq;
         if (ratio > 1.06 || ratio < 0.94) {
-            if (_tunerHold.count < 2) { _tunerHold.count++; freq = _tunerHold.freq; }
+            // 単発ノイズは1フレームだけ無視。実際の弦の切替は素早くロックする
+            if (_tunerHold.count < 1) { _tunerHold.count++; freq = _tunerHold.freq; }
             else { _tunerHold = { freq, count: 0 }; }
-        } else { _tunerHold = { freq: _tunerHold.freq * 0.6 + freq * 0.4, count: 0 }; freq = _tunerHold.freq; }
+        } else { const nf = _tunerHold.freq * 0.5 + freq * 0.5; _tunerHold = { freq: nf, count: 0 }; freq = nf; }
     } else if (freq > 0) {
         _tunerHold = { freq, count: 0 };
     }
